@@ -1,0 +1,69 @@
+# Seasonal Consumption Patterns
+# Monthly percentages for each meter (must sum to 100%)
+# Used for intelligent gap-filling and interpolation
+# Format: [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
+
+patterns:
+  eg_strom:
+    monthly_percentages: [12.5, 11.0, 10.0, 8.5, 6.5, 5.0, 4.5, 5.0, 6.5, 8.0, 10.5, 12.0]
+    description: "Ground floor electricity - moderate seasonal variation"
+
+  gas_total:
+    monthly_percentages: [15.1, 12.0, 12.5, 8.1, 3.5, 3.2, 2.7, 3.6, 5.2, 8.4, 12.2, 14.5]
+    description: "Total gas - high in winter (heating), low in summer"
+
+  gastherme_gesamt:
+    monthly_percentages: [15.1, 12.0, 12.5, 8.1, 3.5, 3.2, 2.7, 3.6, 5.2, 8.4, 12.2, 14.5]
+    description: "Gas heating system total - mirrors gas_total pattern"
+
+  gastherme_heizen:
+    monthly_percentages: [15.1, 12.0, 12.5, 8.1, 3.5, 3.2, 2.7, 3.6, 5.2, 8.4, 12.2, 14.5]
+    description: "Gas heating - peak in winter months"
+
+  gastherme_warmwasser:
+    monthly_percentages: [12, 11, 10, 8, 7, 6, 6, 6, 6, 6, 10, 12]
+    description: "Gas hot water - more consistent year-round with slight winter increase"
+
+  gas_zahler_alt:
+    monthly_percentages: [15.1, 12.0, 12.5, 8.1, 3.5, 3.2, 2.7, 3.6, 5.2, 8.4, 12.2, 14.5]
+    description: "Old gas meter - same pattern as gas_total"
+
+  gas_zahler:
+    monthly_percentages: [16.1, 13.0, 12.5, 8.1, 3.5, 2.2, 1.7, 1.6, 5.2, 8.4, 12.2, 15.5]
+    description: "New gas meter - similar to old meter with slight adjustments"
+
+  strom_total:
+    monthly_percentages: [16.1, 13.0, 12.5, 8.1, 3.5, 2.2, 1.7, 1.6, 5.2, 8.4, 12.2, 15.5]
+    description: "Total electricity - higher in winter (lighting, heating pumps)"
+
+  strom_1LOG0007013695_NT:
+    monthly_percentages: [12.5, 11.0, 10.0, 8.5, 6.5, 5.0, 4.5, 5.0, 6.5, 8.0, 10.5, 12.0]
+    description: "Old meter night tariff"
+
+  strom_1LOG0007013695_HT:
+    monthly_percentages: [12.5, 11.0, 10.0, 8.5, 6.5, 5.0, 4.5, 5.0, 6.5, 8.0, 10.5, 12.0]
+    description: "Old meter high tariff"
+
+  eg_nord_heat:
+    monthly_percentages: [17.1, 14.0, 12.5, 8.1, 2.5, 1.2, 0.7, 0.6, 5.2, 8.4, 13.2, 16.5]
+    description: "Heat EG Nord - very high winter usage, minimal summer"
+
+  buro_heat:
+    monthly_percentages: [17.1, 14.0, 12.5, 8.1, 2.5, 1.2, 0.7, 0.6, 5.2, 8.4, 13.2, 16.5]
+    description: "Heat Buro - office heating pattern"
+
+  eg_sud_heat:
+    monthly_percentages: [17.1, 14.0, 12.5, 8.1, 2.5, 1.2, 0.7, 0.6, 5.2, 8.4, 13.2, 16.5]
+    description: "Heat EG Sud - similar to other heat meters"
+
+  og1_heat:
+    monthly_percentages: [17.1, 14.0, 12.5, 8.1, 2.5, 1.2, 0.7, 0.6, 5.2, 8.4, 13.2, 16.5]
+    description: "Heat OG1 - first floor heating"
+
+  og2_heat:
+    monthly_percentages: [17.1, 14.0, 12.5, 8.1, 2.5, 1.2, 0.7, 0.6, 5.2, 8.4, 13.2, 16.5]
+    description: "Heat OG2 - second floor heating"
+
+  solarspeicher:
+    monthly_percentages: [3.3, 4.2, 7.2, 11.6, 12.9, 13.4, 13.5, 11.5, 9.5, 7.2, 3.4, 2.4]
+    description: "Solar storage - inverse pattern, peak in summer"
