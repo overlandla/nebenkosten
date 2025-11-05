@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Excel to InfluxDB Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        textarea { width: 100%; height: 400px; font-family: monospace; font-size: 12px; }
+        button { padding: 10px 20px; margin: 10px 0; font-size: 16px; }
+        .info { background: #f0f8ff; padding: 15px; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Excel to InfluxDB Converter for haupt_strom</h1>
+        
+        <div class="info">
+            <p><strong>Instructions:</strong></p>
+            <ol>
+                <li>Upload your Excel file with the electricity meter readings</li>
+                <li>The script will convert all rows to InfluxDB write commands</li>
+                <li>Copy the generated commands and run them on your InfluxDB server</li>
+            </ol>
+        </div>
+        
+        <input type="file" id="fileInput" accept=".xlsx,.xls" />
+        <button onclick="convertFile()">Convert to InfluxDB Commands</button>
+        <button onclick="copyToClipboard()">Copy to Clipboard</button>
+        
+        <h3>Generated InfluxDB Commands:</h3>
+        <textarea id="output" placeholder="Upload an Excel file and click Convert..."></textarea>
+        
+        <div id="stats"></div>
+    </div>
+
+    <script>
+        let generatedCommands = '';
+        
+        function convertFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file first!');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    // Get first sheet
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // Read raw data to find headers
+                    const rawData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    
+                    console.log('First 10 rows:', rawData.slice(0, 10));
+                    
+                    // Find the header row containing "Ab-Datum"
+                    let headerRowIndex = -1;
+                    for (let i = 0; i < Math.min(20, rawData.length); i++) {
+                        const row = rawData[i];
+                        if (row && row.some(cell => cell && cell.toString().trim().includes('Ab-Datum'))) {
+                            headerRowIndex = i;
+                            console.log('Found header row at index', i, ':', row);
+                            break;
+                        }
+                    }
+                    
+                    if (headerRowIndex === -1) {
+                        throw new Error('Could not find header row with "Ab-Datum"');
+                    }
+                    
+                    // Get headers and data
+                    const headers = rawData[headerRowIndex];
+                    const dataRows = rawData.slice(headerRowIndex + 1);
+                    
+                    console.log('Headers:', headers);
+                    console.log('Sample data rows:', dataRows.slice(0, 3));
+                    
+                    // Convert to objects
+                    const jsonData = dataRows.map(row => {
+                        const obj = {};
+                        headers.forEach((header, index) => {
+                            if (header) {
+                                obj[header.toString().trim()] = row[index];
+                            }
+                        });
+                        return obj;
+                    }).filter(row => Object.keys(row).length > 0);
+                    
+                    console.log('Converted data sample:');
+                    jsonData.slice(0, 3).forEach((row, i) => {
+                        console.log(`Sample ${i}:`, JSON.stringify(row));
+                    });
+                    
+                    // Process the data
+                    const commands = [];
+                    let validRows = 0;
+                    let skippedRows = 0;
+                    
+                    jsonData.forEach((row, index) => {
+                        try {
+                            const abDatum = row['Ab-Datum'];
+                            const abZeit = row['Ab-Zeit'];
+                            const zaehlerstand = row['Zählerstand'];
+                            
+                            if (!abDatum || !zaehlerstand) {
+                                skippedRows++;
+                                return;
+                            }
+                            
+                            // Parse meter value
+                            let meterValue = parseFloat(zaehlerstand.toString().replace(',', '.'));
+                            if (isNaN(meterValue) || meterValue <= 0) {
+                                skippedRows++;
+                                return;
+                            }
+                            
+                            // Parse date - CORRECTED VERSION (using Date.UTC)
+                            let dateObj;
+                            if (typeof abDatum === 'number') {
+                                // Excel serial date number - CORRECTED calculation using Date.UTC
+                                // Excel day 1 = January 1, 1900 (with leap year bug)
+                                // Date.UTC(year, month, day)
+                                // Excel epoch is Dec 30, 1899. So, add abDatum to 30.
+                                dateObj = new Date(Date.UTC(1899, 11, 30 + abDatum));
+                            } else if (typeof abDatum === 'string') {
+                                // String date parsing
+                                const dateParts = abDatum.split('.');
+                                if (dateParts.length === 3) {
+                                    const [day, month, year] = dateParts;
+                                    dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                }
+                            } else if (abDatum instanceof Date) {
+                                dateObj = new Date(abDatum);
+                            }
+
+                            // Validate year is reasonable
+                            if (dateObj && (dateObj.getFullYear() < 2020 || dateObj.getFullYear() > 2030)) {
+                                console.error(`Invalid year: ${dateObj.getFullYear()} from input: ${abDatum}`);
+                                skippedRows++;
+                                return; // Skip this row
+                            }
+                            
+                            // Parse time
+                            if (dateObj && abZeit) {
+                                let hours = 0, minutes = 0;
+                                
+                                if (typeof abZeit === 'number') {
+                                    // Excel time decimal
+                                    hours = Math.floor(abZeit * 24);
+                                    minutes = Math.floor((abZeit * 24 * 60) % 60);
+                                } else if (typeof abZeit === 'string') {
+                                    // String time "00:15"
+                                    const timeParts = abZeit.split(':');
+                                    hours = parseInt(timeParts[0]) || 0;
+                                    minutes = parseInt(timeParts[1]) || 0;
+                                }
+                                
+                                dateObj.setHours(hours, minutes, 0, 0);
+                            }
+                            
+                            // Debug first few
+                            if (index < 5) {
+                                console.log(`Row ${index}:`);
+                                console.log('  rawDate:', abDatum);
+                                console.log('  rawTime:', abZeit);
+                                console.log('  parsedDate:', dateObj);
+                                console.log('  parsedDateISO:', dateObj ? dateObj.toISOString() : 'invalid');
+                                console.log('  timestamp:', dateObj ? dateObj.getTime() * 1000000 : 'invalid');
+                                console.log('  meterValue:', meterValue);
+                            }
+                            
+                            // Create command if valid
+                            if (dateObj && !isNaN(dateObj.getTime())) {
+                                const timestamp = dateObj.getTime() * 1000000;
+                                const command = `influx write -b lampfi 'kWh,domain=input_number,entity_id=haupt_strom value=${meterValue} ${timestamp}'`;
+                                commands.push(command);
+                                validRows++;
+                            } else {
+                                skippedRows++;
+                            }
+                            
+                        } catch (error) {
+                            console.error('Error processing row', index, ':', error);
+                            skippedRows++;
+                        }
+                    });
+                    
+                    // Generate output
+                    const header = [
+                        '#!/bin/bash',
+                        '# InfluxDB import commands for haupt_strom (main electricity meter)',
+                        `# Generated from: ${file.name}`,
+                        `# Total records: ${validRows}`,
+                        `# Skipped records: ${skippedRows}`,
+                        '',
+                        'echo "Importing haupt_strom electricity meter readings..."',
+                        ''
+                    ];
+                    
+                    const footer = [
+                        '',
+                        'echo "Import completed!"',
+                        'echo "Verifying data..."',
+                        'influx query \'from(bucket:"lampfi") |> range(start: 2025-01-01T00:00:00Z) |> filter(fn: (r) => r["_measurement"] == "kWh" and r["entity_id"] == "haupt_strom") |> sort(columns: ["_time"]) |> count() |> yield()\'',
+                    ];
+                    
+                    generatedCommands = [...header, ...commands, ...footer].join('\n');
+                    
+                    document.getElementById('output').value = generatedCommands;
+                    document.getElementById('stats').innerHTML = `
+                        <div class="info">
+                            <strong>Conversion Summary:</strong><br>
+                            • Valid records converted: ${validRows}<br>
+                            • Skipped records: ${skippedRows}<br>
+                            • Total commands generated: ${commands.length}
+                        </div>
+                    `;
+                    
+                } catch (error) {
+                    alert('Error reading file: ' + error.message);
+                    console.error('Error:', error);
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function copyToClipboard() {
+            const output = document.getElementById('output');
+            output.select();
+            document.execCommand('copy');
+            alert('Commands copied to clipboard!');
+        }
+    </script>
+</body>
+</html>
