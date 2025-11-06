@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Prefect Server - Workflow orchestration and UI
+  prefect-server:
+    image: prefecthq/prefect:2-latest
+    container_name: utility-prefect-server
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    environment:
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_API_DATABASE_CONNECTION_URL=sqlite+aiosqlite:////app/prefect.db
+    volumes:
+      - prefect-data:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4200/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: prefect server start
+    networks:
+      - utility-network
+
+  # Prefect Worker - Executes workflows
+  prefect-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: utility-prefect-worker
+    restart: unless-stopped
+    env_file:
+      - secrets/influxdb.env
+      - secrets/tibber.env
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+      - ./Nebenkosten/src:/app/Nebenkosten/src:ro
+    environment:
+      - PREFECT_API_URL=http://prefect-server:4200/api
+      - CONFIG_FILE=/app/config/config.yaml
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - prefect-server
+    networks:
+      - utility-network
+    # Worker will auto-register flows and start polling for work
+    command: >
+      sh -c "
+        echo 'Waiting for Prefect server to be ready...' &&
+        sleep 10 &&
+        echo 'Registering flows...' &&
+        python /app/workflows/register_flows.py &&
+        echo 'Starting Prefect worker...' &&
+        prefect worker start --pool default-pool --type process
+      "
+
+volumes:
+  prefect-data:
+    driver: local
+
+networks:
+  utility-network:
+    name: utility-network
+    driver: bridge
+
+# Notes:
+# - InfluxDB and Grafana are expected to already exist on your NAS
+# - Update config/config.yaml with your InfluxDB URL
+# - Ensure secrets/influxdb.env and secrets/tibber.env are populated
+# - Create the lampfi_processed bucket in InfluxDB before first run

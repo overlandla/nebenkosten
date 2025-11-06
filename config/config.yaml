@@ -1,0 +1,36 @@
+# Main Configuration
+# Secrets should be stored in secrets/*.env files (not in version control)
+
+influxdb:
+  url: "http://192.168.1.75:8086"  # Update to your InfluxDB instance
+  bucket_raw: "lampfi"              # Existing bucket for raw meter data
+  bucket_processed: "lampfi_processed"  # Bucket for processed results (create this)
+  timeout: 30
+  retry_attempts: 3
+
+tibber:
+  polling_interval: 3600            # Seconds between fetches (3600 = 1 hour)
+  lookback_hours: 48                # Fetch last 48 hours on each run
+  meter_id: "haupt_strom"           # InfluxDB entity_id to write Tibber data to
+
+gas_conversion:
+  energy_content: 11.504            # kWh per m³
+  z_factor: 0.8885                  # Gas compression factor
+
+workflows:
+  analytics:
+    schedule: "0 2 * * *"           # Cron: Daily at 2:00 AM
+    start_year: 2020                # Process data from this year onwards
+  tibber_sync:
+    schedule: "5 * * * *"           # Cron: Every hour at :05 minutes
+
+logging:
+  level: "INFO"                     # DEBUG, INFO, WARNING, ERROR
+  format: "json"                    # json or text
+  file: "/app/logs/utility_analyzer.log"
+  max_bytes: 10485760               # 10 MB
+  backup_count: 5                   # Keep 5 rotated log files
+
+# Paths to other configuration files
+meters_config: "config/meters.yaml"
+seasonal_patterns_config: "config/seasonal_patterns.yaml"
