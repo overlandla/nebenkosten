@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for Dagster metadata (recommended over SQLite for production)
+  dagster-postgres:
+    image: postgres:15-alpine
+    container_name: dagster-postgres
+    environment:
+      POSTGRES_USER: dagster
+      POSTGRES_PASSWORD: dagster
+      POSTGRES_DB: dagster
+    volumes:
+      - dagster-postgres-data:/var/lib/postgresql/data
+    networks:
+      - utility-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dagster"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Dagster Daemon (schedules, sensors, run queue)
+  dagster-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    container_name: dagster-daemon
+    command: dagster-daemon run
+    environment:
+      DAGSTER_POSTGRES_USER: dagster
+      DAGSTER_POSTGRES_PASSWORD: dagster
+      DAGSTER_POSTGRES_DB: dagster
+      DAGSTER_POSTGRES_HOST: dagster-postgres
+      DAGSTER_POSTGRES_PORT: 5432
+    env_file:
+      - ./secrets/influxdb.env
+      - ./secrets/tibber.env
+    volumes:
+      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./config:/app/config:ro
+      - ./Nebenkosten/src:/app/Nebenkosten/src:ro
+      - ./logs:/app/logs
+    networks:
+      - utility-network
+    depends_on:
+      dagster-postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Dagster Webserver (UI on port 3000)
+  dagster-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    container_name: dagster-webserver
+    command: dagster-webserver -h 0.0.0.0 -p 3000
+    ports:
+      - "3000:3000"  # Different port from Prefect (4200)
+    environment:
+      DAGSTER_POSTGRES_USER: dagster
+      DAGSTER_POSTGRES_PASSWORD: dagster
+      DAGSTER_POSTGRES_DB: dagster
+      DAGSTER_POSTGRES_HOST: dagster-postgres
+      DAGSTER_POSTGRES_PORT: 5432
+    volumes:
+      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./config:/app/config:ro
+      - ./Nebenkosten/src:/app/Nebenkosten/src:ro
+    networks:
+      - utility-network
+    depends_on:
+      dagster-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Dagster User Code (code location server)
+  dagster-user-code:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    container_name: dagster-user-code
+    command: dagster code-server start -h 0.0.0.0 -p 4000 -m workflows-dagster.dagster_project
+    environment:
+      DAGSTER_CURRENT_IMAGE: "dagster-user-code"
+    env_file:
+      - ./secrets/influxdb.env
+      - ./secrets/tibber.env
+    volumes:
+      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./config:/app/config:ro
+      - ./Nebenkosten/src:/app/Nebenkosten/src:ro
+      - ./logs:/app/logs
+    networks:
+      - utility-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/server_info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  utility-network:
+    external: true  # Shares network with Prefect setup
+
+volumes:
+  dagster-postgres-data:
