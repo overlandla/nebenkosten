@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getInfluxClient, getInfluxConfig } from '@/lib/influxdb';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('startDate') || '-90d';
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     const temperatures: any[] = [];
 
-    return new Promise((resolve) => {
+    return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
         next(row: string[], tableMeta: any) {
           const o = tableMeta.toObject(row);
