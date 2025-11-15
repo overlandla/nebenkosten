@@ -1,3 +1,5 @@
+import React from 'react';
+
 /**
  * Loading skeleton for charts
  * Displays a placeholder animation while chart data is loading
