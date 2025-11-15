@@ -9,7 +9,11 @@ import { generateConsumptionData } from '@/__tests__/fixtures/meterData';
 
 // Mock recharts
 jest.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
+  ResponsiveContainer: ({ children, height }: any) => (
+    <div data-testid="responsive-container" data-height={height}>
+      {children}
+    </div>
+  ),
   BarChart: ({ children, data }: any) => <div data-testid="bar-chart" data-length={data?.length}>{children}</div>,
   Bar: ({ dataKey, name, fill }: any) => <div data-testid={`bar-${dataKey}`} data-name={name} data-fill={fill} />,
   XAxis: () => <div data-testid="x-axis" />,
@@ -17,6 +21,12 @@ jest.mock('recharts', () => ({
   CartesianGrid: () => <div data-testid="cartesian-grid" />,
   Tooltip: () => <div data-testid="tooltip" />,
   Legend: () => <div data-testid="legend" />,
+}));
+
+// Mock useMediaQuery hook
+jest.mock('@/hooks/useMediaQuery', () => ({
+  __esModule: true,
+  default: jest.fn(() => false), // Default to desktop
 }));
 
 describe('ConsumptionChart', () => {
@@ -145,5 +155,27 @@ describe('ConsumptionChart', () => {
     );
 
     expect(screen.getByTestId('bar-chart')).toHaveAttribute('data-length', '365');
+  });
+
+  describe('Responsive behavior', () => {
+    it('should use larger height on desktop (400px)', () => {
+      const useMediaQuery = require('@/hooks/useMediaQuery').default;
+      useMediaQuery.mockReturnValue(false); // Desktop
+
+      render(<ConsumptionChart {...defaultProps} />);
+
+      const container = screen.getByTestId('responsive-container');
+      expect(container).toHaveAttribute('data-height', '400');
+    });
+
+    it('should use smaller height on mobile (300px)', () => {
+      const useMediaQuery = require('@/hooks/useMediaQuery').default;
+      useMediaQuery.mockReturnValue(true); // Mobile
+
+      render(<ConsumptionChart {...defaultProps} />);
+
+      const container = screen.getByTestId('responsive-container');
+      expect(container).toHaveAttribute('data-height', '300');
+    });
   });
 });

@@ -6,6 +6,12 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import TimeRangeSelector, { TimeRange } from '@/components/TimeRangeSelector';
 
+// Mock useMediaQuery hook
+jest.mock('@/hooks/useMediaQuery', () => ({
+  __esModule: true,
+  default: jest.fn(() => false), // Default to desktop
+}));
+
 describe('TimeRangeSelector', () => {
   const mockOnRangeChange = jest.fn();
 

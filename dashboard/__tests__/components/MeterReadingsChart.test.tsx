@@ -19,6 +19,12 @@ jest.mock('recharts', () => ({
   Legend: () => <div data-testid="legend" />,
 }));
 
+// Mock useMediaQuery hook
+jest.mock('@/hooks/useMediaQuery', () => ({
+  __esModule: true,
+  default: jest.fn(() => false), // Default to desktop
+}));
+
 describe('MeterReadingsChart', () => {
   const defaultProps = {
     meterId: 'strom_total',
