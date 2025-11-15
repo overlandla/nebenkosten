@@ -1,0 +1,81 @@
+---
+name: utility-meter-dashboard
+description: |
+  Modern Next.js dashboard for visualizing utility meter data from InfluxDB.
+  Provides real-time monitoring and analysis of electricity, gas, and water consumption.
+categories:
+  - monitoring
+  - dashboard
+  - utilities
+project_url: https://github.com/overlandla/nebenkosten
+logo_url: ""
+
+# Container specifications
+resources:
+  disk: 4
+  cpu: 2
+  ram: 2048
+
+# OS settings
+os: debian
+os_version: 12
+
+# Network
+port: 3000
+interface: vmbr0
+
+# Additional configuration
+privileged: false
+features:
+  - nesting=1
+
+# Environment variables that need to be configured
+env_vars:
+  - name: INFLUX_URL
+    description: InfluxDB server URL
+    default: "http://localhost:8086"
+    required: true
+
+  - name: INFLUX_TOKEN
+    description: InfluxDB authentication token
+    default: ""
+    required: true
+
+  - name: INFLUX_ORG
+    description: InfluxDB organization name
+    default: ""
+    required: true
+
+  - name: INFLUX_BUCKET_RAW
+    description: InfluxDB bucket for raw data
+    default: "homeassistant_raw"
+    required: true
+
+  - name: INFLUX_BUCKET_PROCESSED
+    description: InfluxDB bucket for processed data
+    default: "homeassistant_processed"
+    required: false
+
+  - name: GAS_ENERGY_CONTENT
+    description: Gas energy content for conversions (kWh/m³)
+    default: "10.3"
+    required: false
+
+  - name: GAS_Z_FACTOR
+    description: Gas Z-factor for conversions
+    default: "0.95"
+    required: false
+
+# Post-install instructions
+post_install_message: |
+  Utility Meter Dashboard has been installed successfully!
+
+  Next steps:
+  1. Configure InfluxDB connection in /opt/utility-meter-dashboard/.env.local
+  2. Restart the service: systemctl restart utility-dashboard.service
+  3. Access the dashboard at: http://YOUR_LXC_IP:3000
+
+  Service commands:
+  - Status: systemctl status utility-dashboard.service
+  - Logs: journalctl -u utility-dashboard.service -f
+  - Restart: systemctl restart utility-dashboard.service
