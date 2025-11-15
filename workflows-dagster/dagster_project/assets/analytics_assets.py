@@ -2,6 +2,7 @@
 Analytics Assets for Utility Meter Processing
 Main data processing pipeline for meter data interpolation and calculations
 """
+import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
 import pandas as pd
@@ -50,7 +51,7 @@ def meter_discovery(
 
     influx_client = InfluxClient(
         url=influxdb.url,
-        token=influxdb.get_client()._token,
+        token=os.environ.get("INFLUX_TOKEN"),
         org=influxdb.org,
         bucket=influxdb.bucket_raw
     )
@@ -92,7 +93,7 @@ def fetch_meter_data(
 
     influx_client = InfluxClient(
         url=influxdb.url,
-        token=influxdb.get_client()._token,
+        token=os.environ.get("INFLUX_TOKEN"),
         org=influxdb.org,
         bucket=influxdb.bucket_raw
     )
@@ -155,7 +156,7 @@ def interpolated_meter_series(
 
     influx_client = InfluxClient(
         url=influxdb.url,
-        token=influxdb.get_client()._token,
+        token=os.environ.get("INFLUX_TOKEN"),
         org=influxdb.org,
         bucket=influxdb.bucket_raw
     )

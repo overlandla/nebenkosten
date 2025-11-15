@@ -25,9 +25,6 @@ class TestTibberConsumptionRawAsset:
         self,
         mock_write,
         mock_get_timestamp,
-        mock_influxdb_resource,
-        mock_tibber_resource,
-        mock_config_resource,
         sample_tibber_response
     ):
         """Test asset processes new data correctly"""
@@ -35,14 +32,26 @@ class TestTibberConsumptionRawAsset:
         mock_get_timestamp.return_value = None  # No existing data
         mock_write.return_value = len(sample_tibber_response)
 
-        # Mock Tibber fetch
-        with patch.object(mock_tibber_resource, 'fetch_consumption', return_value=sample_tibber_response):
-            result = tibber_consumption_raw(
-                context,
-                mock_influxdb_resource,
-                mock_tibber_resource,
-                mock_config_resource
-            )
+        # Create mock resources
+        mock_influxdb = MagicMock()
+        mock_influxdb.url = "http://localhost:8086"
+        mock_influxdb.bucket_raw = "test_raw"
+        mock_influxdb.org = "test-org"
+
+        mock_tibber = MagicMock()
+        mock_tibber.fetch_consumption.return_value = sample_tibber_response
+
+        mock_config = MagicMock()
+        mock_config.load_config.return_value = {
+            "tibber": {"meter_id": "haupt_strom", "lookback_hours": 48}
+        }
+
+        result = tibber_consumption_raw(
+            context,
+            mock_influxdb,
+            mock_tibber,
+            mock_config
+        )
 
         assert result.metadata["records_fetched"] == 48
         assert result.metadata["records_written"] == 48
@@ -56,9 +65,6 @@ class TestTibberConsumptionRawAsset:
         self,
         mock_write,
         mock_get_timestamp,
-        mock_influxdb_resource,
-        mock_tibber_resource,
-        mock_config_resource,
         sample_tibber_response
     ):
         """Test asset handles case with no new data"""
@@ -66,13 +72,26 @@ class TestTibberConsumptionRawAsset:
         # Set last timestamp to future (all data already exists)
         mock_get_timestamp.return_value = datetime.now(timezone.utc)
 
-        with patch.object(mock_tibber_resource, 'fetch_consumption', return_value=sample_tibber_response):
-            result = tibber_consumption_raw(
-                context,
-                mock_influxdb_resource,
-                mock_tibber_resource,
-                mock_config_resource
-            )
+        # Create mock resources
+        mock_influxdb = MagicMock()
+        mock_influxdb.url = "http://localhost:8086"
+        mock_influxdb.bucket_raw = "test_raw"
+        mock_influxdb.org = "test-org"
+
+        mock_tibber = MagicMock()
+        mock_tibber.fetch_consumption.return_value = sample_tibber_response
+
+        mock_config = MagicMock()
+        mock_config.load_config.return_value = {
+            "tibber": {"meter_id": "haupt_strom", "lookback_hours": 48}
+        }
+
+        result = tibber_consumption_raw(
+            context,
+            mock_influxdb,
+            mock_tibber,
+            mock_config
+        )
 
         assert result.metadata["records_written"] == 0
         assert result.metadata["status"] == "up_to_date"
@@ -80,12 +99,14 @@ class TestTibberConsumptionRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    def test_get_last_influxdb_timestamp_with_data(self, mock_influxdb_resource):
+    def test_get_last_influxdb_timestamp_with_data(self):
         """Test getting last timestamp when data exists"""
         # Mock InfluxDB client and query response
         mock_client = MagicMock()
         mock_query_api = MagicMock()
         mock_client.query_api.return_value = mock_query_api
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
 
         # Mock query result with a record
         mock_record = MagicMock()
@@ -96,39 +117,58 @@ class TestTibberConsumptionRawAsset:
         mock_table.records = [mock_record]
         mock_query_api.query.return_value = [mock_table]
 
-        with patch.object(mock_influxdb_resource, 'get_client', return_value=mock_client):
-            timestamp = _get_last_influxdb_timestamp(mock_influxdb_resource, "haupt_strom")
+        # Create mock resource
+        mock_influxdb = MagicMock()
+        mock_influxdb.get_client.return_value = mock_client
+        mock_influxdb.bucket_raw = "test_raw"
+        mock_influxdb.org = "test-org"
+
+        timestamp = _get_last_influxdb_timestamp(mock_influxdb, "haupt_strom")
 
         assert timestamp == test_time
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    def test_get_last_influxdb_timestamp_no_data(self, mock_influxdb_resource):
+    def test_get_last_influxdb_timestamp_no_data(self):
         """Test getting last timestamp when no data exists"""
         mock_client = MagicMock()
         mock_query_api = MagicMock()
         mock_client.query_api.return_value = mock_query_api
         mock_query_api.query.return_value = []  # No results
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(mock_influxdb_resource, 'get_client', return_value=mock_client):
-            timestamp = _get_last_influxdb_timestamp(mock_influxdb_resource, "haupt_strom")
+        # Create mock resource
+        mock_influxdb = MagicMock()
+        mock_influxdb.get_client.return_value = mock_client
+        mock_influxdb.bucket_raw = "test_raw"
+        mock_influxdb.org = "test-org"
+
+        timestamp = _get_last_influxdb_timestamp(mock_influxdb, "haupt_strom")
 
         assert timestamp is None
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    def test_write_to_influxdb(self, mock_influxdb_resource, sample_tibber_response):
+    def test_write_to_influxdb(self, sample_tibber_response):
         """Test writing data to InfluxDB"""
         mock_client = MagicMock()
         mock_write_api = MagicMock()
         mock_client.write_api.return_value = mock_write_api
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(mock_influxdb_resource, 'get_client', return_value=mock_client):
-            count = _write_to_influxdb(
-                mock_influxdb_resource,
-                "haupt_strom",
-                sample_tibber_response
-            )
+        # Create mock resource
+        mock_influxdb = MagicMock()
+        mock_influxdb.get_client.return_value = mock_client
+        mock_influxdb.bucket_raw = "test_raw"
+        mock_influxdb.org = "test-org"
+
+        count = _write_to_influxdb(
+            mock_influxdb,
+            "haupt_strom",
+            sample_tibber_response
+        )
 
         assert count == len(sample_tibber_response)
         mock_write_api.write.assert_called_once()
@@ -140,11 +180,13 @@ class TestTibberConsumptionRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    def test_write_to_influxdb_creates_correct_points(self, mock_influxdb_resource):
+    def test_write_to_influxdb_creates_correct_points(self):
         """Test that write creates properly formatted InfluxDB points"""
         mock_client = MagicMock()
         mock_write_api = MagicMock()
         mock_client.write_api.return_value = mock_write_api
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
 
         test_data = [
             {
@@ -157,8 +199,13 @@ class TestTibberConsumptionRawAsset:
             }
         ]
 
-        with patch.object(mock_influxdb_resource, 'get_client', return_value=mock_client):
-            _write_to_influxdb(mock_influxdb_resource, "test_meter", test_data)
+        # Create mock resource
+        mock_influxdb = MagicMock()
+        mock_influxdb.get_client.return_value = mock_client
+        mock_influxdb.bucket_raw = "test_raw"
+        mock_influxdb.org = "test-org"
+
+        _write_to_influxdb(mock_influxdb, "test_meter", test_data)
 
         # Verify write was called with points
         call_args = mock_write_api.write.call_args

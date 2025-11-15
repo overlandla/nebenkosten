@@ -76,7 +76,7 @@ class TestFetchMeterDataAsset:
         assert len(result.value) == 2
         assert "meter1" in result.value
         assert "meter2" in result.value
-        assert result.metadata["meter_count"] == 2
+        assert result.metadata["meter_count"].value == 2
 
 
 class TestInterpolatedMeterSeriesAsset:
