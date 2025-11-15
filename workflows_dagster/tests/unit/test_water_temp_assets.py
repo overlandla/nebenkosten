@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone, timedelta
 from dagster import build_asset_context
 
-from dagster_project.assets.water_temp_assets import (
+from workflows_dagster.dagster_project.assets.water_temp_assets import (
     water_temperature_raw,
     _scrape_lake_temperature,
     _get_last_influxdb_timestamp,
@@ -20,9 +20,9 @@ class TestWaterTemperatureRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('dagster_project.assets.water_temp_assets._scrape_lake_temperature')
-    @patch('dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
-    @patch('dagster_project.assets.water_temp_assets._write_to_influxdb')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb')
     def test_asset_partition_with_new_data(
         self,
         mock_write,
@@ -57,9 +57,9 @@ class TestWaterTemperatureRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('dagster_project.assets.water_temp_assets._scrape_lake_temperature')
-    @patch('dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
-    @patch('dagster_project.assets.water_temp_assets._write_to_influxdb')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb')
     def test_asset_partition_with_existing_data(
         self,
         mock_write,
@@ -94,9 +94,9 @@ class TestWaterTemperatureRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('dagster_project.assets.water_temp_assets._scrape_lake_temperature')
-    @patch('dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
-    @patch('dagster_project.assets.water_temp_assets._write_to_influxdb')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb')
     def test_asset_partition_with_scraping_failure(
         self,
         mock_write,
@@ -126,9 +126,9 @@ class TestWaterTemperatureRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('dagster_project.assets.water_temp_assets._scrape_lake_temperature')
-    @patch('dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
-    @patch('dagster_project.assets.water_temp_assets._write_to_influxdb')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb')
     def test_all_lake_partitions(
         self,
         mock_write,
@@ -162,7 +162,7 @@ class TestScrapeLakeTemperature:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('dagster_project.assets.water_temp_assets.requests.get')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets.requests.get')
     def test_scrape_success(self, mock_get):
         """Test successful temperature scraping"""
         # Mock HTML response
@@ -194,7 +194,7 @@ class TestScrapeLakeTemperature:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('dagster_project.assets.water_temp_assets.requests.get')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets.requests.get')
     def test_scrape_http_error(self, mock_get):
         """Test scraping with HTTP error"""
         mock_get.side_effect = Exception("Connection error")
@@ -209,7 +209,7 @@ class TestScrapeLakeTemperature:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('dagster_project.assets.water_temp_assets.requests.get')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets.requests.get')
     def test_scrape_invalid_html(self, mock_get):
         """Test scraping with invalid HTML structure"""
         # Mock HTML without proper table structure
@@ -229,7 +229,7 @@ class TestScrapeLakeTemperature:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('dagster_project.assets.water_temp_assets.requests.get')
+    @patch('workflows_dagster.dagster_project.assets.water_temp_assets.requests.get')
     def test_scrape_invalid_temperature_format(self, mock_get):
         """Test scraping with invalid temperature format"""
         html = """

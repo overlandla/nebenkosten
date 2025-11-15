@@ -7,12 +7,12 @@ from unittest.mock import patch, MagicMock
 from dagster import materialize, AssetSelection
 import pandas as pd
 
-from dagster_project.assets import (
+from workflows_dagster.dagster_project.assets import (
     meter_discovery,
     fetch_meter_data,
     interpolated_meter_series
 )
-from dagster_project.resources import (
+from workflows_dagster.dagster_project.resources import (
     InfluxDBResource,
     ConfigResource
 )
@@ -24,8 +24,8 @@ class TestAssetPipeline:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    @patch('dagster_project.assets.analytics_assets.InfluxClient')
-    @patch('dagster_project.assets.analytics_assets.DataProcessor')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor')
     def test_discovery_to_interpolation_pipeline(
         self,
         mock_processor_class,

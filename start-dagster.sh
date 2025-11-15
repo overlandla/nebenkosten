@@ -6,6 +6,11 @@ set -e
 echo "🚀 Starting Dagster Utility Analysis Workflows..."
 echo ""
 
+# Validate environment files exist
+echo "🔍 Validating environment configuration..."
+./validate-env.sh
+echo ""
+
 # Check if network exists, create if not
 if ! docker network inspect utility-network >/dev/null 2>&1; then
     echo "📡 Creating utility-network..."

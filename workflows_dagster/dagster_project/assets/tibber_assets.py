@@ -53,15 +53,37 @@ def tibber_consumption_raw(
         logger.info("No existing data in InfluxDB")
 
     # Fetch data from Tibber
-    consumption_data = tibber.fetch_consumption(lookback_hours=lookback_hours)
-    logger.info(f"Fetched {len(consumption_data)} points from Tibber")
+    try:
+        consumption_data = tibber.fetch_consumption(lookback_hours=lookback_hours)
+        logger.info(f"Fetched {len(consumption_data)} points from Tibber")
+    except Exception as e:
+        logger.error(f"Failed to fetch data from Tibber: {str(e)}")
+        raise
 
     # Filter out data that already exists in InfluxDB
     new_data = []
     for point in consumption_data:
-        point_time = datetime.fromisoformat(point["from"].replace("Z", "+00:00"))
-        if last_timestamp is None or point_time > last_timestamp:
-            new_data.append(point)
+        try:
+            # Parse timestamp and ensure it's timezone-aware (UTC)
+            point_time = datetime.fromisoformat(point["from"].replace("Z", "+00:00"))
+            if point_time.tzinfo is None:
+                point_time = point_time.replace(tzinfo=timezone.utc)
+            else:
+                point_time = point_time.astimezone(timezone.utc)
+
+            # Ensure last_timestamp is timezone-aware if it exists
+            if last_timestamp and last_timestamp.tzinfo is None:
+                last_timestamp = last_timestamp.replace(tzinfo=timezone.utc)
+            elif last_timestamp and last_timestamp.tzinfo != timezone.utc:
+                last_timestamp = last_timestamp.astimezone(timezone.utc)
+
+            # Compare timestamps
+            if last_timestamp is None or point_time > last_timestamp:
+                new_data.append(point)
+
+        except Exception as e:
+            logger.warning(f"Skipping invalid data point: {str(e)}")
+            continue
 
     logger.info(f"Found {len(new_data)} new data points to write")
 

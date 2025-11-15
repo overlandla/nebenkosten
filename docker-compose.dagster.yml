@@ -37,7 +37,7 @@ services:
       - ./secrets/influxdb.env
       - ./secrets/tibber.env
     volumes:
-      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./workflows_dagster:/app/workflows_dagster:ro
       - ./config:/app/config:ro
       - ./Nebenkosten/src:/app/Nebenkosten/src:ro
       - ./logs:/app/logs
@@ -85,14 +85,14 @@ services:
       context: .
       dockerfile: Dockerfile.dagster
     container_name: dagster-user-code
-    command: dagster code-server start -h 0.0.0.0 -p 4000 -m workflows-dagster.dagster_project
+    command: dagster code-server start -h 0.0.0.0 -p 4000 -m workflows_dagster.dagster_project
     environment:
       DAGSTER_CURRENT_IMAGE: "dagster-user-code"
     env_file:
       - ./secrets/influxdb.env
       - ./secrets/tibber.env
     volumes:
-      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./workflows_dagster:/app/workflows_dagster:ro
       - ./config:/app/config:ro
       - ./Nebenkosten/src:/app/Nebenkosten/src:ro
       - ./logs:/app/logs
@@ -107,7 +107,10 @@ services:
 
 networks:
   utility-network:
-    external: true  # Connects to existing InfluxDB network
+    name: utility-network
+    driver: bridge
+    # Will be created if it doesn't exist
+    # Can still connect to existing network if it exists externally
 
 volumes:
   dagster-postgres-data:

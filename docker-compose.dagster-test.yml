@@ -41,7 +41,7 @@ services:
       INFLUX_BUCKET: test-bucket
       TIBBER_API_TOKEN: test-tibber-token
     volumes:
-      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./workflows_dagster:/app/workflows_dagster:ro
       - ./config:/app/config:ro
       - ./Nebenkosten/src:/app/Nebenkosten/src:ro
     networks:
@@ -66,7 +66,7 @@ services:
       DAGSTER_POSTGRES_HOST: dagster-test-postgres
       DAGSTER_POSTGRES_PORT: 5432
     volumes:
-      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./workflows_dagster:/app/workflows_dagster:ro
       - ./config:/app/config:ro
       - ./Nebenkosten/src:/app/Nebenkosten/src:ro
     networks:
@@ -86,7 +86,7 @@ services:
       context: .
       dockerfile: Dockerfile.dagster
     container_name: dagster-test-user-code
-    command: dagster code-server start -h 0.0.0.0 -p 4001 -m workflows-dagster.dagster_project
+    command: dagster code-server start -h 0.0.0.0 -p 4001 -m workflows_dagster.dagster_project
     environment:
       DAGSTER_CURRENT_IMAGE: "dagster-test-user-code"
       # Test environment variables
@@ -96,7 +96,7 @@ services:
       INFLUX_BUCKET: test-bucket
       TIBBER_API_TOKEN: test-tibber-token
     volumes:
-      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./workflows_dagster:/app/workflows_dagster:ro
       - ./config:/app/config:ro
       - ./Nebenkosten/src:/app/Nebenkosten/src:ro
     networks:

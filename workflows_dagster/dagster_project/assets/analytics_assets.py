@@ -4,7 +4,7 @@ Main data processing pipeline for meter data interpolation and calculations
 """
 import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 import pandas as pd
 from dagster import (
     asset,
@@ -15,11 +15,9 @@ from dagster import (
     MetadataValue,
     Output
 )
-import sys
-from pathlib import Path
 
 # Import existing utility analysis modules
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "Nebenkosten"))
+# PYTHONPATH is set in Dockerfile to include /app/Nebenkosten
 from src.influx_client import InfluxClient
 from src.data_processor import DataProcessor
 from src.calculator import ConsumptionCalculator
@@ -45,21 +43,32 @@ def meter_discovery(
         List of meter entity IDs found in the database
     """
     logger = context.log
-    cfg = config.load_config()
 
-    logger.info("Discovering available meters from InfluxDB...")
+    try:
+        cfg = config.load_config()
+        logger.info("Discovering available meters from InfluxDB...")
 
-    influx_client = InfluxClient(
-        url=influxdb.url,
-        token=os.environ.get("INFLUX_TOKEN"),
-        org=influxdb.org,
-        bucket=influxdb.bucket_raw
-    )
+        # Note: InfluxClient is from Nebenkosten package and doesn't support context manager
+        # Connection cleanup happens via garbage collection
+        influx_client = InfluxClient(
+            url=influxdb.url,
+            token=os.environ.get("INFLUX_TOKEN"),
+            org=influxdb.org,
+            bucket=influxdb.bucket_raw
+        )
 
-    meters = influx_client.discover_available_meters()
-    logger.info(f"Found {len(meters)} physical meters: {meters}")
+        meters = influx_client.discover_available_meters()
 
-    return meters
+        if not meters:
+            logger.warning("No meters found in InfluxDB!")
+            return []
+
+        logger.info(f"Found {len(meters)} physical meters: {meters}")
+        return meters
+
+    except Exception as e:
+        logger.error(f"Failed to discover meters: {str(e)}")
+        raise
 
 
 @multi_asset(
@@ -85,30 +94,58 @@ def fetch_meter_data(
         Dictionary mapping meter_id to DataFrame of raw readings
     """
     logger = context.log
-    cfg = config.load_config()
-    start_year = cfg.get("start_year", 2020)
-    start_date = datetime(start_year, 1, 1)
 
-    logger.info(f"Fetching raw data for {len(meter_discovery)} meters from {start_date}")
+    try:
+        if not meter_discovery:
+            logger.warning("No meters to fetch data for")
+            return Output(
+                value={},
+                metadata={"meter_count": 0, "total_points": 0, "meters": MetadataValue.text("none")}
+            )
 
-    influx_client = InfluxClient(
-        url=influxdb.url,
-        token=os.environ.get("INFLUX_TOKEN"),
-        org=influxdb.org,
-        bucket=influxdb.bucket_raw
-    )
+        cfg = config.load_config()
+        start_year = cfg.get("start_year", 2020)
+        start_date = datetime(start_year, 1, 1)
 
-    raw_data = {}
-    total_points = 0
+        logger.info(f"Fetching raw data for {len(meter_discovery)} meters from {start_date}")
 
-    for meter_id in meter_discovery:
-        logger.info(f"Fetching raw data for {meter_id}")
-        data = influx_client.fetch_all_meter_data(meter_id, start_date)
-        raw_data[meter_id] = data
-        total_points += len(data)
-        logger.info(f"Fetched {len(data)} points for {meter_id}")
+        influx_client = InfluxClient(
+            url=influxdb.url,
+            token=os.environ.get("INFLUX_TOKEN"),
+            org=influxdb.org,
+            bucket=influxdb.bucket_raw
+        )
 
-    logger.info(f"Total raw data points fetched: {total_points}")
+        raw_data = {}
+        total_points = 0
+        meters_with_no_data = []
+
+        for meter_id in meter_discovery:
+            try:
+                logger.info(f"Fetching raw data for {meter_id}")
+                data = influx_client.fetch_all_meter_data(meter_id, start_date)
+
+                if data.empty:
+                    logger.warning(f"No data found for {meter_id}")
+                    meters_with_no_data.append(meter_id)
+
+                raw_data[meter_id] = data
+                total_points += len(data)
+                logger.info(f"Fetched {len(data)} points for {meter_id}")
+
+            except Exception as e:
+                logger.error(f"Failed to fetch data for {meter_id}: {str(e)}")
+                # Add empty DataFrame to avoid breaking downstream assets
+                raw_data[meter_id] = pd.DataFrame()
+
+        if meters_with_no_data:
+            logger.warning(f"Meters with no data: {', '.join(meters_with_no_data)}")
+
+        logger.info(f"Total raw data points fetched: {total_points}")
+
+    except Exception as e:
+        logger.error(f"Failed to fetch meter data: {str(e)}")
+        raise
 
     return Output(
         value=raw_data,
@@ -138,12 +175,12 @@ def interpolated_meter_series(
     raw_meter_data: Dict[str, pd.DataFrame],
     influxdb: InfluxDBResource,
     config: ConfigResource
-):
+) -> Tuple[Output, Output]:
     """
     Create interpolated daily and monthly series for all meters
 
     Returns:
-        Tuple of (daily_readings_dict, monthly_readings_dict)
+        Tuple of (daily_readings_dict, monthly_readings_dict) as Output objects
     """
     logger = context.log
     cfg = config.load_config()
@@ -172,23 +209,36 @@ def interpolated_meter_series(
     total_monthly_points = 0
 
     for meter_id, raw_data in raw_meter_data.items():
-        logger.info(f"Processing {meter_id}")
+        try:
+            logger.info(f"Processing {meter_id}")
 
-        # Create daily series
-        daily_series = data_processor.create_standardized_daily_series(
-            meter_id,
-            start_date_str,
-            end_date_str
-        )
-        daily_readings[meter_id] = daily_series
-        total_daily_points += len(daily_series)
+            if raw_data.empty:
+                logger.warning(f"Skipping {meter_id}: no raw data")
+                daily_readings[meter_id] = pd.DataFrame()
+                monthly_readings[meter_id] = pd.DataFrame()
+                continue
 
-        # Aggregate to monthly
-        monthly_series = data_processor.aggregate_daily_to_frequency(daily_series, 'M')
-        monthly_readings[meter_id] = monthly_series
-        total_monthly_points += len(monthly_series)
+            # Create daily series
+            daily_series = data_processor.create_standardized_daily_series(
+                meter_id,
+                start_date_str,
+                end_date_str
+            )
+            daily_readings[meter_id] = daily_series
+            total_daily_points += len(daily_series)
 
-        logger.info(f"Created {len(daily_series)} daily and {len(monthly_series)} monthly points for {meter_id}")
+            # Aggregate to monthly
+            monthly_series = data_processor.aggregate_daily_to_frequency(daily_series, 'M')
+            monthly_readings[meter_id] = monthly_series
+            total_monthly_points += len(monthly_series)
+
+            logger.info(f"Created {len(daily_series)} daily and {len(monthly_series)} monthly points for {meter_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to process {meter_id}: {str(e)}")
+            # Add empty DataFrames to avoid breaking downstream
+            daily_readings[meter_id] = pd.DataFrame()
+            monthly_readings[meter_id] = pd.DataFrame()
 
     logger.info(f"Total daily points: {total_daily_points}, monthly points: {total_monthly_points}")
 
@@ -358,13 +408,26 @@ def consumption_data(
     calculator = ConsumptionCalculator()
     consumption_results = {}
     total_points = 0
+    skipped_meters = []
 
     for meter_id, readings in all_meters.items():
-        if not readings.empty:
+        try:
+            if readings.empty:
+                logger.warning(f"Skipping {meter_id}: no readings data")
+                skipped_meters.append(meter_id)
+                continue
+
             consumption = calculator.calculate_consumption_from_readings(readings)
             consumption_results[meter_id] = consumption
             total_points += len(consumption)
             logger.info(f"Calculated {len(consumption)} consumption points for {meter_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to calculate consumption for {meter_id}: {str(e)}")
+            skipped_meters.append(meter_id)
+
+    if skipped_meters:
+        logger.warning(f"Skipped {len(skipped_meters)} meters: {', '.join(skipped_meters)}")
 
     logger.info(f"Total consumption points calculated: {total_points}")
 
@@ -432,8 +495,14 @@ def virtual_meter_data(
                     if gas_conversion_factor > 0:
                         subtract_consumption['value'] = subtract_consumption['value'] / gas_conversion_factor
 
-            # Subtract
-            base_consumption = base_consumption.subtract(subtract_consumption, fill_value=0)
+            # Subtract - align indices and perform subtraction on 'value' column
+            # Only subtract where both DataFrames have data
+            common_index = base_consumption.index.intersection(subtract_consumption.index)
+            if len(common_index) > 0:
+                base_consumption.loc[common_index, 'value'] = (
+                    base_consumption.loc[common_index, 'value'] -
+                    subtract_consumption.loc[common_index, 'value']
+                )
 
         # Clip negative values to zero
         base_consumption['value'] = base_consumption['value'].clip(lower=0)
