@@ -7,7 +7,7 @@ from dagster import define_asset_job, AssetSelection
 tibber_sync_job = define_asset_job(
     name="tibber_sync",
     description="Fetch and store Tibber electricity consumption data",
-    selection=AssetSelection.assets("tibber_consumption_raw"),
+    selection=AssetSelection.keys("tibber_consumption_raw"),
     tags={"type": "ingestion", "source": "tibber"}
 )
 

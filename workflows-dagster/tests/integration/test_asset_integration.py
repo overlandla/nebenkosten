@@ -7,12 +7,12 @@ from unittest.mock import patch, MagicMock
 from dagster import materialize, AssetSelection
 import pandas as pd
 
-from workflows_dagster.dagster_project.assets import (
+from dagster_project.assets import (
     meter_discovery,
     fetch_meter_data,
     interpolated_meter_series
 )
-from workflows_dagster.dagster_project.resources import (
+from dagster_project.resources import (
     InfluxDBResource,
     ConfigResource
 )
@@ -24,8 +24,8 @@ class TestAssetPipeline:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor')
+    @patch('dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('dagster_project.assets.analytics_assets.DataProcessor')
     def test_discovery_to_interpolation_pipeline(
         self,
         mock_processor_class,
@@ -90,9 +90,9 @@ class TestJobExecution:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor')
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator')
+    @patch('dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('dagster_project.assets.analytics_assets.DataProcessor')
+    @patch('dagster_project.assets.analytics_assets.ConsumptionCalculator')
     def test_analytics_job_execution(
         self,
         mock_calc_class,
@@ -101,7 +101,7 @@ class TestJobExecution:
         mock_config_resource
     ):
         """Test full analytics job can execute"""
-        from workflows_dagster.dagster_project.jobs import analytics_job
+        from dagster_project.jobs import analytics_job
 
         # Setup mocks
         mock_influx = MagicMock()
@@ -121,7 +121,7 @@ class TestJobExecution:
         mock_calc_class.return_value = mock_calc
 
         # Mock InfluxDB write operations
-        with patch('workflows_dagster.dagster_project.assets.influxdb_writer_assets.InfluxDBResource.get_client'):
+        with patch('dagster_project.assets.influxdb_writer_assets.InfluxDBResource.get_client'):
             influxdb = InfluxDBResource(
                 url="http://localhost:8086",
                 bucket_raw="test",
@@ -161,6 +161,6 @@ class TestResourceIntegration:
         )
 
         # Should be able to get client
-        with patch('workflows_dagster.dagster_project.resources.influxdb_resource.InfluxDBClient'):
+        with patch('dagster_project.resources.influxdb_resource.InfluxDBClient'):
             client = resource.get_client()
             assert client is not None

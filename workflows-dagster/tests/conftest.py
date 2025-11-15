@@ -17,7 +17,7 @@ os.environ["TIBBER_API_TOKEN"] = "test-tibber-token-456"
 @pytest.fixture
 def mock_influxdb_resource():
     """Mock InfluxDB resource for testing"""
-    from workflows_dagster.dagster_project.resources.influxdb_resource import InfluxDBResource
+    from dagster_project.resources.influxdb_resource import InfluxDBResource
 
     resource = InfluxDBResource(
         url="http://localhost:8086",
@@ -32,7 +32,7 @@ def mock_influxdb_resource():
 @pytest.fixture
 def mock_tibber_resource():
     """Mock Tibber resource for testing"""
-    from workflows_dagster.dagster_project.resources.tibber_resource import TibberResource
+    from dagster_project.resources.tibber_resource import TibberResource
 
     resource = TibberResource(
         api_url="https://api.tibber.com/v1-beta/gql",
@@ -44,7 +44,7 @@ def mock_tibber_resource():
 @pytest.fixture
 def mock_config_resource(tmp_path):
     """Mock configuration resource with test config files"""
-    from workflows_dagster.dagster_project.resources.config_resource import ConfigResource
+    from dagster_project.resources.config_resource import ConfigResource
 
     # Create test config files
     config_file = tmp_path / "config.yaml"

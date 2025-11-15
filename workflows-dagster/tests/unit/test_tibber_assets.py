@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pandas as pd
 from dagster import build_asset_context
 
-from workflows_dagster.dagster_project.assets.tibber_assets import (
+from dagster_project.assets.tibber_assets import (
     tibber_consumption_raw,
     _get_last_influxdb_timestamp,
     _write_to_influxdb
@@ -19,8 +19,8 @@ class TestTibberConsumptionRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._write_to_influxdb')
+    @patch('dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
+    @patch('dagster_project.assets.tibber_assets._write_to_influxdb')
     def test_asset_with_new_data(
         self,
         mock_write,
@@ -50,8 +50,8 @@ class TestTibberConsumptionRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._write_to_influxdb')
+    @patch('dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
+    @patch('dagster_project.assets.tibber_assets._write_to_influxdb')
     def test_asset_with_no_new_data(
         self,
         mock_write,

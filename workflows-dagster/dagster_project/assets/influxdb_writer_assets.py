@@ -15,15 +15,7 @@ from ..resources.influxdb_resource import InfluxDBResource
 @asset(
     group_name="storage",
     compute_kind="influxdb",
-    description="Write all processed data to InfluxDB",
-    deps=[
-        "daily_interpolated_series",
-        "monthly_interpolated_series",
-        "master_meter_series",
-        "consumption_data",
-        "virtual_meter_data",
-        "anomaly_detection"
-    ]
+    description="Write all processed data to InfluxDB"
 )
 def write_processed_data_to_influxdb(
     context: AssetExecutionContext,

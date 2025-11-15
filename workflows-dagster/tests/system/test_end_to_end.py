@@ -7,8 +7,8 @@ from unittest.mock import patch, MagicMock
 from dagster import materialize_to_memory
 import pandas as pd
 
-from workflows_dagster.dagster_project import utility_repository
-from workflows_dagster.dagster_project.jobs import tibber_sync_job, analytics_job
+from dagster_project import utility_repository
+from dagster_project.jobs import tibber_sync_job, analytics_job
 from tests.fixtures.mock_data import (
     generate_tibber_api_response,
     generate_multi_meter_data
@@ -21,9 +21,9 @@ class TestTibberSyncE2E:
     @pytest.mark.system
     @pytest.mark.slow
     @pytest.mark.tibber
-    @patch('workflows_dagster.dagster_project.resources.tibber_resource.requests.post')
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._write_to_influxdb')
+    @patch('dagster_project.resources.tibber_resource.requests.post')
+    @patch('dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
+    @patch('dagster_project.assets.tibber_assets._write_to_influxdb')
     def test_complete_tibber_sync_flow(
         self,
         mock_write,
@@ -66,10 +66,10 @@ class TestAnalyticsE2E:
 
     @pytest.mark.system
     @pytest.mark.slow
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor')
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator')
-    @patch('workflows_dagster.dagster_project.assets.influxdb_writer_assets.InfluxDBResource.get_client')
+    @patch('dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('dagster_project.assets.analytics_assets.DataProcessor')
+    @patch('dagster_project.assets.analytics_assets.ConsumptionCalculator')
+    @patch('dagster_project.assets.influxdb_writer_assets.InfluxDBResource.get_client')
     def test_complete_analytics_pipeline(
         self,
         mock_get_client,
@@ -165,8 +165,8 @@ class TestDataQuality:
     """System tests for data quality and validation"""
 
     @pytest.mark.system
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor')
+    @patch('dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('dagster_project.assets.analytics_assets.DataProcessor')
     def test_interpolation_produces_valid_data(
         self,
         mock_processor_class,
@@ -175,7 +175,7 @@ class TestDataQuality:
         mock_config_resource
     ):
         """Test interpolation produces valid, non-null data"""
-        from workflows_dagster.dagster_project.assets.analytics_assets import (
+        from dagster_project.assets.analytics_assets import (
             fetch_meter_data,
             interpolated_meter_series
         )
@@ -228,7 +228,7 @@ class TestDataQuality:
     @pytest.mark.system
     def test_consumption_never_exceeds_reasonable_bounds(self):
         """Test consumption calculations stay within reasonable bounds"""
-        from workflows_dagster.dagster_project.assets.analytics_assets import consumption_data
+        from dagster_project.assets.analytics_assets import consumption_data
         from dagster import build_asset_context
         from tests.fixtures.mock_data import generate_meter_readings
         from unittest.mock import patch
@@ -237,7 +237,7 @@ class TestDataQuality:
         daily_series = {"meter1": generate_meter_readings(days=31, daily_increment=10.0)}
         master_series = {}
 
-        with patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator') as mock_calc_class:
+        with patch('dagster_project.assets.analytics_assets.ConsumptionCalculator') as mock_calc_class:
             from tests.fixtures.mock_data import generate_consumption_data
             mock_calc = MagicMock()
             mock_calc.calculate_consumption_from_readings.return_value = generate_consumption_data(days=30)
