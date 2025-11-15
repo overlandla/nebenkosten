@@ -241,12 +241,20 @@ export default function Home() {
                 Real-time monitoring and analysis of utility consumption
               </p>
             </div>
-            <Link
-              href="/settings"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              ⚙️ Settings
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href="/costs"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                💰 Costs & Billing
+              </Link>
+              <Link
+                href="/settings"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                ⚙️ Settings
+              </Link>
+            </div>
           </div>
         </div>
       </header>
