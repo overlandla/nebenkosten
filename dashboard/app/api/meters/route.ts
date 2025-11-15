@@ -1,30 +1,31 @@
 import { NextResponse } from 'next/server';
 import { getInfluxClient, getInfluxConfig } from '@/lib/influxdb';
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const influx = getInfluxClient();
     const config = getInfluxConfig();
     const queryApi = influx.getQueryApi(config.org);
 
-    // Query to discover all unique entity_ids in the bucket
+    // Query to discover all unique meter_ids from processed bucket
+    // This includes physical, master, and virtual meters
     const query = `
-      from(bucket: "${config.bucketRaw}")
+      from(bucket: "${config.bucketProcessed}")
         |> range(start: -90d)
-        |> filter(fn: (r) => r["_measurement"] == "kWh" or r["_measurement"] == "m³")
+        |> filter(fn: (r) => r["_measurement"] == "meter_consumption" or r["_measurement"] == "meter_interpolated_daily")
         |> filter(fn: (r) => r["_field"] == "value")
-        |> keep(columns: ["entity_id"])
-        |> distinct(column: "entity_id")
+        |> keep(columns: ["meter_id"])
+        |> distinct(column: "meter_id")
     `;
 
     const meters: string[] = [];
 
-    return new Promise((resolve) => {
+    return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
         next(row: string[], tableMeta: any) {
           const o = tableMeta.toObject(row);
-          if (o.entity_id) {
-            meters.push(o.entity_id);
+          if (o.meter_id) {
+            meters.push(o.meter_id);
           }
         },
         error(error: Error) {
