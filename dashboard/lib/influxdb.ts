@@ -1,5 +1,13 @@
 import { InfluxDB } from '@influxdata/influxdb-client';
 
+// Re-export centralized types for backward compatibility
+export type {
+  MeterReading,
+  ConsumptionData,
+  InfluxRow,
+  InfluxTableMeta,
+} from '@/types/meter';
+
 export interface InfluxConfig {
   url: string;
   token: string;
@@ -42,16 +50,4 @@ export function getInfluxConfig(): InfluxConfig {
 export function getInfluxClient(): InfluxDB {
   const config = getInfluxConfig();
   return new InfluxDB({ url: config.url, token: config.token });
-}
-
-export interface MeterReading {
-  timestamp: string;
-  value: number;
-  entity_id?: string;
-}
-
-export interface ConsumptionData {
-  timestamp: string;
-  value: number;
-  entity_id?: string;
 }

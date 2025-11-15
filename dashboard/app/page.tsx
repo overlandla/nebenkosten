@@ -11,28 +11,9 @@ import SeasonalPatternChart from '@/components/SeasonalPatternChart';
 import FloorComparisonChart from '@/components/FloorComparisonChart';
 import YearOverYearChart from '@/components/YearOverYearChart';
 import { HouseholdConfig, DEFAULT_HOUSEHOLD_CONFIG, Household, getHouseholdMeters } from '@/types/household';
+import type { MeterReading, WaterTemperature, MeterConfig } from '@/types/meter';
 
 const STORAGE_KEY = 'household_config';
-
-interface MeterReading {
-  timestamp: string;
-  value: number;
-}
-
-interface WaterTempData {
-  timestamp: string;
-  value: number;
-  lake: string;
-}
-
-// Comprehensive meter configuration based on Dagster pipeline
-interface MeterConfig {
-  id: string;
-  unit: string;
-  name: string;
-  category: 'electricity' | 'gas' | 'water' | 'heat' | 'solar' | 'virtual';
-  type: 'physical' | 'master' | 'virtual';
-}
 
 const METERS_CONFIG: MeterConfig[] = [
   // Electricity - Master & Physical Meters
@@ -84,7 +65,7 @@ export default function Home() {
   });
 
   const [meterData, setMeterData] = useState<{ [key: string]: MeterReading[] }>({});
-  const [waterTempData, setWaterTempData] = useState<WaterTempData[]>([]);
+  const [waterTempData, setWaterTempData] = useState<WaterTemperature[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedHousehold, setSelectedHousehold] = useState<string | null>(null);

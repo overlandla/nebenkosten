@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getInfluxClient, getInfluxConfig } from '@/lib/influxdb';
+import { getInfluxClient, getInfluxConfig, InfluxTableMeta } from '@/lib/influxdb';
+import type { CostData } from '@/types/meter';
 
-export interface CostData {
-  timestamp: string;
-  consumption: number;    // kWh
-  cost: number;          // EUR
-  unit_price: number;    // EUR/kWh
-  unit_price_vat: number; // EUR/kWh including VAT
-}
+// Re-export for backward compatibility
+export type { CostData };
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -49,7 +45,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
-        next(row: string[], tableMeta: any) {
+        next(row: string[], tableMeta: InfluxTableMeta) {
           try {
             const o = tableMeta.toObject(row);
 

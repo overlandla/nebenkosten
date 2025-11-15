@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getInfluxClient, getInfluxConfig } from '@/lib/influxdb';
+import { getInfluxClient, getInfluxConfig, InfluxTableMeta } from '@/lib/influxdb';
 
 export async function GET(): Promise<NextResponse> {
   try {
@@ -22,7 +22,7 @@ export async function GET(): Promise<NextResponse> {
 
     return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
-        next(row: string[], tableMeta: any) {
+        next(row: string[], tableMeta: InfluxTableMeta) {
           try {
             const o = tableMeta.toObject(row);
             if (o.meter_id && typeof o.meter_id === 'string') {

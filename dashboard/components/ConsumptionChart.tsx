@@ -2,11 +2,7 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
-
-interface ConsumptionData {
-  timestamp: string;
-  value: number;
-}
+import type { ConsumptionData } from '@/types/meter';
 
 interface ConsumptionChartProps {
   data: ConsumptionData[];

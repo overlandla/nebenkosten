@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getInfluxClient, getInfluxConfig } from '@/lib/influxdb';
-
-interface WaterTemperature {
-  timestamp: string;
-  value: number;
-  lake: string;
-  entity_id?: string;
-}
+import { getInfluxClient, getInfluxConfig, InfluxTableMeta } from '@/lib/influxdb';
+import type { WaterTemperature } from '@/types/meter';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -32,7 +26,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
-        next(row: string[], tableMeta: any) {
+        next(row: string[], tableMeta: InfluxTableMeta) {
           try {
             const o = tableMeta.toObject(row);
 
