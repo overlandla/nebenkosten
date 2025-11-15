@@ -2,10 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import Link from 'next/link';
 import TimeRangeSelector, { TimeRange } from '@/components/TimeRangeSelector';
 import MeterReadingsChart from '@/components/MeterReadingsChart';
 import ConsumptionChart from '@/components/ConsumptionChart';
 import WaterTemperatureChart from '@/components/WaterTemperatureChart';
+import { HouseholdConfig, DEFAULT_HOUSEHOLD_CONFIG, Household, getHouseholdMeters } from '@/types/household';
+
+const STORAGE_KEY = 'household_config';
 
 interface MeterReading {
   timestamp: string;
@@ -80,6 +84,8 @@ export default function Home() {
   const [waterTempData, setWaterTempData] = useState<WaterTempData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedHousehold, setSelectedHousehold] = useState<string | null>(null);
+  const [householdConfig, setHouseholdConfig] = useState<HouseholdConfig>(DEFAULT_HOUSEHOLD_CONFIG);
   const [selectedMeters, setSelectedMeters] = useState<string[]>([
     'strom_total',
     'gas_total',
@@ -90,6 +96,19 @@ export default function Home() {
     'og1_heat',
     'og2_heat',
   ]);
+
+  // Load household config from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setHouseholdConfig(parsed);
+      } catch (error) {
+        console.error('Failed to parse stored config:', error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -137,9 +156,10 @@ export default function Home() {
     );
   };
 
-  const handleCategoryToggle = (category: string) => {
-    if (category === 'all') {
-      // Select default meters from each category
+  const handleHouseholdSelect = (householdId: string | null) => {
+    setSelectedHousehold(householdId);
+    if (householdId === null) {
+      // Show default meters when no household selected
       setSelectedMeters([
         'strom_total',
         'gas_total',
@@ -150,8 +170,50 @@ export default function Home() {
         'solarspeicher',
       ]);
     } else {
+      // Show meters for selected household
+      const household = householdConfig.households.find((h) => h.id === householdId);
+      if (household) {
+        const meters = getHouseholdMeters(household);
+        setSelectedMeters(meters);
+      }
+    }
+    setSelectedCategory('all');
+  };
+
+  const handleCategoryToggle = (category: string) => {
+    if (category === 'all') {
+      // If a household is selected, show all its meters
+      if (selectedHousehold) {
+        const household = householdConfig.households.find((h) => h.id === selectedHousehold);
+        if (household) {
+          const meters = getHouseholdMeters(household);
+          setSelectedMeters(meters);
+        }
+      } else {
+        // Select default meters from each category
+        setSelectedMeters([
+          'strom_total',
+          'gas_total',
+          'eg_nord_heat',
+          'og1_heat',
+          'og2_heat',
+          'haupt_wasser',
+          'solarspeicher',
+        ]);
+      }
+    } else {
       // Select all meters in the category
-      const categoryMeters = METERS_CONFIG.filter((m) => m.category === category).map((m) => m.id);
+      let categoryMeters = METERS_CONFIG.filter((m) => m.category === category).map((m) => m.id);
+
+      // If a household is selected, filter to only meters in that household
+      if (selectedHousehold) {
+        const household = householdConfig.households.find((h) => h.id === selectedHousehold);
+        if (household) {
+          const householdMeters = getHouseholdMeters(household);
+          categoryMeters = categoryMeters.filter((m) => householdMeters.includes(m));
+        }
+      }
+
       setSelectedMeters(categoryMeters);
     }
     setSelectedCategory(category);
@@ -170,18 +232,80 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Utility Meter Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Real-time monitoring and analysis of utility consumption
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Utility Meter Dashboard
+              </h1>
+              <p className="mt-1 text-sm text-gray-600">
+                Real-time monitoring and analysis of utility consumption
+              </p>
+            </div>
+            <Link
+              href="/settings"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              ⚙️ Settings
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Time Range Selector */}
         <TimeRangeSelector onRangeChange={setTimeRange} className="mb-8" />
+
+        {/* Household Selector */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Select Household
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleHouseholdSelect(null)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                selectedHousehold === null
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🏢 All Meters
+            </button>
+            {householdConfig.households.map((household) => (
+              <button
+                key={household.id}
+                onClick={() => handleHouseholdSelect(household.id)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                  selectedHousehold === household.id
+                    ? 'text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                style={{
+                  backgroundColor: selectedHousehold === household.id ? household.color : undefined,
+                }}
+              >
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: household.color }}
+                />
+                <span>{household.name}</span>
+                <span className="text-xs opacity-75">
+                  ({getHouseholdMeters(household).length})
+                </span>
+              </button>
+            ))}
+          </div>
+          {selectedHousehold && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800">
+                <strong>Filtering by:</strong>{' '}
+                {householdConfig.households.find((h) => h.id === selectedHousehold)?.name}
+                {' - '}
+                {householdConfig.households.find((h) => h.id === selectedHousehold)?.description}
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Category & Meter Selection */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
