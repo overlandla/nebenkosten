@@ -1,8 +1,8 @@
 # Utility Meter Analytics System
 
-Modern, Prefect-based workflow system for home utility meter monitoring and analysis.
+Modern, Dagster-based workflow system for home utility meter monitoring and analysis.
 
-[![Prefect](https://img.shields.io/badge/Prefect-2.14-blue)](https://www.prefect.io/)
+[![Dagster](https://img.shields.io/badge/Dagster-Latest-blue)](https://dagster.io/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-green)](https://www.docker.com/)
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://www.python.org/)
 
@@ -10,11 +10,11 @@ Modern, Prefect-based workflow system for home utility meter monitoring and anal
 
 ## Overview
 
-This system processes electricity, gas, water, and heat meter readings from InfluxDB, performs intelligent interpolation and gap-filling, handles meter replacements seamlessly, calculates consumption patterns, and detects anomalies - all orchestrated with Prefect workflows and ready for Docker deployment on your home NAS.
+This system processes electricity, gas, water, and heat meter readings from InfluxDB, performs intelligent interpolation and gap-filling, handles meter replacements seamlessly, calculates consumption patterns, and detects anomalies - all orchestrated with Dagster workflows and ready for Docker deployment on your home NAS.
 
 ### Key Features
 
-- ✅ **Prefect Workflow Orchestration** - Scheduled workflows with web UI monitoring
+- ✅ **Dagster Workflow Orchestration** - Modern data orchestration with comprehensive web UI
 - ✅ **Multi-Meter Support** - Physical, master (combined), and virtual (calculated) meters
 - ✅ **Intelligent Interpolation** - Statistical gap-filling using seasonal patterns
 - ✅ **Meter Replacement Handling** - Seamless transition between old and new meters
@@ -23,7 +23,7 @@ This system processes electricity, gas, water, and heat meter readings from Infl
 - ✅ **Docker Deployment** - Production-ready containers for NAS deployment
 - ✅ **Structured Logging** - JSON logs with timestamps, levels, and context
 - ✅ **Security Hardened** - Secrets separated from configuration
-- ✅ **No Streamlit/Frontend** - Data written to InfluxDB for Grafana visualization
+- ✅ **Asset-based Architecture** - Software-defined assets with automatic dependency tracking
 
 ---
 
@@ -78,12 +78,13 @@ influxdb:
 ### 5. Deploy
 
 ```bash
-docker-compose up -d
+# Start Dagster services
+docker-compose -f docker-compose.dagster.yml up -d
 ```
 
-### 6. Access Prefect UI
+### 6. Access Dagster UI
 
-Open browser: `http://your-nas-ip:4200`
+Open browser: `http://your-nas-ip:3000`
 
 ---
 
@@ -91,10 +92,8 @@ Open browser: `http://your-nas-ip:4200`
 
 | Document | Purpose | Start Here |
 |----------|---------|------------|
-| **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** | What was built, how it works, next steps | ⭐ **YES** |
-| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Complete deployment guide (200+ lines) | For deployment |
+| **[workflows-dagster/README.md](workflows-dagster/README.md)** | Dagster implementation details | ⭐ **YES** |
 | **[SIMPLIFIED_ARCHITECTURE.md](SIMPLIFIED_ARCHITECTURE.md)** | Architecture details, data flow | For understanding |
-| **[ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md)** | Security analysis, recommendations | For reference |
 
 ---
 
@@ -102,17 +101,18 @@ Open browser: `http://your-nas-ip:4200`
 
 ```
 ┌───────────────────────────────────────────────┐
-│      Prefect Server (Port 4200)               │
-│  • Web UI for workflow monitoring             │
-│  • Scheduling engine                          │
-│  • SQLite backend (no PostgreSQL needed)      │
+│      Dagster Daemon + Webserver              │
+│  • Web UI for workflow monitoring            │
+│  • Asset materialization tracking            │
+│  • Schedule execution                         │
+│  • Sensor-based triggering                    │
 └───────────────────────────────────────────────┘
                     │
                     ▼
 ┌───────────────────────────────────────────────┐
-│      Prefect Worker                           │
+│      Dagster Code Location                    │
 │                                                │
-│  Workflows:                                    │
+│  Assets:                                       │
 │  1. Tibber Sync (Hourly)                      │
 │     - Fetch from Tibber API                   │
 │     - Write to InfluxDB                       │
@@ -129,7 +129,7 @@ Open browser: `http://your-nas-ip:4200`
 ┌───────────────────────────────────────────────┐
 │      InfluxDB (Your Existing Instance)        │
 │  • lampfi (raw readings)                      │
-│  • lampfi_processed (results) ← NEW           │
+│  • lampfi_processed (results)                 │
 └───────────────────────────────────────────────┘
                     │
                     ▼
@@ -145,47 +145,48 @@ Open browser: `http://your-nas-ip:4200`
 
 ```bash
 # Start services
-docker-compose up -d
+docker-compose -f docker-compose.dagster.yml up -d
 
 # Stop services
-docker-compose down
+docker-compose -f docker-compose.dagster.yml down
 
 # View logs
-docker-compose logs -f
+docker-compose -f docker-compose.dagster.yml logs -f
 
 # Check status
-docker-compose ps
+docker-compose -f docker-compose.dagster.yml ps
 
-# Manual flow run
-docker exec utility-prefect-worker python /app/workflows/analytics_flow.py
+# Run integration tests
+./test-dagster-docker.sh
 
-# Enter worker shell
-docker exec -it utility-prefect-worker /bin/bash
+# Enter code location shell
+docker exec -it dagster-code-location /bin/bash
 ```
 
 ---
 
 ## Monitoring
 
-### Prefect UI
+### Dagster UI
 
-**URL:** http://your-nas-ip:4200
+**URL:** http://your-nas-ip:3000
 
-- Dashboard - Recent flow runs
-- Flow Runs - Detailed execution history
-- Deployments - View schedules, trigger manual runs
+- Asset Catalog - View all data assets and their dependencies
+- Runs - Detailed execution history
+- Schedules - View and trigger scheduled jobs
+- Sensors - Monitor event-based triggers
 
 ### Docker Logs
 
 ```bash
 # All logs
-docker-compose logs -f
+docker-compose -f docker-compose.dagster.yml logs -f
 
-# Worker logs only
-docker-compose logs -f prefect-worker
+# Code location logs only
+docker-compose -f docker-compose.dagster.yml logs -f dagster-code-location
 
 # Search for errors
-docker-compose logs | grep ERROR
+docker-compose -f docker-compose.dagster.yml logs | grep ERROR
 ```
 
 ---
@@ -217,41 +218,39 @@ from(bucket: "lampfi_processed")
 
 ```bash
 # Check logs
-docker-compose logs
+docker-compose -f docker-compose.dagster.yml logs
 
 # Verify secrets exist
 ls -la secrets/
 
 # Restart
-docker-compose down && docker-compose up -d
+docker-compose -f docker-compose.dagster.yml down && docker-compose -f docker-compose.dagster.yml up -d
 ```
 
-### Flow fails with "secrets not set"
+### Job fails with "secrets not set"
 
 ```bash
 # Check environment
-docker exec utility-prefect-worker env | grep INFLUX
+docker exec dagster-code-location env | grep INFLUX
 
 # Recreate containers
-docker-compose down && docker-compose up -d
+docker-compose -f docker-compose.dagster.yml down && docker-compose -f docker-compose.dagster.yml up -d
 ```
 
 ### No data in lampfi_processed
 
 ```bash
 # Check bucket exists (InfluxDB UI > Data > Buckets)
-# Trigger manual run (Prefect UI > Deployments > analytics-scheduled > Run)
-# Check worker logs
-docker-compose logs prefect-worker | grep "Writing results"
+# Trigger manual run (Dagster UI > Assets > Materialize)
+# Check code location logs
+docker-compose -f docker-compose.dagster.yml logs dagster-code-location | grep "Writing results"
 ```
-
-**For more:** See [DEPLOYMENT.md](DEPLOYMENT.md) - "Troubleshooting" section
 
 ---
 
 ## Maintenance
 
-- **Daily:** Check Prefect UI for failed runs
+- **Daily:** Check Dagster UI for failed runs
 - **Weekly:** Review logs for errors
 - **Monthly:** Update images, backup config
 - **Annually:** Rotate secrets
@@ -262,18 +261,17 @@ docker-compose logs prefect-worker | grep "Writing results"
 
 - **Tibber sync:** 5-10 seconds per run
 - **Analytics (27 meters, 4 years):** 2-5 minutes per run
-- **Resource usage:** 150-500 MB RAM, <30% CPU peak
+- **Resource usage:** 200-600 MB RAM, <30% CPU peak
 
 ---
 
 ## Support
 
-**Getting Started:** Read [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)  
-**Deployment:** Follow [DEPLOYMENT.md](DEPLOYMENT.md)  
-**Monitoring:** Access Prefect UI at http://your-nas-ip:4200
+**Getting Started:** Read [workflows-dagster/README.md](workflows-dagster/README.md)
+**Monitoring:** Access Dagster UI at http://your-nas-ip:3000
 
 ---
 
-**Status:** ✅ Production Ready  
-**Version:** 2.0.0 (Prefect-based)  
-**Last Updated:** 2025-11-05
+**Status:** ✅ Production Ready
+**Version:** 3.0.0 (Dagster-based)
+**Last Updated:** 2025-11-15

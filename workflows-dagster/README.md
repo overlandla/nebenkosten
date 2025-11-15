@@ -1,10 +1,10 @@
 # Dagster Utility Analysis Workflows
 
-Alternative implementation of utility meter processing using [Dagster](https://dagster.io/) - a modern data orchestration platform.
+Utility meter processing implementation using [Dagster](https://dagster.io/) - a modern data orchestration platform.
 
 ## Overview
 
-This Dagster implementation provides the same functionality as the Prefect-based workflows but with Dagster's asset-centric approach, offering better data lineage visualization and built-in data quality checks.
+This Dagster implementation uses an asset-centric approach, offering excellent data lineage visualization and built-in data quality checks.
 
 ### Workflows Included
 
@@ -47,7 +47,7 @@ This Dagster implementation provides the same functionality as the Prefect-based
 ## Prerequisites
 
 - Docker and Docker Compose
-- Existing InfluxDB instance (same as Prefect setup)
+- Existing InfluxDB instance
 - Secrets configured in `secrets/` directory:
   - `secrets/influxdb.env` - Contains `INFLUX_TOKEN` and `INFLUX_ORG`
   - `secrets/tibber.env` - Contains `TIBBER_API_TOKEN` (optional)
@@ -150,49 +150,6 @@ The **Asset Lineage Graph** shows:
 - Data freshness indicators
 
 Navigate to **Assets** → **View Graph** to see the full pipeline visualization.
-
-## Running in Parallel with Prefect
-
-You can run both Dagster and Prefect simultaneously for validation:
-
-### 1. Start Both Systems
-
-```bash
-# Start Prefect
-docker-compose up -d
-
-# Start Dagster
-docker-compose -f docker-compose.dagster.yml up -d
-```
-
-### 2. Access Both UIs
-
-- **Prefect**: http://localhost:4200
-- **Dagster**: http://localhost:3000
-
-### 3. Validation Strategy
-
-**Phase 1: Disable Overlapping Schedules**
-- Disable Dagster schedules initially
-- Run Dagster jobs manually
-- Compare outputs in InfluxDB
-
-**Phase 2: Stagger Schedules**
-```yaml
-# Option A: Run Dagster slightly after Prefect
-Prefect analytics: 2:00 AM
-Dagster analytics: 2:05 AM
-
-# Option B: Run on different days
-Prefect: Daily
-Dagster: Every other day for validation
-```
-
-**Phase 3: Cutover**
-- Disable Prefect schedules
-- Enable Dagster schedules
-- Monitor for 1-2 weeks
-- Decommission Prefect if satisfied
 
 ## Configuration
 
@@ -339,12 +296,12 @@ docker-compose -f docker-compose.dagster.yml up -d --build dagster-user-code
 3. Restart services
 4. Enable in UI
 
-## Advantages Over Prefect
+## Key Features
 
 1. **Asset-Centric Design** - Better data lineage and dependency tracking
 2. **Type Safety** - Dagster's type system catches errors at definition time
 3. **Built-in Data Quality** - Asset checks and data validation framework
-4. **Better UI** - Modern, responsive interface with better visualization
+4. **Modern UI** - Responsive interface with excellent visualization
 5. **Partitioning Support** - Native time-based partitioning for incremental processing
 6. **Software-Defined Assets** - Assets are first-class citizens, not just task outputs
 
