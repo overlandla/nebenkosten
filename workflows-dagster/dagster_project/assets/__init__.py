@@ -2,6 +2,7 @@
 Dagster Assets for Utility Analysis
 """
 from .tibber_assets import tibber_consumption_raw
+from .water_temp_assets import water_temperature_raw
 from .analytics_assets import (
     meter_discovery,
     fetch_meter_data,
@@ -16,6 +17,8 @@ from .influxdb_writer_assets import write_processed_data_to_influxdb
 __all__ = [
     # Tibber ingestion
     "tibber_consumption_raw",
+    # Water temperature ingestion
+    "water_temperature_raw",
     # Analytics pipeline
     "meter_discovery",
     "fetch_meter_data",
