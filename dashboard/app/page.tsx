@@ -7,6 +7,9 @@ import TimeRangeSelector, { TimeRange } from '@/components/TimeRangeSelector';
 import MeterReadingsChart from '@/components/MeterReadingsChart';
 import ConsumptionChart from '@/components/ConsumptionChart';
 import WaterTemperatureChart from '@/components/WaterTemperatureChart';
+import SeasonalPatternChart from '@/components/SeasonalPatternChart';
+import FloorComparisonChart from '@/components/FloorComparisonChart';
+import YearOverYearChart from '@/components/YearOverYearChart';
 import { HouseholdConfig, DEFAULT_HOUSEHOLD_CONFIG, Household, getHouseholdMeters } from '@/types/household';
 
 const STORAGE_KEY = 'household_config';
@@ -519,6 +522,161 @@ export default function Home() {
                 </div>
               );
             })}
+
+            {/* Seasonal Pattern Charts */}
+            {(() => {
+              // Heat seasonal patterns
+              const heatMeters = METERS_CONFIG.filter((m) =>
+                m.category === 'heat' && selectedMeters.includes(m.id)
+              );
+
+              // Gas seasonal patterns
+              const gasMeters = METERS_CONFIG.filter((m) =>
+                (m.id === 'gas_total' || m.id === 'gastherme_gesamt') && selectedMeters.includes(m.id)
+              );
+
+              return (
+                <>
+                  {heatMeters.length > 1 && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                        🌡️ Seasonal Heating Patterns
+                      </h2>
+                      <SeasonalPatternChart
+                        data={meterData}
+                        meters={heatMeters.map((m) => ({ ...m, color: '#ef4444' }))}
+                        title="Heat Consumption Across Seasons"
+                      />
+                    </div>
+                  )}
+
+                  {gasMeters.length > 0 && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                        🔥 Seasonal Gas Patterns
+                      </h2>
+                      <SeasonalPatternChart
+                        data={meterData}
+                        meters={gasMeters.map((m, idx) => ({
+                          ...m,
+                          color: idx === 0 ? '#f97316' : '#fb923c',
+                        }))}
+                        title="Gas Consumption Across Seasons"
+                      />
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Floor Comparison Charts */}
+            {(() => {
+              // Heat by floor
+              const heatByFloor = [
+                { id: 'eg_nord_heat', name: 'EG North', floor: 'EG', color: '#ef4444' },
+                { id: 'eg_sud_heat', name: 'EG South', floor: 'EG', color: '#f87171' },
+                { id: 'og1_heat', name: 'OG1', floor: 'OG1', color: '#fb923c' },
+                { id: 'og2_heat', name: 'OG2', floor: 'OG2', color: '#fdba74' },
+                { id: 'buro_heat', name: 'Office', floor: 'Office', color: '#fcd34d' },
+              ].filter((m) => selectedMeters.includes(m.id));
+
+              // Water by floor (hot vs cold)
+              const waterByFloor = [
+                { id: 'og1_wasser_kalt', name: 'OG1 Cold', floor: 'OG1', color: '#60a5fa' },
+                { id: 'og1_wasser_warm', name: 'OG1 Hot', floor: 'OG1', color: '#f87171' },
+                { id: 'og2_wasser_kalt', name: 'OG2 Cold', floor: 'OG2', color: '#3b82f6' },
+                { id: 'og2_wasser_warm', name: 'OG2 Hot', floor: 'OG2', color: '#ef4444' },
+              ].filter((m) => selectedMeters.includes(m.id));
+
+              // Electricity by floor
+              const electricityByFloor = [
+                { id: 'eg_strom', name: 'Ground Floor', floor: 'EG', color: '#fbbf24' },
+                { id: 'og1_strom', name: 'First Floor', floor: 'OG1', color: '#f59e0b' },
+                { id: 'og2_strom', name: 'Second Floor', floor: 'OG2', color: '#d97706' },
+              ].filter((m) => selectedMeters.includes(m.id));
+
+              return (
+                <>
+                  {heatByFloor.length > 1 && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                        🏢 Heat Consumption by Floor
+                      </h2>
+                      <FloorComparisonChart
+                        data={meterData}
+                        meters={heatByFloor}
+                        title="Monthly Heat Consumption per Floor"
+                        unit="MWh"
+                        stacked={true}
+                      />
+                    </div>
+                  )}
+
+                  {waterByFloor.length > 1 && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                        💧 Water Consumption by Floor
+                      </h2>
+                      <FloorComparisonChart
+                        data={meterData}
+                        meters={waterByFloor}
+                        title="Monthly Water Consumption: Hot vs Cold"
+                        unit="m³"
+                        stacked={false}
+                      />
+                    </div>
+                  )}
+
+                  {electricityByFloor.length > 1 && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                        ⚡ Electricity Consumption by Floor
+                      </h2>
+                      <FloorComparisonChart
+                        data={meterData}
+                        meters={electricityByFloor}
+                        title="Monthly Electricity Consumption per Floor"
+                        unit="kWh"
+                        stacked={true}
+                      />
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Year-over-Year Comparisons */}
+            {(() => {
+              // Key meters for YoY comparison
+              const keyMeters = [
+                { id: 'gas_total', name: 'Total Gas', unit: 'm³' },
+                { id: 'strom_total', name: 'Total Electricity', unit: 'kWh' },
+                { id: 'og1_heat', name: 'First Floor Heat', unit: 'MWh' },
+              ].filter((m) => selectedMeters.includes(m.id) && meterData[m.id]?.length > 30);
+
+              return (
+                <>
+                  {keyMeters.length > 0 && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                        📊 Year-over-Year Comparison
+                      </h2>
+                      <div className="grid grid-cols-1 gap-6">
+                        {keyMeters.map((meter) => (
+                          <YearOverYearChart
+                            key={meter.id}
+                            data={meterData[meter.id] || []}
+                            meterId={meter.id}
+                            meterName={meter.name}
+                            unit={meter.unit}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Water Temperature Chart */}
             {waterTempData.length > 0 && (
