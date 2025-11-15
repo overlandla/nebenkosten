@@ -3,11 +3,17 @@ Water Temperature Data Ingestion Assets
 Fetches water temperature from Bavarian lakes and writes to InfluxDB
 """
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 import re
 import requests
 from bs4 import BeautifulSoup
-from dagster import asset, AssetExecutionContext, MaterializeResult, MetadataValue
+from dagster import (
+    asset,
+    AssetExecutionContext,
+    MaterializeResult,
+    MetadataValue,
+    StaticPartitionsDefinition
+)
 from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
@@ -36,103 +42,115 @@ LAKE_CONFIGS = {
     },
 }
 
+# Define static partitions for each lake
+# This allows each lake to run independently in Dagster
+lakes_partitions_def = StaticPartitionsDefinition(
+    partition_keys=list(LAKE_CONFIGS.keys())
+)
+
 
 @asset(
+    partitions_def=lakes_partitions_def,
     group_name="ingestion",
     compute_kind="web_scraping",
-    description="Fetch and store water temperature data from Bavarian lakes"
+    description="Fetch and store water temperature data from Bavarian lakes (partitioned by lake)"
 )
 def water_temperature_raw(
     context: AssetExecutionContext,
     influxdb: InfluxDBResource
 ) -> MaterializeResult:
     """
-    Fetch water temperature data from Bavarian lake websites and write to InfluxDB
+    Fetch water temperature data from a specific Bavarian lake and write to InfluxDB
 
-    This asset:
-    1. Scrapes water temperature data from nid.bayern.de for multiple lakes
+    This asset is partitioned by lake (schliersee, tegernsee, isar), allowing each
+    lake to be processed independently. This provides:
+    - Independent execution and monitoring per lake
+    - Ability to retry individual lakes on failure
+    - Better visibility in Dagster UI
+    - Separate materialization history per lake
+
+    Process:
+    1. Scrapes water temperature data from nid.bayern.de for the partition's lake
     2. Parses temperature values and timestamps
     3. Checks for duplicates by comparing with last timestamp in InfluxDB
     4. Writes new data points to InfluxDB
 
     Returns:
-        MaterializeResult with metadata about records written for each lake
+        MaterializeResult with metadata about the operation for this lake
     """
+    # Get the lake to process from the partition key
+    lake_id = context.partition_key
+    lake_config = LAKE_CONFIGS[lake_id]
     logger = context.log
-    logger.info("Starting water temperature sync for all lakes")
 
-    results = {}
-    total_written = 0
-    total_errors = 0
+    logger.info(f"Processing water temperature for {lake_config['lake_name']}")
 
-    for lake_id, lake_config in LAKE_CONFIGS.items():
-        logger.info(f"Processing {lake_config['lake_name']}...")
+    try:
+        # Check last timestamp in InfluxDB
+        last_timestamp = _get_last_influxdb_timestamp(
+            influxdb,
+            lake_config['entity_id'],
+            logger
+        )
 
-        try:
-            # Check last timestamp in InfluxDB
-            last_timestamp = _get_last_influxdb_timestamp(
-                influxdb,
-                lake_config['entity_id'],
-                logger
+        if last_timestamp:
+            logger.info(f"Last timestamp in InfluxDB: {last_timestamp}")
+        else:
+            logger.info("No existing data in InfluxDB")
+
+        # Scrape current temperature
+        temp_data = _scrape_lake_temperature(lake_config, logger)
+
+        if not temp_data:
+            logger.error("Failed to scrape temperature data")
+            return MaterializeResult(
+                metadata={
+                    "lake": lake_config['lake_name'],
+                    "status": "error",
+                    "error": "scraping_failed"
+                }
             )
 
-            if last_timestamp:
-                logger.info(f"{lake_config['lake_name']}: Last timestamp in InfluxDB: {last_timestamp}")
-            else:
-                logger.info(f"{lake_config['lake_name']}: No existing data in InfluxDB")
+        # Check if this is new data
+        if last_timestamp and temp_data['timestamp'] <= last_timestamp:
+            logger.info(
+                f"Data already exists (scraped: {temp_data['timestamp']}, "
+                f"last: {last_timestamp})"
+            )
+            return MaterializeResult(
+                metadata={
+                    "lake": lake_config['lake_name'],
+                    "status": "up_to_date",
+                    "temperature_celsius": temp_data['temperature'],
+                    "timestamp": temp_data['timestamp'].isoformat()
+                }
+            )
 
-            # Scrape current temperature
-            temp_data = _scrape_lake_temperature(lake_config, logger)
+        # Write new data to InfluxDB
+        _write_to_influxdb(influxdb, lake_config, temp_data, logger)
+        logger.info(
+            f"Successfully wrote {temp_data['temperature']}°C at {temp_data['timestamp']}"
+        )
 
-            if temp_data:
-                # Check if this is new data
-                if last_timestamp and temp_data['timestamp'] <= last_timestamp:
-                    logger.info(
-                        f"{lake_config['lake_name']}: Data already exists "
-                        f"(scraped: {temp_data['timestamp']}, last: {last_timestamp})"
-                    )
-                    results[lake_id] = {
-                        "status": "up_to_date",
-                        "temperature": temp_data['temperature'],
-                        "timestamp": temp_data['timestamp'].isoformat()
-                    }
-                else:
-                    # Write new data to InfluxDB
-                    _write_to_influxdb(influxdb, lake_config, temp_data, logger)
-                    logger.info(
-                        f"{lake_config['lake_name']}: Successfully wrote "
-                        f"{temp_data['temperature']}°C at {temp_data['timestamp']}"
-                    )
-                    results[lake_id] = {
-                        "status": "written",
-                        "temperature": temp_data['temperature'],
-                        "timestamp": temp_data['timestamp'].isoformat()
-                    }
-                    total_written += 1
-            else:
-                logger.warning(f"{lake_config['lake_name']}: Failed to scrape temperature data")
-                results[lake_id] = {"status": "error", "error": "scraping_failed"}
-                total_errors += 1
+        return MaterializeResult(
+            metadata={
+                "lake": lake_config['lake_name'],
+                "status": "written",
+                "temperature_celsius": temp_data['temperature'],
+                "timestamp": temp_data['timestamp'].isoformat(),
+                "entity_id": lake_config['entity_id']
+            }
+        )
 
-        except Exception as e:
-            logger.error(f"{lake_config['lake_name']}: Error processing - {str(e)}")
-            results[lake_id] = {"status": "error", "error": str(e)}
-            total_errors += 1
-
-    # Create summary metadata
-    metadata = {
-        "total_lakes": len(LAKE_CONFIGS),
-        "records_written": total_written,
-        "errors": total_errors,
-        "results": MetadataValue.json(results)
-    }
-
-    logger.info(
-        f"Water temperature sync complete: "
-        f"{total_written} written, {total_errors} errors"
-    )
-
-    return MaterializeResult(metadata=metadata)
+    except Exception as e:
+        logger.error(f"Error processing {lake_config['lake_name']}: {str(e)}")
+        return MaterializeResult(
+            metadata={
+                "lake": lake_config['lake_name'],
+                "status": "error",
+                "error": str(e)
+            }
+        )
 
 
 def _scrape_lake_temperature(lake_config: Dict, logger) -> Optional[Dict]:
