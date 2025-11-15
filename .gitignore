@@ -57,10 +57,6 @@ state/
 .docker/
 docker-compose.override.yml
 
-# Prefect
-.prefect/
-prefect.db
-
 # Testing
 .pytest_cache/
 .coverage

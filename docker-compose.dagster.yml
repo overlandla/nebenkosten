@@ -56,7 +56,7 @@ services:
     container_name: dagster-webserver
     command: dagster-webserver -h 0.0.0.0 -p 3000
     ports:
-      - "3000:3000"  # Different port from Prefect (4200)
+      - "3000:3000"  # Dagster web UI
     environment:
       DAGSTER_POSTGRES_USER: dagster
       DAGSTER_POSTGRES_PASSWORD: dagster
@@ -107,7 +107,7 @@ services:
 
 networks:
   utility-network:
-    external: true  # Shares network with Prefect setup
+    external: true  # Connects to existing InfluxDB network
 
 volumes:
   dagster-postgres-data:
