@@ -1,0 +1,133 @@
+version: '3.8'
+
+# Lightweight Dagster setup for integration testing
+# Runs ephemeral services without persistence
+
+services:
+  # PostgreSQL for Dagster metadata (test instance)
+  dagster-test-postgres:
+    image: postgres:15-alpine
+    container_name: dagster-test-postgres
+    environment:
+      POSTGRES_USER: dagster_test
+      POSTGRES_PASSWORD: dagster_test
+      POSTGRES_DB: dagster_test
+    networks:
+      - dagster-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dagster_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    # No volumes - ephemeral storage for testing
+
+  # Dagster Daemon for test instance
+  dagster-test-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    container_name: dagster-test-daemon
+    command: dagster-daemon run
+    environment:
+      DAGSTER_POSTGRES_USER: dagster_test
+      DAGSTER_POSTGRES_PASSWORD: dagster_test
+      DAGSTER_POSTGRES_DB: dagster_test
+      DAGSTER_POSTGRES_HOST: dagster-test-postgres
+      DAGSTER_POSTGRES_PORT: 5432
+      # Test environment variables
+      INFLUX_URL: http://influxdb-test:8086
+      INFLUX_TOKEN: test-token-12345
+      INFLUX_ORG: test-org
+      INFLUX_BUCKET: test-bucket
+      TIBBER_API_TOKEN: test-tibber-token
+    volumes:
+      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./config:/app/config:ro
+      - ./Nebenkosten/src:/app/Nebenkosten/src:ro
+    networks:
+      - dagster-test-network
+    depends_on:
+      dagster-test-postgres:
+        condition: service_healthy
+
+  # Dagster Webserver for test instance (port 3001 to avoid conflicts)
+  dagster-test-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    container_name: dagster-test-webserver
+    command: dagster-webserver -h 0.0.0.0 -p 3001
+    ports:
+      - "3001:3001"
+    environment:
+      DAGSTER_POSTGRES_USER: dagster_test
+      DAGSTER_POSTGRES_PASSWORD: dagster_test
+      DAGSTER_POSTGRES_DB: dagster_test
+      DAGSTER_POSTGRES_HOST: dagster-test-postgres
+      DAGSTER_POSTGRES_PORT: 5432
+    volumes:
+      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./config:/app/config:ro
+      - ./Nebenkosten/src:/app/Nebenkosten/src:ro
+    networks:
+      - dagster-test-network
+    depends_on:
+      dagster-test-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Dagster User Code for test instance
+  dagster-test-user-code:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    container_name: dagster-test-user-code
+    command: dagster code-server start -h 0.0.0.0 -p 4001 -m workflows-dagster.dagster_project
+    environment:
+      DAGSTER_CURRENT_IMAGE: "dagster-test-user-code"
+      # Test environment variables
+      INFLUX_URL: http://influxdb-test:8086
+      INFLUX_TOKEN: test-token-12345
+      INFLUX_ORG: test-org
+      INFLUX_BUCKET: test-bucket
+      TIBBER_API_TOKEN: test-tibber-token
+    volumes:
+      - ./workflows-dagster:/app/workflows-dagster:ro
+      - ./config:/app/config:ro
+      - ./Nebenkosten/src:/app/Nebenkosten/src:ro
+    networks:
+      - dagster-test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4001/server_info"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Mock InfluxDB for testing (optional - can use actual test instance)
+  influxdb-test:
+    image: influxdb:2.7-alpine
+    container_name: influxdb-test
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: admin12345
+      DOCKER_INFLUXDB_INIT_ORG: test-org
+      DOCKER_INFLUXDB_INIT_BUCKET: test-bucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: test-token-12345
+    networks:
+      - dagster-test-network
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  dagster-test-network:
+    driver: bridge
+
+# No volumes defined - all data is ephemeral for testing
