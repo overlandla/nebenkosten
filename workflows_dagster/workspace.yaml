@@ -1,5 +1,5 @@
 load_from:
   - python_module:
-      module_name: workflows-dagster.dagster_project
+      module_name: workflows_dagster.dagster_project
       working_directory: /app
       attribute: utility_repository

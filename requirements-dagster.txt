@@ -1,8 +1,10 @@
 # Dagster core
+# Note: dagster and dagster-webserver use 1.x versioning
+# dagster-postgres and dagster-docker use 0.x versioning
 dagster==1.6.0
 dagster-webserver==1.6.0
-dagster-postgres==0.22.0
-dagster-docker==0.22.0
+dagster-postgres==0.22.0  # Compatible with dagster 1.6.0
+dagster-docker==0.22.0  # Compatible with dagster 1.6.0
 
 # Existing dependencies (matching worker requirements)
 influxdb-client==1.38.0

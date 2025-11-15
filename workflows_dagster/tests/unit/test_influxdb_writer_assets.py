@@ -7,7 +7,7 @@ import pandas as pd
 from datetime import datetime, timezone
 from dagster import build_asset_context
 
-from dagster_project.assets.influxdb_writer_assets import (
+from workflows_dagster.dagster_project.assets.influxdb_writer_assets import (
     write_processed_data_to_influxdb,
     _create_points_from_dataframe,
     _create_anomaly_points

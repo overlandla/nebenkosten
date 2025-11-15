@@ -4,9 +4,9 @@ Unit tests for Dagster resources
 import os
 import pytest
 from unittest.mock import MagicMock, patch
-from dagster_project.resources.influxdb_resource import InfluxDBResource
-from dagster_project.resources.tibber_resource import TibberResource
-from dagster_project.resources.config_resource import ConfigResource
+from workflows_dagster.dagster_project.resources.influxdb_resource import InfluxDBResource
+from workflows_dagster.dagster_project.resources.tibber_resource import TibberResource
+from workflows_dagster.dagster_project.resources.config_resource import ConfigResource
 
 
 class TestInfluxDBResource:
@@ -58,7 +58,7 @@ class TestInfluxDBResource:
                 os.environ["INFLUX_ORG"] = org
 
     @pytest.mark.unit
-    @patch('dagster_project.resources.influxdb_resource.InfluxDBClient')
+    @patch('workflows_dagster.dagster_project.resources.influxdb_resource.InfluxDBClient')
     def test_get_client_creates_client(self, mock_client_class, mock_influxdb_resource):
         """Test get_client creates InfluxDBClient with correct params"""
         mock_influxdb_resource.get_client()
@@ -87,7 +87,7 @@ class TestTibberResource:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('dagster_project.resources.tibber_resource.requests.post')
+    @patch('workflows_dagster.dagster_project.resources.tibber_resource.requests.post')
     def test_fetch_consumption_success(self, mock_post, mock_tibber_resource, sample_tibber_response):
         """Test successful Tibber API consumption fetch"""
         # Mock successful API response
@@ -126,7 +126,7 @@ class TestTibberResource:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('dagster_project.resources.tibber_resource.requests.post')
+    @patch('workflows_dagster.dagster_project.resources.tibber_resource.requests.post')
     def test_fetch_consumption_graphql_error(self, mock_post, mock_tibber_resource):
         """Test fetch_consumption handles GraphQL errors"""
         mock_response = MagicMock()
@@ -140,7 +140,7 @@ class TestTibberResource:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('dagster_project.resources.tibber_resource.requests.post')
+    @patch('workflows_dagster.dagster_project.resources.tibber_resource.requests.post')
     def test_fetch_consumption_network_error(self, mock_post, mock_tibber_resource):
         """Test fetch_consumption handles network errors"""
         import requests

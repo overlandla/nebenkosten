@@ -4,6 +4,10 @@ Main repository definition
 """
 from dagster import Definitions
 
+# Validate environment before importing anything else
+from .utils import validate_environment
+validate_environment()
+
 # Import resources
 from .resources import InfluxDBResource, TibberResource, ConfigResource
 

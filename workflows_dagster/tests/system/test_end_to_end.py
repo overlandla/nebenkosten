@@ -7,8 +7,8 @@ from unittest.mock import patch, MagicMock
 from dagster import materialize_to_memory
 import pandas as pd
 
-from dagster_project import utility_repository
-from dagster_project.jobs import tibber_sync_job, analytics_job
+from workflows_dagster.dagster_project import utility_repository
+from workflows_dagster.dagster_project.jobs import tibber_sync_job, analytics_job
 from tests.fixtures.mock_data import (
     generate_tibber_api_response,
     generate_multi_meter_data
@@ -21,9 +21,9 @@ class TestTibberSyncE2E:
     @pytest.mark.system
     @pytest.mark.slow
     @pytest.mark.tibber
-    @patch('dagster_project.resources.tibber_resource.requests.post')
-    @patch('dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
-    @patch('dagster_project.assets.tibber_assets._write_to_influxdb')
+    @patch('workflows_dagster.dagster_project.resources.tibber_resource.requests.post')
+    @patch('workflows_dagster.dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
+    @patch('workflows_dagster.dagster_project.assets.tibber_assets._write_to_influxdb')
     def test_complete_tibber_sync_flow(
         self,
         mock_write,
@@ -66,10 +66,10 @@ class TestAnalyticsE2E:
 
     @pytest.mark.system
     @pytest.mark.slow
-    @patch('dagster_project.assets.analytics_assets.InfluxClient')
-    @patch('dagster_project.assets.analytics_assets.DataProcessor')
-    @patch('dagster_project.assets.analytics_assets.ConsumptionCalculator')
-    @patch('dagster_project.assets.influxdb_writer_assets.InfluxDBResource.get_client')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator')
+    @patch('workflows_dagster.dagster_project.assets.influxdb_writer_assets.InfluxDBResource.get_client')
     def test_complete_analytics_pipeline(
         self,
         mock_get_client,
@@ -165,8 +165,8 @@ class TestDataQuality:
     """System tests for data quality and validation"""
 
     @pytest.mark.system
-    @patch('dagster_project.assets.analytics_assets.InfluxClient')
-    @patch('dagster_project.assets.analytics_assets.DataProcessor')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor')
     def test_interpolation_produces_valid_data(
         self,
         mock_processor_class,

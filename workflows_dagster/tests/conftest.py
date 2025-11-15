@@ -151,8 +151,11 @@ def sample_tibber_response():
 
 @pytest.fixture
 def mock_influx_client():
-    """Mock InfluxClient from Nebenkosten/src"""
-    with patch('src.influx_client.InfluxClient') as mock:
+    """Mock InfluxClient from Nebenkosten/src
+
+    Note: Patching where it's used (analytics_assets) not where it's defined
+    """
+    with patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient') as mock:
         instance = MagicMock()
         instance.discover_available_meters.return_value = ["strom_total", "gas_total"]
         instance.fetch_all_meter_data.return_value = pd.DataFrame({
@@ -165,8 +168,11 @@ def mock_influx_client():
 
 @pytest.fixture
 def mock_data_processor():
-    """Mock DataProcessor from Nebenkosten/src"""
-    with patch('src.data_processor.DataProcessor') as mock:
+    """Mock DataProcessor from Nebenkosten/src
+
+    Note: Patching where it's used (analytics_assets) not where it's defined
+    """
+    with patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor') as mock:
         instance = MagicMock()
         instance.create_standardized_daily_series.return_value = pd.DataFrame({
             "value": range(100, 131)
@@ -180,8 +186,11 @@ def mock_data_processor():
 
 @pytest.fixture
 def mock_consumption_calculator():
-    """Mock ConsumptionCalculator from Nebenkosten/src"""
-    with patch('src.calculator.ConsumptionCalculator') as mock:
+    """Mock ConsumptionCalculator from Nebenkosten/src
+
+    Note: Patching where it's used (analytics_assets) not where it's defined
+    """
+    with patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator') as mock:
         instance = MagicMock()
         instance.calculate_consumption_from_readings.return_value = pd.DataFrame({
             "value": [10.5] * 30

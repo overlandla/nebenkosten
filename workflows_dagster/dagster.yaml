@@ -1,0 +1,59 @@
+# Dagster Instance Configuration
+# This file configures the Dagster instance for the utility analysis workflows
+
+# Storage configuration - uses PostgreSQL for production
+storage:
+  postgres:
+    postgres_db:
+      username:
+        env: DAGSTER_POSTGRES_USER
+      password:
+        env: DAGSTER_POSTGRES_PASSWORD
+      hostname:
+        env: DAGSTER_POSTGRES_HOST
+      db_name:
+        env: DAGSTER_POSTGRES_DB
+      port:
+        env: DAGSTER_POSTGRES_PORT
+
+# Run coordinator - controls how runs are queued and executed
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 10
+
+# Run launcher - how runs are actually executed
+run_launcher:
+  module: dagster.core.launcher
+  class: DefaultRunLauncher
+
+# Compute log storage - where run logs are stored
+compute_logs:
+  module: dagster.core.storage.local_compute_log_manager
+  class: LocalComputeLogManager
+  config:
+    base_dir: /app/logs
+
+# Local artifact storage for materializations
+local_artifact_storage:
+  module: dagster.core.storage.root
+  class: LocalArtifactStorage
+  config:
+    base_dir: /app/storage/
+
+# Telemetry - disabled for privacy
+telemetry:
+  enabled: false
+
+# Retention policy - how long to keep run history
+retention:
+  schedule:
+    purge_after_days: 90
+  sensor:
+    purge_after_days: 90
+
+# Code server settings
+code_servers:
+  reload_timeout: 60
+  local_startup_timeout: 60

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 from dagster import build_asset_context
 
-from dagster_project.assets.analytics_assets import (
+from workflows_dagster.dagster_project.assets.analytics_assets import (
     meter_discovery,
     fetch_meter_data,
     interpolated_meter_series,
@@ -28,7 +28,7 @@ class TestMeterDiscoveryAsset:
 
     @pytest.mark.unit
     @pytest.mark.influxdb
-    @patch('dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
     def test_discovers_meters(
         self,
         mock_influx_class,
@@ -55,7 +55,7 @@ class TestFetchMeterDataAsset:
 
     @pytest.mark.unit
     @pytest.mark.influxdb
-    @patch('dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
     def test_fetches_data_for_all_meters(
         self,
         mock_influx_class,
@@ -83,8 +83,8 @@ class TestInterpolatedMeterSeriesAsset:
     """Unit tests for interpolated_meter_series asset"""
 
     @pytest.mark.unit
-    @patch('dagster_project.assets.analytics_assets.DataProcessor')
-    @patch('dagster_project.assets.analytics_assets.InfluxClient')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
     def test_creates_daily_and_monthly_series(
         self,
         mock_influx_class,
@@ -169,7 +169,7 @@ class TestConsumptionDataAsset:
     """Unit tests for consumption_data asset"""
 
     @pytest.mark.unit
-    @patch('dagster_project.assets.analytics_assets.ConsumptionCalculator')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator')
     def test_calculates_consumption(self, mock_calc_class, mock_config_resource):
         """Test consumption calculation from readings"""
         context = build_asset_context()
@@ -188,7 +188,7 @@ class TestConsumptionDataAsset:
         assert len(result["meter1"]) == 30
 
     @pytest.mark.unit
-    @patch('dagster_project.assets.analytics_assets.ConsumptionCalculator')
+    @patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator')
     def test_combines_physical_and_master_meters(self, mock_calc_class, mock_config_resource):
         """Test consumption includes both physical and master meters"""
         context = build_asset_context()
