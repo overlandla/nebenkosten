@@ -50,15 +50,35 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
         next(row: string[], tableMeta: any) {
-          const o = tableMeta.toObject(row);
-          if (o.consumption !== undefined) {
+          try {
+            const o = tableMeta.toObject(row);
+
+            // Validate required fields
+            if (!o._time || o.consumption === undefined) {
+              return;
+            }
+
+            const consumption = parseFloat(o.consumption);
+            const cost = parseFloat(o.cost);
+            const unit_price = parseFloat(o.unit_price);
+            const unit_price_vat = parseFloat(o.unit_price_vat);
+
+            // Validate numeric values
+            if (isNaN(consumption) && isNaN(cost)) {
+              console.warn('Skipping cost row with all invalid numeric values');
+              return;
+            }
+
             costs.push({
               timestamp: o._time,
-              consumption: parseFloat(o.consumption) || 0,
-              cost: parseFloat(o.cost) || 0,
-              unit_price: parseFloat(o.unit_price) || 0,
-              unit_price_vat: parseFloat(o.unit_price_vat) || 0,
+              consumption: isNaN(consumption) ? 0 : consumption,
+              cost: isNaN(cost) ? 0 : cost,
+              unit_price: isNaN(unit_price) ? 0 : unit_price,
+              unit_price_vat: isNaN(unit_price_vat) ? 0 : unit_price_vat,
             });
+          } catch (error) {
+            console.error('Error processing cost row:', error);
+            // Continue processing other rows
           }
         },
         error(error: Error) {

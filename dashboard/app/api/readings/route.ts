@@ -67,12 +67,31 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
         next(row: string[], tableMeta: any) {
-          const o = tableMeta.toObject(row);
-          readings.push({
-            timestamp: o._time,
-            value: parseFloat(o._value),
-            entity_id: dataType === 'raw' ? o.entity_id : meterId,
-          });
+          try {
+            const o = tableMeta.toObject(row);
+
+            // Validate required fields
+            if (!o._time || o._value === undefined || o._value === null) {
+              console.warn('Skipping row with missing data:', { time: o._time, value: o._value });
+              return;
+            }
+
+            // Parse and validate numeric value
+            const value = parseFloat(o._value);
+            if (isNaN(value)) {
+              console.warn('Skipping row with invalid numeric value:', o._value);
+              return;
+            }
+
+            readings.push({
+              timestamp: o._time,
+              value,
+              entity_id: dataType === 'raw' ? o.entity_id : meterId,
+            });
+          } catch (error) {
+            console.error('Error processing row:', error);
+            // Continue processing other rows instead of failing entirely
+          }
         },
         error(error: Error) {
           console.error('Query error:', error);

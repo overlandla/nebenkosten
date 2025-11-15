@@ -31,37 +31,58 @@ export default function CostsPage() {
 
   // Load household config from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
+    // Check if running in browser (SSR safety)
+    if (typeof window === 'undefined') return;
+
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
         const parsed = JSON.parse(stored);
-        setHouseholdConfig(parsed);
-      } catch (error) {
-        console.error('Failed to parse stored config:', error);
+        // Validate structure before setting
+        if (parsed && parsed.version && Array.isArray(parsed.households)) {
+          setHouseholdConfig(parsed);
+        } else {
+          console.warn('Invalid household config structure in localStorage');
+        }
       }
+    } catch (error) {
+      console.error('Failed to parse stored config:', error);
     }
   }, []);
 
   useEffect(() => {
-    fetchCostData();
-  }, [timeRange]);
+    const controller = new AbortController();
 
-  const fetchCostData = async () => {
-    setLoading(true);
-    try {
-      const startDate = format(timeRange.start, 'yyyy-MM-dd');
-      const endDate = format(timeRange.end, 'yyyy-MM-dd');
-      const response = await fetch(
-        `/api/costs?startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&aggregation=daily`
-      );
-      const data = await response.json();
-      setCostData(data.costs || []);
-    } catch (error) {
-      console.error('Error fetching cost data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchCostData = async () => {
+      setLoading(true);
+      try {
+        const startDate = format(timeRange.start, 'yyyy-MM-dd');
+        const endDate = format(timeRange.end, 'yyyy-MM-dd');
+        const response = await fetch(
+          `/api/costs?startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&aggregation=daily`,
+          { signal: controller.signal }
+        );
+        const data = await response.json();
+        setCostData(data.costs || []);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('Fetch aborted');
+          return;
+        }
+        console.error('Error fetching cost data:', error);
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCostData();
+
+    return () => {
+      controller.abort();
+    };
+  }, [timeRange]);
 
   // Calculate total costs (placeholder values - would need actual data from all meters)
   const totalElectricityCost = costData.reduce((sum, item) => sum + item.cost, 0);
@@ -124,28 +145,28 @@ export default function CostsPage() {
                 <h3 className="text-sm font-medium text-yellow-900 mb-1">⚡ Electricity</h3>
                 <p className="text-2xl font-bold text-yellow-700">€{totalElectricityCost.toFixed(2)}</p>
                 <p className="text-xs text-yellow-600 mt-1">
-                  {((totalElectricityCost / grandTotal) * 100).toFixed(1)}% of total
+                  {grandTotal > 0 ? ((totalElectricityCost / grandTotal) * 100).toFixed(1) : '0.0'}% of total
                 </p>
               </div>
               <div className="bg-orange-50 rounded-lg shadow-sm border border-orange-200 p-6">
                 <h3 className="text-sm font-medium text-orange-900 mb-1">🔥 Gas</h3>
                 <p className="text-2xl font-bold text-orange-700">€{totalGasCost.toFixed(2)}</p>
                 <p className="text-xs text-orange-600 mt-1">
-                  {((totalGasCost / grandTotal) * 100).toFixed(1)}% of total
+                  {grandTotal > 0 ? ((totalGasCost / grandTotal) * 100).toFixed(1) : '0.0'}% of total
                 </p>
               </div>
               <div className="bg-blue-50 rounded-lg shadow-sm border border-blue-200 p-6">
                 <h3 className="text-sm font-medium text-blue-900 mb-1">💧 Water</h3>
                 <p className="text-2xl font-bold text-blue-700">€{totalWaterCost.toFixed(2)}</p>
                 <p className="text-xs text-blue-600 mt-1">
-                  {((totalWaterCost / grandTotal) * 100).toFixed(1)}% of total
+                  {grandTotal > 0 ? ((totalWaterCost / grandTotal) * 100).toFixed(1) : '0.0'}% of total
                 </p>
               </div>
               <div className="bg-red-50 rounded-lg shadow-sm border border-red-200 p-6">
                 <h3 className="text-sm font-medium text-red-900 mb-1">🌡️ Heat</h3>
                 <p className="text-2xl font-bold text-red-700">€{totalHeatCost.toFixed(2)}</p>
                 <p className="text-xs text-red-600 mt-1">
-                  {((totalHeatCost / grandTotal) * 100).toFixed(1)}% of total
+                  {grandTotal > 0 ? ((totalHeatCost / grandTotal) * 100).toFixed(1) : '0.0'}% of total
                 </p>
               </div>
             </div>

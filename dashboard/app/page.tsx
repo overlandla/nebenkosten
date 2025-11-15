@@ -102,54 +102,84 @@ export default function Home() {
 
   // Load household config from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
+    // Check if running in browser (SSR safety)
+    if (typeof window === 'undefined') return;
+
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
         const parsed = JSON.parse(stored);
-        setHouseholdConfig(parsed);
-      } catch (error) {
-        console.error('Failed to parse stored config:', error);
+        // Validate structure before setting
+        if (parsed && parsed.version && Array.isArray(parsed.households)) {
+          setHouseholdConfig(parsed);
+        } else {
+          console.warn('Invalid household config structure in localStorage');
+        }
       }
+    } catch (error) {
+      console.error('Failed to parse stored config:', error);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [timeRange, selectedMeters]);
+    const controller = new AbortController();
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // Fetch data for selected meters using processed consumption data
-      const meterPromises = selectedMeters.map(async (meterId) => {
-        const startDate = format(timeRange.start, 'yyyy-MM-dd');
-        const endDate = format(timeRange.end, 'yyyy-MM-dd');
-        const response = await fetch(
-          `/api/readings?meterId=${meterId}&startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&dataType=consumption`
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch data for selected meters using processed consumption data
+        const meterPromises = selectedMeters.map(async (meterId) => {
+          const startDate = format(timeRange.start, 'yyyy-MM-dd');
+          const endDate = format(timeRange.end, 'yyyy-MM-dd');
+          const response = await fetch(
+            `/api/readings?meterId=${meterId}&startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&dataType=consumption`,
+            { signal: controller.signal }
+          );
+          const data = await response.json();
+          return { meterId, readings: data.readings || [] };
+        });
+
+        // Use allSettled to handle partial failures gracefully
+        const results = await Promise.allSettled(meterPromises);
+        const newMeterData: { [key: string]: MeterReading[] } = {};
+
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            const { meterId, readings } = result.value;
+            newMeterData[meterId] = readings;
+          } else {
+            console.error(`Failed to fetch meter ${selectedMeters[index]}:`, result.reason);
+          }
+        });
+
+        setMeterData(newMeterData);
+
+        // Fetch water temperature data
+        const waterResponse = await fetch(
+          `/api/water-temp?startDate=${format(timeRange.start, 'yyyy-MM-dd')}T00:00:00Z&endDate=${format(timeRange.end, 'yyyy-MM-dd')}T23:59:59Z`,
+          { signal: controller.signal }
         );
-        const data = await response.json();
-        return { meterId, readings: data.readings || [] };
-      });
+        const waterData = await waterResponse.json();
+        setWaterTempData(waterData.temperatures || []);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('Fetch aborted');
+          return;
+        }
+        console.error('Error fetching data:', error);
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
 
-      const results = await Promise.all(meterPromises);
-      const newMeterData: { [key: string]: MeterReading[] } = {};
-      results.forEach(({ meterId, readings }) => {
-        newMeterData[meterId] = readings;
-      });
-      setMeterData(newMeterData);
+    fetchData();
 
-      // Fetch water temperature data
-      const waterResponse = await fetch(
-        `/api/water-temp?startDate=${format(timeRange.start, 'yyyy-MM-dd')}T00:00:00Z&endDate=${format(timeRange.end, 'yyyy-MM-dd')}T23:59:59Z`
-      );
-      const waterData = await waterResponse.json();
-      setWaterTempData(waterData.temperatures || []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      controller.abort();
+    };
+  }, [timeRange, selectedMeters]);
 
   const handleMeterToggle = (meterId: string) => {
     setSelectedMeters((prev) =>
@@ -474,7 +504,12 @@ export default function Home() {
                   Categories Active
                 </h3>
                 <p className="text-3xl font-bold text-green-600">
-                  {new Set(selectedMeters.map((id) => METERS_CONFIG.find((m) => m.id === id)?.category)).size}
+                  {new Set(
+                    selectedMeters
+                      .map((id) => METERS_CONFIG.find((m) => m.id === id))
+                      .filter((m): m is MeterConfig => m !== undefined)
+                      .map((m) => m.category)
+                  ).size}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   utility types
