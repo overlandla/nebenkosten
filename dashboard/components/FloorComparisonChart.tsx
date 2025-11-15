@@ -2,25 +2,20 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format, parseISO } from 'date-fns';
-
-interface MeterReading {
-  timestamp: string;
-  value: number;
-}
-
-interface FloorMeter {
-  id: string;
-  name: string;
-  floor: string;
-  color: string;
-}
+import type { MeterReading, FloorMeter, ChartMeterData } from '@/types/meter';
 
 interface FloorComparisonChartProps {
-  data: { [meterId: string]: MeterReading[] };
+  data: ChartMeterData;
   meters: FloorMeter[];
   title?: string;
   unit: string;
   stacked?: boolean;
+}
+
+interface CombinedDataPoint {
+  timestamp: string;
+  formattedDate: string;
+  [meterId: string]: string | number;
 }
 
 export default function FloorComparisonChart({
@@ -31,7 +26,7 @@ export default function FloorComparisonChart({
   stacked = true,
 }: FloorComparisonChartProps) {
   // Combine all meter data into single timeline
-  const combinedData: { [timestamp: string]: any } = {};
+  const combinedData: { [timestamp: string]: CombinedDataPoint } = {};
 
   meters.forEach((meter) => {
     const meterData = data[meter.id] || [];

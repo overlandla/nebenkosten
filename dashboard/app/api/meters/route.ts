@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getInfluxClient, getInfluxConfig } from '@/lib/influxdb';
+import { getInfluxClient, getInfluxConfig, InfluxTableMeta } from '@/lib/influxdb';
 
 export async function GET(): Promise<NextResponse> {
   try {
@@ -22,10 +22,15 @@ export async function GET(): Promise<NextResponse> {
 
     return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
-        next(row: string[], tableMeta: any) {
-          const o = tableMeta.toObject(row);
-          if (o.meter_id) {
-            meters.push(o.meter_id);
+        next(row: string[], tableMeta: InfluxTableMeta) {
+          try {
+            const o = tableMeta.toObject(row);
+            if (o.meter_id && typeof o.meter_id === 'string') {
+              meters.push(o.meter_id);
+            }
+          } catch (error) {
+            console.error('Error processing meter row:', error);
+            // Continue processing other rows
           }
         },
         error(error: Error) {
