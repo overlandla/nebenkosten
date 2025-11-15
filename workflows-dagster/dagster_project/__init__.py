@@ -10,6 +10,7 @@ from .resources import InfluxDBResource, TibberResource, ConfigResource
 # Import assets
 from .assets import (
     tibber_consumption_raw,
+    water_temperature_raw,
     meter_discovery,
     fetch_meter_data,
     interpolated_meter_series,
@@ -21,16 +22,18 @@ from .assets import (
 )
 
 # Import jobs
-from .jobs import tibber_sync_job, analytics_job
+from .jobs import tibber_sync_job, water_temp_sync_job, analytics_job
 
 # Import schedules
-from .schedules import tibber_sync_schedule, analytics_schedule
+from .schedules import tibber_sync_schedule, water_temp_sync_schedule, analytics_schedule
 
 # Define the repository
 utility_repository = Definitions(
     assets=[
         # Tibber ingestion
         tibber_consumption_raw,
+        # Water temperature ingestion
+        water_temperature_raw,
         # Analytics pipeline
         meter_discovery,
         fetch_meter_data,
@@ -44,10 +47,12 @@ utility_repository = Definitions(
     ],
     jobs=[
         tibber_sync_job,
+        water_temp_sync_job,
         analytics_job
     ],
     schedules=[
         tibber_sync_schedule,
+        water_temp_sync_schedule,
         analytics_schedule
     ],
     resources={
