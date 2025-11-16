@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import type { PriceConfig, PriceConfigInput, UtilityType, Price ConfigUpdate } from '@/types/price';
+import type { PriceConfig, PriceConfigInput, UtilityType, PriceConfigUpdate } from '@/types/price';
 
 const UTILITY_LABELS: Record<UtilityType, { label: string; icon: string; defaultUnit: string }> = {
   electricity: { label: 'Electricity', icon: '⚡', defaultUnit: 'kWh' },
