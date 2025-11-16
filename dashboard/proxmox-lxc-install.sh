@@ -18,19 +18,46 @@
 #
 # Documentation: https://github.com/overlandla/nebenkosten/blob/main/dashboard/PROXMOX_INSTALLATION.md
 
-source /dev/stdin <<< "$FUNCTIONS_FILE_PATH"
-color
-verb_ip6
-catch_errors
-setting_up_container
-network_check
-update_os
+# Detect if running in Proxmox helper script environment or standalone
+if [ -n "$FUNCTIONS_FILE_PATH" ]; then
+    # Running as Proxmox helper script (fresh install from host)
+    source /dev/stdin <<< "$FUNCTIONS_FILE_PATH"
+    color
+    verb_ip6
+    catch_errors
+    setting_up_container
+    network_check
+    update_os
+else
+    # Running standalone (update inside existing LXC)
+    # Define minimal functions for standalone operation
+    set -e
+    BL="\033[36m"
+    GN="\033[1;92m"
+    CL="\033[m"
+    YW="\033[1;33m"
+    RD="\033[01;31m"
+
+    msg_info() { echo -e "${BL}[INFO]${CL} $1"; }
+    msg_ok() { echo -e "${GN}[OK]${CL} $1"; }
+    msg_error() { echo -e "${RD}[ERROR]${CL} $1"; }
+
+    # Update OS when running standalone
+    msg_info "Updating system packages"
+    apt-get update
+    apt-get -y upgrade
+    msg_ok "System packages updated"
+fi
+
+# Set $STD for quiet operation if not already set
+STD="${STD:--qq}"
 
 msg_info "Installing Dependencies"
 $STD apt-get install -y curl
 $STD apt-get install -y sudo
 $STD apt-get install -y mc
 $STD apt-get install -y git
+$STD apt-get install -y rsync
 msg_ok "Installed Dependencies"
 
 msg_info "Installing Node.js v20 LTS"
@@ -43,20 +70,55 @@ INSTALL_DIR="/opt/utility-meter-dashboard"
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
-# Clone the repository
-msg_info "Cloning repository"
-$STD git clone https://github.com/overlandla/nebenkosten.git temp-repo
-mv temp-repo/dashboard/* .
-mv temp-repo/dashboard/.* . 2>/dev/null || true
-rm -rf temp-repo
-msg_ok "Cloned repository"
+# Detect if this is an update or fresh install
+if [ -f "$INSTALL_DIR/package.json" ]; then
+    IS_UPDATE=true
+    msg_info "Existing installation detected - running update"
+
+    # Stop service if running
+    if systemctl is-active --quiet utility-dashboard.service; then
+        msg_info "Stopping service for update"
+        systemctl stop utility-dashboard.service
+    fi
+
+    # Backup existing configuration
+    if [ -f .env.local ]; then
+        msg_info "Backing up existing configuration"
+        cp .env.local .env.local.backup
+        msg_ok "Configuration backed up to .env.local.backup"
+    fi
+
+    # Pull latest changes
+    msg_info "Pulling latest code from repository"
+    REPO_DIR="$INSTALL_DIR/../nebenkosten-temp"
+    rm -rf "$REPO_DIR"
+    $STD git clone https://github.com/overlandla/nebenkosten.git "$REPO_DIR"
+
+    # Update files (preserve .env.local)
+    rsync -av --exclude='.env.local' --exclude='.env.local.backup' "$REPO_DIR/dashboard/" "$INSTALL_DIR/"
+    rm -rf "$REPO_DIR"
+    msg_ok "Code updated"
+else
+    IS_UPDATE=false
+    msg_info "Fresh installation detected"
+
+    # Clone the repository
+    msg_info "Cloning repository"
+    $STD git clone https://github.com/overlandla/nebenkosten.git temp-repo
+    mv temp-repo/dashboard/* .
+    mv temp-repo/dashboard/.* . 2>/dev/null || true
+    rm -rf temp-repo
+    msg_ok "Cloned repository"
+fi
 
 msg_info "Installing npm dependencies"
 $STD npm install
 msg_ok "Installed npm dependencies"
 
-msg_info "Creating environment configuration"
-cat <<EOF > .env.local
+# Only create .env.local if it doesn't exist (fresh install)
+if [ ! -f .env.local ]; then
+    msg_info "Creating environment configuration"
+    cat <<EOF > .env.local
 # InfluxDB Configuration
 INFLUX_URL=http://localhost:8086
 INFLUX_TOKEN=your_influx_token_here
@@ -68,7 +130,10 @@ INFLUX_BUCKET_PROCESSED=homeassistant_processed
 GAS_ENERGY_CONTENT=10.3
 GAS_Z_FACTOR=0.95
 EOF
-msg_ok "Created environment configuration"
+    msg_ok "Created environment configuration"
+else
+    msg_ok "Preserving existing configuration"
+fi
 
 msg_info "Building Next.js application"
 $STD npm run build
@@ -94,8 +159,17 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-systemctl enable -q --now utility-dashboard.service
-msg_ok "Created systemd service"
+systemctl daemon-reload
+systemctl enable utility-dashboard.service
+
+if [ "$IS_UPDATE" = true ]; then
+    msg_info "Restarting service after update"
+    systemctl start utility-dashboard.service
+else
+    msg_info "Starting service"
+    systemctl start utility-dashboard.service
+fi
+msg_ok "Service configured"
 
 msg_info "Checking service status"
 sleep 3
@@ -105,8 +179,15 @@ else
     msg_error "Service failed to start. Check logs with: journalctl -u utility-dashboard.service"
 fi
 
-motd_ssh
-customize
+if [ "$IS_UPDATE" != true ]; then
+    # Only run motd and customize if functions are available (Proxmox environment)
+    if command -v motd_ssh &> /dev/null; then
+        motd_ssh
+    fi
+    if command -v customize &> /dev/null; then
+        customize
+    fi
+fi
 
 msg_info "Cleaning up"
 $STD apt-get -y autoremove
@@ -118,7 +199,11 @@ curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/dashboa
 chmod +x /usr/local/bin/configure-dashboard
 msg_ok "Configuration wizard installed"
 
-msg_info "Utility Meter Dashboard Installation Complete"
+if [ "$IS_UPDATE" = true ]; then
+    msg_info "Utility Meter Dashboard Update Complete"
+else
+    msg_info "Utility Meter Dashboard Installation Complete"
+fi
 
 # Get the IP address
 IP_ADDR=$(hostname -I | awk '{print $1}')

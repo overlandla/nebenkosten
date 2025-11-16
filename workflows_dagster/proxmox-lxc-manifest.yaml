@@ -1,0 +1,84 @@
+---
+name: dagster-utility-workflows
+description: |
+  Dagster-based data orchestration platform for utility meter analysis.
+  Provides automated workflows for Tibber sync, analytics processing, and data quality checks.
+  Includes real-time monitoring and data lineage visualization.
+categories:
+  - monitoring
+  - data-orchestration
+  - utilities
+  - etl
+project_url: https://github.com/overlandla/nebenkosten
+logo_url: ""
+
+# Container specifications
+resources:
+  disk: 8
+  cpu: 2
+  ram: 4096
+
+# OS settings
+os: debian
+os_version: 12
+
+# Network
+port: 3000
+interface: vmbr0
+
+# Additional configuration
+privileged: false
+features:
+  - nesting=1
+
+# Environment variables that need to be configured
+env_vars:
+  - name: INFLUX_TOKEN
+    description: InfluxDB authentication token
+    default: ""
+    required: true
+
+  - name: INFLUX_ORG
+    description: InfluxDB organization name
+    default: ""
+    required: true
+
+  - name: INFLUX_URL
+    description: InfluxDB server URL
+    default: "http://192.168.1.75:8086"
+    required: false
+
+  - name: INFLUX_BUCKET_RAW
+    description: InfluxDB bucket for raw data
+    default: "lampfi"
+    required: false
+
+  - name: INFLUX_BUCKET_PROCESSED
+    description: InfluxDB bucket for processed data
+    default: "lampfi_processed"
+    required: false
+
+  - name: TIBBER_API_TOKEN
+    description: Tibber API token (optional - only for Tibber sync)
+    default: ""
+    required: false
+
+# Post-install instructions
+post_install_message: |
+  Dagster Utility Workflows has been installed successfully!
+
+  Next steps:
+  1. Configure InfluxDB connection in /opt/dagster-workflows/nebenkosten/secrets/influxdb.env
+  2. Optionally configure Tibber API in /opt/dagster-workflows/nebenkosten/secrets/tibber.env
+  3. Restart services: cd /opt/dagster-workflows/nebenkosten && docker compose -f docker-compose.dagster.yml restart
+  4. Access Dagster UI at: http://YOUR_LXC_IP:3000
+  5. Enable schedules in Dagster UI under Automation → Schedules
+
+  Service commands:
+  - Status: systemctl status dagster-workflows.service
+  - Container status: docker ps
+  - Logs: docker compose -f docker-compose.dagster.yml logs -f
+  - Restart: docker compose -f docker-compose.dagster.yml restart
+
+  Configuration wizard:
+  - Run: configure-dagster

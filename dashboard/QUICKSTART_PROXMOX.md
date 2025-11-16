@@ -51,6 +51,23 @@ http://YOUR_LXC_IP:3000
 
 That's it! 🎉
 
+## 🔄 Updating an Existing Installation
+
+The same script can be used to update an existing installation! Simply run it again:
+
+```bash
+bash -c "$(wget -qLO - https://raw.githubusercontent.com/overlandla/nebenkosten/main/dashboard/proxmox-lxc-install.sh)"
+```
+
+The script will automatically:
+- ✅ Detect the existing installation
+- ✅ Backup your `.env.local` configuration to `.env.local.backup`
+- ✅ Pull the latest code
+- ✅ Preserve all your settings
+- ✅ Rebuild and restart the service
+
+**Your configuration is safe - it will be preserved during updates!**
+
 ## 📊 What You Get
 
 - **Real-time charts** for all utility meters
@@ -138,8 +155,8 @@ systemctl restart utility-dashboard.service
 
 - **Custom port**: Edit `/etc/systemd/system/utility-dashboard.service` and change the `PORT` environment variable
 - **Reverse proxy**: Use Nginx or Caddy for HTTPS and custom domain
-- **Backups**: Backup `/opt/utility-meter-dashboard/.env.local` before updates
-- **Updates**: `cd /opt/utility-meter-dashboard && git pull && npm install && npm run build && systemctl restart utility-dashboard.service`
+- **Backups**: Configuration is automatically backed up during updates
+- **Updates**: Just re-run the install script - it will automatically detect and update the existing installation
 
 ---
 
