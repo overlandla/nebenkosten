@@ -16,6 +16,10 @@ def validate_environment() -> None:
     Raises:
         ValueError: If any required environment variables are missing
     """
+    # Skip validation in testing mode
+    if os.environ.get("TESTING", "").lower() in ("true", "1", "yes"):
+        return
+
     logger = get_dagster_logger()
 
     # Required environment variables

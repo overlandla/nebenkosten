@@ -13,10 +13,12 @@ from dagster import (
     sensor,
 )
 
+from ..jobs import analytics_job
+
 
 @run_failure_sensor(
     name="analytics_failure_sensor",
-    monitored_jobs=["analytics_job"],
+    monitored_jobs=[analytics_job],
     default_status=DefaultSensorStatus.RUNNING,
 )
 def analytics_failure_sensor(context: RunFailureSensorContext):

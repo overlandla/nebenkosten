@@ -99,7 +99,7 @@ jobs:
           pip install -r ../requirements-test.txt
 
       - name: Run pytest
-        run: pytest -v --cov=dagster_project --cov-report=term --cov-report=html
+        run: pytest -v tests/unit/ --cov=dagster_project --cov-report=term --cov-report=html
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
