@@ -1,0 +1,40 @@
+[Unit]
+Description=Dagster Daemon (schedules, sensors, run queue)
+Documentation=https://docs.dagster.io/
+After=network.target postgresql.service dagster-user-code.service
+Requires=postgresql.service
+Wants=dagster-user-code.service
+
+[Service]
+Type=simple
+User=dagster
+Group=dagster
+WorkingDirectory=/opt/dagster-workflows/nebenkosten
+Environment="DAGSTER_HOME=/opt/dagster-workflows/nebenkosten/workflows_dagster"
+Environment="PYTHONPATH=/opt/dagster-workflows/nebenkosten:/opt/dagster-workflows/nebenkosten/Nebenkosten/src"
+EnvironmentFile=/opt/dagster-workflows/nebenkosten/secrets/influxdb.env
+EnvironmentFile=-/opt/dagster-workflows/nebenkosten/secrets/tibber.env
+Environment="DAGSTER_POSTGRES_USER=dagster"
+Environment="DAGSTER_POSTGRES_PASSWORD=dagster"
+Environment="DAGSTER_POSTGRES_DB=dagster"
+Environment="DAGSTER_POSTGRES_HOST=localhost"
+Environment="DAGSTER_POSTGRES_PORT=5432"
+
+# Use virtual environment Python
+ExecStart=/opt/dagster-workflows/venv/bin/dagster-daemon run
+
+# Restart on failure
+Restart=on-failure
+RestartSec=10s
+
+# Resource limits
+MemoryMax=1G
+CPUQuota=100%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dagster-daemon
+
+[Install]
+WantedBy=multi-user.target

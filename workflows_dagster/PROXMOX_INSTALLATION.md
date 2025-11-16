@@ -12,11 +12,10 @@ On your Proxmox host, create a new LXC container:
 pct create <CTID> local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
   --hostname dagster-workflows \
   --cores 2 \
-  --memory 4096 \
+  --memory 2048 \
   --rootfs local-lvm:8 \
   --net0 name=eth0,bridge=vmbr0,ip=dhcp \
   --unprivileged 1 \
-  --features nesting=1 \
   --onboot 1
 
 pct start <CTID>
@@ -25,11 +24,11 @@ pct start <CTID>
 **Container Specifications:**
 - **OS**: Debian 12
 - **CPU**: 2 cores minimum
-- **RAM**: 4 GB
+- **RAM**: 2 GB (reduced from 4 GB - no Docker overhead)
 - **Disk**: 8 GB (16 GB recommended)
 - **Network**: DHCP on vmbr0
 - **Unprivileged**: Yes
-- **Nesting**: **REQUIRED** (for Docker)
+- **Nesting**: Not required (native systemd deployment)
 
 ### Step 2: Install Dagster
 
@@ -50,10 +49,10 @@ make install-dagster
 ```
 
 The installation will:
-- Install Docker and Docker Compose
-- Install system dependencies
+- Install PostgreSQL database (for Dagster state)
+- Install Dagster and system dependencies
 - Copy workflow files to `/opt/dagster-workflows/nebenkosten`
-- Start Docker containers via docker compose
+- Install and start systemd services for Dagster components
 
 ### Step 3: Configure Secrets
 
@@ -95,9 +94,11 @@ chmod 600 secrets/*.env
 ### Step 4: Restart Services
 
 ```bash
-cd /opt/dagster-workflows/nebenkosten
-docker compose down
-docker compose up -d
+# Restart Dagster services
+systemctl restart dagster-webserver
+systemctl restart dagster-daemon
+systemctl restart dagster-user-code
+systemctl restart postgresql
 ```
 
 ### Step 5: Access Dagster UI
@@ -126,54 +127,47 @@ make update-dagster
 
 This will:
 - Pull latest code from GitHub
-- Stop Docker containers
+- Stop systemd services gracefully
+- Backup your secrets and config directories (with timestamps)
 - Update files in `/opt/dagster-workflows/nebenkosten`
-- Rebuild and restart containers
+- Restart systemd services with latest code
 
 ## Service Management
 
-### Docker Compose Commands
+### Systemd Services
 
 ```bash
-cd /opt/dagster-workflows/nebenkosten
+# Start all Dagster services
+systemctl start dagster-webserver
+systemctl start dagster-daemon
+systemctl start dagster-user-code
+systemctl start postgresql
 
-# Start services
-docker compose up -d
-
-# Stop services
-docker compose down
+# Stop all services
+systemctl stop dagster-webserver
+systemctl stop dagster-daemon
+systemctl stop dagster-user-code
 
 # Restart services
-docker compose restart
+systemctl restart dagster-webserver
+systemctl restart dagster-daemon
+systemctl restart dagster-user-code
 
 # View logs (all services)
-docker compose logs -f
+journalctl -u dagster-webserver -f
+journalctl -u dagster-daemon -f
+journalctl -u dagster-user-code -f
 
-# View logs (specific service)
-docker compose logs -f dagster-webserver
-docker compose logs -f dagster-daemon
-docker compose logs -f dagster-user-code
+# Check service status
+systemctl status dagster-webserver
+systemctl status dagster-daemon
+systemctl status dagster-user-code
+systemctl status postgresql
 
-# Check status
-docker compose ps
-
-# Rebuild after changes
-docker compose up -d --build
-```
-
-### Individual Containers
-
-```bash
-# List containers
-docker ps
-
-# View logs
-docker logs dagster-webserver -f
-docker logs dagster-daemon -f
-docker logs dagster-user-code -f
-
-# Restart container
-docker restart dagster-webserver
+# Enable services to start on boot
+systemctl enable dagster-webserver
+systemctl enable dagster-daemon
+systemctl enable dagster-user-code
 ```
 
 ## Configuration
@@ -232,64 +226,66 @@ Access at `http://YOUR_LXC_IP:3000`
 ### Logs
 
 ```bash
-# Real-time logs (all services)
-cd /opt/dagster-workflows/nebenkosten
-docker compose logs -f
+# Real-time logs from services
+journalctl -u dagster-webserver -f
+journalctl -u dagster-daemon -f
+journalctl -u dagster-user-code -f
 
-# Logs from specific timeframe
-docker compose logs --since 1h
+# Logs from specific timeframe (last hour)
+journalctl -u dagster-webserver --since "1 hour ago"
 
 # Export logs
-docker compose logs > dagster-logs.txt
+journalctl -u dagster-webserver > dagster-webserver-logs.txt
+journalctl -u dagster-daemon > dagster-daemon-logs.txt
 ```
 
 ### Health Checks
 
 ```bash
-# Check all containers
-docker ps
+# Check service status
+systemctl status dagster-webserver
+systemctl status dagster-daemon
+systemctl status dagster-user-code
+systemctl status postgresql
 
 # Check Dagster webserver
 curl http://localhost:3000
 
 # Check PostgreSQL
-docker exec dagster-postgres pg_isready -U dagster
+pg_isready -U dagster
 ```
 
 ## Troubleshooting
 
 ### Services Not Starting
 
-Check Docker is running:
+Check service status:
 ```bash
-systemctl status docker
-systemctl start docker
+systemctl status dagster-webserver
+systemctl status dagster-daemon
+systemctl status dagster-user-code
 ```
 
-Check nesting is enabled (on Proxmox host):
+View detailed logs:
 ```bash
-pct config <CTID> | grep features
-# Should show: features: nesting=1
+journalctl -u dagster-webserver -n 50
+journalctl -u dagster-daemon -n 50
+journalctl -u dagster-user-code -n 50
 ```
 
-View logs:
+Restart services:
 ```bash
-cd /opt/dagster-workflows/nebenkosten
-docker compose logs
-```
-
-Rebuild containers:
-```bash
-docker compose down
-docker compose up -d --build
+systemctl restart dagster-webserver
+systemctl restart dagster-daemon
+systemctl restart dagster-user-code
 ```
 
 ### Can't Access Dagster UI
 
 Check webserver is running:
 ```bash
-docker ps | grep dagster-webserver
-docker logs dagster-webserver
+systemctl status dagster-webserver
+journalctl -u dagster-webserver -f
 ```
 
 Test locally:
@@ -306,12 +302,13 @@ curl http://YOUR_INFLUX_IP:8086/health
 
 Verify secrets are loaded:
 ```bash
-docker exec dagster-user-code env | grep INFLUX
+cat /opt/dagster-workflows/nebenkosten/secrets/influxdb.env
+env | grep INFLUX
 ```
 
 Check configuration:
 ```bash
-cat /opt/dagster-workflows/nebenkosten/secrets/influxdb.env
+cat /opt/dagster-workflows/nebenkosten/config/config.yaml
 ```
 
 ### Jobs Failing
@@ -342,14 +339,16 @@ cp dagster-backup-*.tar.gz ~/backups/
 ```bash
 cd /opt/dagster-workflows/nebenkosten
 tar -xzf dagster-backup-YYYYMMDD.tar.gz
-docker compose restart
+systemctl restart dagster-webserver
+systemctl restart dagster-daemon
+systemctl restart dagster-user-code
 ```
 
 ### Resource Monitoring
 
 ```bash
-# Container resource usage
-docker stats
+# Process resource usage
+ps aux --sort=-%mem | head -20
 
 # Memory usage
 free -h
@@ -359,19 +358,23 @@ df -h
 
 # System load
 top
+
+# Service resource usage
+systemctl status dagster-webserver
+systemctl status dagster-daemon
 ```
 
-### Clean Up Docker
+### PostgreSQL Maintenance
 
 ```bash
-# Remove unused images
-docker image prune -a
+# Check PostgreSQL status
+systemctl status postgresql
 
-# Remove unused volumes
-docker volume prune
+# Backup Dagster database
+sudo -u postgres pg_dump dagster > dagster-db-backup.sql
 
-# Complete cleanup
-docker system prune -a --volumes
+# Restore Dagster database
+sudo -u postgres psql dagster < dagster-db-backup.sql
 ```
 
 ## File Locations
@@ -380,16 +383,16 @@ docker system prune -a --volumes
 - **Secrets**: `/opt/dagster-workflows/nebenkosten/secrets/`
 - **Config**: `/opt/dagster-workflows/nebenkosten/config/`
 - **Repository**: `/root/nebenkosten/`
-- **Docker Compose**: `/opt/dagster-workflows/nebenkosten/docker-compose.yml`
+- **Systemd Services**: `/etc/systemd/system/dagster-*.service`
 
-## Docker Containers
+## Systemd Services
 
-The installation creates 4 containers:
+The installation creates 4 systemd services:
 
-- **dagster-postgres**: PostgreSQL database for Dagster
+- **postgresql**: PostgreSQL database for Dagster state management
 - **dagster-webserver**: Dagster UI (port 3000)
-- **dagster-daemon**: Schedules and sensors
-- **dagster-user-code**: Your workflow code
+- **dagster-daemon**: Schedules and sensor execution
+- **dagster-user-code**: Workflow code location server
 
 ## Security Recommendations
 
@@ -403,11 +406,17 @@ The installation creates 4 containers:
 2. **Secrets**: Never commit secrets to version control
    ```bash
    chmod 600 secrets/*.env
+   ls -la secrets/
    ```
 
 3. **InfluxDB Token**: Use minimal permissions (read raw, write processed)
 
-4. **Regular Updates**:
+4. **PostgreSQL**: Ensure tight access controls
+   ```bash
+   sudo -u postgres psql -c "ALTER USER dagster WITH ENCRYPTED PASSWORD 'strong-password';"
+   ```
+
+5. **Regular Updates**:
    ```bash
    apt-get update && apt-get upgrade -y
    ```

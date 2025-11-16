@@ -11,10 +11,10 @@ In Proxmox web interface:
 - **Template**: Debian 12 (download if needed)
 - **Disk**: 8 GB minimum
 - **CPU**: 2 cores
-- **RAM**: 4096 MB (4 GB)
+- **RAM**: 2048 MB (2 GB) - native systemd deployment requires less memory
 - **Network**: Default (bridge)
 - **Unprivileged container**: Yes (recommended)
-- **Features**: Enable "Nesting" (required for Docker)
+- **Features**: Nesting not required (native systemd deployment)
 
 ### 2. Start Container & Run Install Script
 
@@ -66,9 +66,8 @@ In the Dagster UI:
 Or enable via command line:
 
 ```bash
-cd /opt/dagster-workflows/nebenkosten
-docker exec dagster-daemon dagster schedule start analytics_daily
-docker exec dagster-daemon dagster schedule start tibber_sync_hourly
+dagster schedule start analytics_daily
+dagster schedule start tibber_sync_hourly
 ```
 
 ### 6. Trigger Your First Job (Optional)
@@ -83,8 +82,7 @@ Want to run analytics immediately?
 
 **Via CLI:**
 ```bash
-cd /opt/dagster-workflows/nebenkosten
-docker exec dagster-user-code dagster job execute -j analytics_processing
+dagster job execute -j analytics_processing
 ```
 
 That's it! 🎉
@@ -99,11 +97,11 @@ bash -c "$(wget -qLO - https://raw.githubusercontent.com/overlandla/nebenkosten/
 
 The script will automatically:
 - ✅ Detect the existing installation
-- ✅ Stop running containers gracefully
+- ✅ Stop running services gracefully
 - ✅ Backup your `secrets/` and `config/` directories with timestamps
 - ✅ Pull the latest code
 - ✅ Preserve all your settings
-- ✅ Rebuild Docker images and restart services
+- ✅ Restart systemd services with latest code
 
 **Your secrets and configuration are safe - they will be preserved during updates!**
 
@@ -123,30 +121,37 @@ Backups are created with timestamps like `secrets.backup.20241116_143022` for ea
 ## 🔧 Quick Commands
 
 ```bash
-# View all running containers
-docker ps
+# Check service status
+systemctl status dagster-webserver
+systemctl status dagster-daemon
+systemctl status dagster-user-code
+systemctl status postgresql
 
 # View live logs for all services
-cd /opt/dagster-workflows/nebenkosten
-docker compose -f docker-compose.dagster.yml logs -f
+journalctl -u dagster-webserver -f
+journalctl -u dagster-daemon -f
+journalctl -u dagster-user-code -f
 
 # View logs for specific service
-docker compose -f docker-compose.dagster.yml logs -f dagster-webserver
+journalctl -u dagster-webserver -f
 
 # Restart all services
-docker compose -f docker-compose.dagster.yml restart
+systemctl restart dagster-webserver
+systemctl restart dagster-daemon
+systemctl restart dagster-user-code
 
 # Stop all services
-docker compose -f docker-compose.dagster.yml down
+systemctl stop dagster-webserver
+systemctl stop dagster-daemon
+systemctl stop dagster-user-code
 
 # Start all services
-docker compose -f docker-compose.dagster.yml up -d
+systemctl start dagster-webserver
+systemctl start dagster-daemon
+systemctl start dagster-user-code
 
 # Reconfigure settings
 configure-dagster
-
-# Check service status
-systemctl status dagster-workflows.service
 ```
 
 ## 📋 Dagster UI Features
@@ -178,25 +183,28 @@ systemctl status dagster-workflows.service
 ### Services won't start
 
 ```bash
-# Check Docker is running
-systemctl status docker
+# Check service status
+systemctl status dagster-webserver
+systemctl status dagster-daemon
 
-# Check container logs
-cd /opt/dagster-workflows/nebenkosten
-docker compose -f docker-compose.dagster.yml logs
+# Check service logs
+journalctl -u dagster-webserver -n 50
+journalctl -u dagster-daemon -n 50
 
-# Rebuild containers
-docker compose -f docker-compose.dagster.yml up -d --build
+# Restart services
+systemctl restart dagster-webserver
+systemctl restart dagster-daemon
+systemctl restart dagster-user-code
 ```
 
 ### Can't access Dagster UI
 
 ```bash
 # Check if webserver is running
-docker ps | grep dagster-webserver
+systemctl status dagster-webserver
 
 # Check webserver logs
-docker logs dagster-webserver
+journalctl -u dagster-webserver -f
 
 # Verify port 3000 is accessible
 curl http://localhost:3000
@@ -233,9 +241,9 @@ curl http://localhost:3000
    - **Missing configuration**: Check `config/config.yaml` exists
    - **Permission issues**: Ensure secrets files are readable
 
-3. View container logs:
+3. View service logs:
    ```bash
-   docker compose -f docker-compose.dagster.yml logs dagster-user-code
+   journalctl -u dagster-user-code -f
    ```
 
 ## 📦 Container Specs
@@ -245,7 +253,7 @@ curl http://localhost:3000
 | OS       | Debian 12 |
 | Disk     | 8 GB |
 | CPU      | 2 cores |
-| RAM      | 4 GB |
+| RAM      | 2 GB (native systemd deployment, no Docker overhead) |
 | Port     | 3000 (Dagster UI) |
 
 ## 💡 Pro Tips
@@ -268,7 +276,12 @@ curl http://localhost:3000
 
 3. **Read-only tokens**: Use minimal InfluxDB permissions needed
 
-4. **Regular updates**: Keep Docker and system packages updated
+4. **PostgreSQL**: Use strong passwords and limit access
+   ```bash
+   sudo -u postgres psql -c "ALTER USER dagster WITH ENCRYPTED PASSWORD 'strong-password';"
+   ```
+
+5. **Regular updates**: Keep system packages updated
    ```bash
    apt-get update && apt-get upgrade -y
    ```

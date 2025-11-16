@@ -31,7 +31,7 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
   TEMPLATE="debian-12-standard_12.7-1_amd64.tar.zst"
   HOSTNAME="dagster-workflows"
   CORES="2"
-  MEMORY="4096"
+  MEMORY="2048"  # Reduced from 4GB - no Docker overhead
   DISK="8"
 
   # Download template if needed
@@ -49,7 +49,6 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
     --rootfs $STORAGE:$DISK \
     --net0 name=eth0,bridge=vmbr0,ip=dhcp \
     --unprivileged 1 \
-    --features nesting=1 \
     --onboot 0
 
   # Start container
