@@ -56,10 +56,31 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
 ## Created using https://github.com/overlandla/nebenkosten
 \""
 
-  # Override default_install to use our custom install script
-  function default_install() {
+  # Override build_container to use framework creation with our custom install
+  function build_container() {
+    # Use framework's container creation
+    bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/create_lxc.sh)"
+
+    # Framework handles starting and network check automatically
+    msg_info "Starting LXC Container"
+    pct start "$CTID"
+    msg_ok "Started LXC Container"
+
+    msg_info "Waiting for LXC network to be reachable"
+    pct exec "$CTID" -- bash -c "for i in {1..30}; do ping -c1 1.1.1.1 &>/dev/null && break; sleep 1; done"
+    msg_ok "Network in LXC is reachable (ping)"
+
+    # Set up locale and install base packages
+    msg_info "Setting up Container OS"
+    pct exec "$CTID" -- bash -c "
+      apt-get update &>/dev/null
+      apt-get install -y curl sudo mc &>/dev/null
+    "
+    msg_ok "Set up Container OS"
+
+    # Run our custom install script
     msg_info "Installing ${APP}"
-    bash <(curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflows_dagster/install/dagster-workflows-install.sh)
+    pct exec "$CTID" -- bash <(curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflows_dagster/install/dagster-workflows-install.sh)
     msg_ok "Installed ${APP}"
   }
 
