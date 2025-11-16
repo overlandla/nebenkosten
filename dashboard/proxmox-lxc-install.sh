@@ -58,7 +58,11 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
 
   # Wait for network
   echo "Waiting for network..."
-  sleep 5
+  sleep 10
+
+  # Install base packages
+  echo "Installing base packages (curl, etc)..."
+  pct exec $CTID -- bash -c "apt-get update -qq && apt-get install -y -qq curl sudo"
 
   # Install
   echo "Running installation..."
@@ -70,7 +74,10 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
   echo ""
   echo "✓ Installation complete!"
   echo "  Container ID: $CTID"
-  echo "  Access at: http://${IP}:3000"
+  echo "  IP Address: $IP"
+  echo "  Dashboard: http://${IP}:3000"
+  echo ""
+  echo "To access container shell: pct enter $CTID"
   echo ""
 
   exit 0
