@@ -66,34 +66,29 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
       DISK_PARAM="${STORAGE}:0"
     fi
 
-    # Temporarily disable error trap for pct create command
-    # Save current trap and disable it
-    OLD_TRAP=$(trap -p ERR)
-    trap - ERR
-    set +eE
-
-    pct create $CTID $TEMPLATE_STOR \
-      -arch $(dpkg --print-architecture) \
-      -cmode shell \
-      -cores $CORE_COUNT \
-      -description "# ${APP} LXC
+    # Run pct create in a subshell to isolate from error trap
+    (
+      set +eE
+      trap - ERR
+      pct create $CTID $TEMPLATE_STOR \
+        -arch $(dpkg --print-architecture) \
+        -cmode shell \
+        -cores $CORE_COUNT \
+        -description "# ${APP} LXC
 ## Created using https://github.com/overlandla/nebenkosten
 " \
-      -features $FEATURES \
-      -hostname $NSAPP \
-      -memory $RAM_SIZE \
-      -net0 name=eth0,bridge=$BRG,ip=$NET \
-      -onboot $START_ON_BOOT \
-      -ostype debian \
-      -rootfs $DISK_PARAM \
-      -swap $SWAP_SIZE \
-      -tags proxmox \
-      -unprivileged $UNPRIV
+        -features $FEATURES \
+        -hostname $NSAPP \
+        -memory $RAM_SIZE \
+        -net0 name=eth0,bridge=$BRG,ip=$NET \
+        -onboot $START_ON_BOOT \
+        -ostype debian \
+        -rootfs $DISK_PARAM \
+        -swap $SWAP_SIZE \
+        -tags proxmox \
+        -unprivileged $UNPRIV
+    )
     PCT_CREATE_EXIT=$?
-
-    # Restore error trap
-    set -e
-    eval "$OLD_TRAP"
 
     if [ $PCT_CREATE_EXIT -ne 0 ]; then
       msg_error "Failed to create LXC container (exit code: $PCT_CREATE_EXIT)"
