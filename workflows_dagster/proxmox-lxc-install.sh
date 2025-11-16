@@ -59,10 +59,11 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
 
   # Override build_container to use framework creation with our custom install
   function build_container() {
-    # Use framework's container creation
-    bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/create_lxc.sh)"
+    # Source (not execute in subshell) the framework's container creation script
+    # This preserves variables like CTID in the current shell
+    source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/create_lxc.sh)
 
-    # Framework handles starting and network check automatically
+    # Now CTID is set, continue with setup
     msg_info "Starting LXC Container"
     pct start "$CTID"
     msg_ok "Started LXC Container"
