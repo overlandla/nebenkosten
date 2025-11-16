@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format, parseISO, getYear, getMonth } from 'date-fns';
+import useMediaQuery from '@/hooks/useMediaQuery';
 
 interface MeterReading {
   timestamp: string;
@@ -23,6 +24,8 @@ export default function YearOverYearChart({
   unit,
   title,
 }: YearOverYearChartProps) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
   // Group data by year and month
   const yearlyData: { [year: number]: { [month: number]: number } } = {};
 
@@ -79,13 +82,15 @@ export default function YearOverYearChart({
     };
   });
 
+  const chartHeight = isMobile ? 300 : 400;
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-900">
           {title || `Year-over-Year Comparison: ${meterName}`}
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
           {yearTotals.map(({ year, avg, color }) => (
             <div key={year} className="bg-gray-50 rounded p-3 border-l-4" style={{ borderColor: color }}>
               <p className="text-xs text-gray-600">Year {year}</p>
@@ -97,7 +102,7 @@ export default function YearOverYearChart({
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={400}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="month" stroke="#6b7280" />

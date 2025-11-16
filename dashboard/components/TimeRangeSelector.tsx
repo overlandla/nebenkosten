@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { subDays, subMonths, subYears, format } from 'date-fns';
+import useMediaQuery from '@/hooks/useMediaQuery';
 
 export interface TimeRange {
   start: Date;
@@ -25,6 +26,7 @@ const PRESET_RANGES = [
 ];
 
 export default function TimeRangeSelector({ onRangeChange, className = '' }: TimeRangeSelectorProps) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
   const [selectedPreset, setSelectedPreset] = useState('Last 3 Months');
   const [customMode, setCustomMode] = useState(false);
   const [customStart, setCustomStart] = useState(format(subMonths(new Date(), 3), 'yyyy-MM-dd'));
@@ -81,12 +83,13 @@ export default function TimeRangeSelector({ onRangeChange, className = '' }: Tim
       </div>
 
       {customMode && (
-        <div className="flex items-end gap-4 p-4 bg-gray-50 rounded-md">
+        <div className={`p-4 bg-gray-50 rounded-md ${isMobile ? 'space-y-4' : 'flex items-end gap-4'}`}>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="custom-start-date" className="block text-sm font-medium text-gray-700 mb-1">
               Start Date
             </label>
             <input
+              id="custom-start-date"
               type="date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
@@ -94,10 +97,11 @@ export default function TimeRangeSelector({ onRangeChange, className = '' }: Tim
             />
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="custom-end-date" className="block text-sm font-medium text-gray-700 mb-1">
               End Date
             </label>
             <input
+              id="custom-end-date"
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
@@ -106,7 +110,7 @@ export default function TimeRangeSelector({ onRangeChange, className = '' }: Tim
           </div>
           <button
             onClick={handleCustomApply}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className={`px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${isMobile ? 'w-full' : ''}`}
           >
             Apply
           </button>

@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
+import useMediaQuery from '@/hooks/useMediaQuery';
 
 interface MeterReading {
   timestamp: string;
@@ -23,6 +24,8 @@ export default function MeterReadingsChart({
   unit,
   title,
 }: MeterReadingsChartProps) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
   // Combine raw and interpolated data
   const combinedData = new Map<string, any>();
 
@@ -50,10 +53,14 @@ export default function MeterReadingsChart({
 
   const displayTitle = title || `${meterId.replace(/_/g, ' ').toUpperCase()} - Readings`;
 
+  const chartHeight = isMobile ? 300 : 400;
+  const xAxisAngle = isMobile ? -90 : -45;
+  const xAxisHeight = isMobile ? 100 : 80;
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{displayTitle}</h3>
-      <ResponsiveContainer width="100%" height={400}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis

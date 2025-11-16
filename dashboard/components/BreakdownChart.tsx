@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { format } from 'date-fns';
+import useMediaQuery from '@/hooks/useMediaQuery';
 
 interface ComponentData {
   [key: string]: number;
@@ -42,6 +43,8 @@ export default function BreakdownChart({
   components,
   showTotal = true,
 }: BreakdownChartProps) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
   const chartData = data
     .map((item) => ({
       ...item,
@@ -50,18 +53,23 @@ export default function BreakdownChart({
     }))
     .sort((a, b) => a.timestamp - b.timestamp);
 
+  const chartHeight = isMobile ? 300 : 400;
+  const xAxisAngle = isMobile ? -90 : -45;
+  const xAxisHeight = isMobile ? 100 : 80;
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      <ResponsiveContainer width="100%" height={450}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
             dataKey="formattedDate"
             stroke="#6b7280"
-            angle={-45}
+            angle={xAxisAngle}
             textAnchor="end"
-            height={80}
+            height={xAxisHeight}
+            style={{ fontSize: isMobile ? '12px' : '14px' }}
           />
           <YAxis
             stroke="#6b7280"

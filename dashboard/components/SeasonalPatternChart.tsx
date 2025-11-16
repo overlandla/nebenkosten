@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { format, parseISO } from 'date-fns';
+import useMediaQuery from '@/hooks/useMediaQuery';
 
 interface MeterReading {
   timestamp: string;
@@ -19,6 +20,8 @@ export default function SeasonalPatternChart({
   meters,
   title = 'Seasonal Consumption Patterns',
 }: SeasonalPatternChartProps) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
   // Combine all meter data into single timeline
   const combinedData: { [timestamp: string]: any } = {};
 
@@ -56,11 +59,15 @@ export default function SeasonalPatternChart({
     return { meter, total, avg };
   });
 
+  const chartHeight = isMobile ? 300 : 400;
+  const xAxisAngle = isMobile ? -90 : -45;
+  const xAxisHeight = isMobile ? 100 : 80;
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-3">
           {totals.map(({ meter, avg }) => (
             <div key={meter.id} className="bg-gray-50 rounded p-3">
               <p className="text-xs text-gray-600">{meter.name}</p>
@@ -72,15 +79,16 @@ export default function SeasonalPatternChart({
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={400}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
             dataKey="formattedDate"
             stroke="#6b7280"
-            angle={-45}
+            angle={xAxisAngle}
             textAnchor="end"
-            height={80}
+            height={xAxisHeight}
+            style={{ fontSize: isMobile ? '12px' : '14px' }}
           />
           <YAxis
             stroke="#6b7280"
@@ -115,7 +123,7 @@ export default function SeasonalPatternChart({
       </ResponsiveContainer>
 
       {/* Season Indicators */}
-      <div className="mt-4 flex items-center justify-center gap-6 text-sm">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-4 md:gap-6 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-green-200 rounded"></div>
           <span className="text-gray-600">Spring (Mar-May)</span>
