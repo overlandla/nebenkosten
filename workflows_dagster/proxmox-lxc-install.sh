@@ -8,15 +8,95 @@
 # Source: https://github.com/overlandla/nebenkosten/tree/main/workflows_dagster
 # This script installs the Dagster Utility Analysis Workflows as a Proxmox LXC container
 #
-# name: dagster-utility-workflows
-# var_disk: 8
-# var_cpu: 2
-# var_ram: 4096
-# var_os: debian
-# var_version: 12
-# var_unprivileged: 1
+# Usage:
+#   - Run on Proxmox host: Creates LXC and installs Dagster workflows
+#   - Run inside LXC: Updates existing installation
 #
 # Documentation: https://github.com/overlandla/nebenkosten/blob/main/workflows_dagster/PROXMOX_INSTALLATION.md
+
+# Detect if we're running on Proxmox host (not inside container)
+if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv ]; then
+  # Running on Proxmox host - create LXC container
+  source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
+
+  # Application metadata
+  APP="Dagster Workflows"
+  var_tags="automation;data;dagster;docker"
+  var_cpu="2"
+  var_ram="4096"
+  var_disk="8"
+  var_os="debian"
+  var_version="12"
+  var_unprivileged="1"
+
+  # Initialize Proxmox build environment
+  header_info "$APP"
+  variables
+  color
+  catch_errors
+
+  # Update function - runs when script is executed inside existing LXC
+  function update_script() {
+    header_info
+    check_container_storage
+    check_container_resources
+
+    if [[ ! -d /opt/dagster-workflows/nebenkosten/.git ]]; then
+      msg_error "No ${APP} Installation Found!"
+      exit
+    fi
+
+    msg_info "Stopping services"
+    systemctl stop dagster-workflows.service 2>/dev/null || true
+    cd /opt/dagster-workflows/nebenkosten
+    $STD docker compose -f docker-compose.dagster.yml down
+    msg_ok "Stopped services"
+
+    if [ -d /opt/dagster-workflows/nebenkosten/secrets ]; then
+      msg_info "Backing up secrets"
+      cp -r /opt/dagster-workflows/nebenkosten/secrets /opt/dagster-workflows/nebenkosten/secrets.backup.$(date +%Y%m%d_%H%M%S)
+      msg_ok "Secrets backed up"
+    fi
+    if [ -d /opt/dagster-workflows/nebenkosten/config ]; then
+      msg_info "Backing up config"
+      cp -r /opt/dagster-workflows/nebenkosten/config /opt/dagster-workflows/nebenkosten/config.backup.$(date +%Y%m%d_%H%M%S)
+      msg_ok "Config backed up"
+    fi
+
+    msg_info "Updating ${APP}"
+    cd /opt/dagster-workflows/nebenkosten
+    $STD git fetch origin
+    $STD git reset --hard origin/main
+    msg_ok "Updated ${APP}"
+
+    msg_info "Rebuilding Docker images"
+    $STD docker compose -f docker-compose.dagster.yml build
+    msg_ok "Rebuilt Docker images"
+
+    msg_info "Starting services"
+    docker compose -f docker-compose.dagster.yml up -d
+    msg_ok "Started services"
+
+    msg_ok "Updated Successfully!\n"
+    exit
+  }
+
+  # Build the container (this creates LXC and runs install portion inside it)
+  start
+  build_container
+  description
+
+  # Show completion message
+  msg_ok "Completed Successfully!\n"
+  echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
+  echo -e "${INFO}${YW} Access it using the following URL:${CL}"
+  echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3000${CL}"
+  exit 0
+fi
+
+# ============================================================================
+# INSTALLATION CODE (Runs inside LXC)
+# ============================================================================
 
 # Detect if running in Proxmox helper script environment or standalone
 if [ -n "$FUNCTIONS_FILE_PATH" ]; then
@@ -42,7 +122,52 @@ else
     msg_ok() { echo -e "${GN}[OK]${CL} $1"; }
     msg_error() { echo -e "${RD}[ERROR]${CL} $1"; }
 
-    # Update OS when running standalone
+    # Check if this is an update
+    if [ -d /opt/dagster-workflows/nebenkosten/.git ]; then
+      # Existing installation found - run update
+      msg_info "Existing installation detected - running update"
+
+      msg_info "Stopping services"
+      systemctl stop dagster-workflows.service 2>/dev/null || true
+      cd /opt/dagster-workflows/nebenkosten
+      docker compose -f docker-compose.dagster.yml down 2>/dev/null || true
+      msg_ok "Stopped services"
+
+      if [ -d /opt/dagster-workflows/nebenkosten/secrets ]; then
+        msg_info "Backing up secrets"
+        cp -r /opt/dagster-workflows/nebenkosten/secrets /opt/dagster-workflows/nebenkosten/secrets.backup.$(date +%Y%m%d_%H%M%S)
+        msg_ok "Secrets backed up"
+      fi
+      if [ -d /opt/dagster-workflows/nebenkosten/config ]; then
+        msg_info "Backing up config"
+        cp -r /opt/dagster-workflows/nebenkosten/config /opt/dagster-workflows/nebenkosten/config.backup.$(date +%Y%m%d_%H%M%S)
+        msg_ok "Config backed up"
+      fi
+
+      msg_info "Updating code"
+      cd /opt/dagster-workflows/nebenkosten
+      git fetch origin
+      git reset --hard origin/main
+      msg_ok "Updated code"
+
+      msg_info "Rebuilding Docker images"
+      docker compose -f docker-compose.dagster.yml build
+      msg_ok "Rebuilt Docker images"
+
+      msg_info "Starting services"
+      docker compose -f docker-compose.dagster.yml up -d
+      msg_ok "Started services"
+
+      echo -e "\n${GN}╔════════════════════════════════════════════════════════════╗${CL}"
+      echo -e "${GN}║  Dagster Workflows - Update Complete!                     ║${CL}"
+      echo -e "${GN}╚════════════════════════════════════════════════════════════╝${CL}\n"
+
+      IP_ADDR=$(hostname -I | awk '{print $1}')
+      echo -e "${BL}Dagster UI:${CL} ${GN}http://$IP_ADDR:3000${CL}\n"
+      exit 0
+    fi
+
+    # Fresh install - continue with normal installation
     msg_info "Updating system packages"
     apt-get update
     apt-get -y upgrade
@@ -89,55 +214,15 @@ REPO_DIR="$INSTALL_DIR/nebenkosten"
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
-# Detect if this is an update or fresh install
-if [ -d "$REPO_DIR/.git" ]; then
-    IS_UPDATE=true
-    msg_info "Existing installation detected - running update"
+# Clone the repository (fresh installation)
+msg_info "Cloning repository"
+$STD git clone https://github.com/overlandla/nebenkosten.git
+cd nebenkosten
+msg_ok "Cloned repository"
 
-    # Stop services if running
-    if systemctl is-active --quiet dagster-workflows.service; then
-        msg_info "Stopping services for update"
-        systemctl stop dagster-workflows.service
-        cd "$REPO_DIR"
-        docker compose -f docker-compose.dagster.yml down
-    fi
-
-    # Backup existing configuration
-    if [ -d "$REPO_DIR/secrets" ]; then
-        msg_info "Backing up existing secrets"
-        cp -r "$REPO_DIR/secrets" "$REPO_DIR/secrets.backup.$(date +%Y%m%d_%H%M%S)"
-        msg_ok "Secrets backed up"
-    fi
-    if [ -d "$REPO_DIR/config" ]; then
-        msg_info "Backing up existing config"
-        cp -r "$REPO_DIR/config" "$REPO_DIR/config.backup.$(date +%Y%m%d_%H%M%S)"
-        msg_ok "Config backed up"
-    fi
-
-    # Pull latest changes
-    msg_info "Pulling latest code from repository"
-    cd "$REPO_DIR"
-    $STD git fetch origin
-    $STD git reset --hard origin/main
-    msg_ok "Code updated"
-else
-    IS_UPDATE=false
-    msg_info "Fresh installation detected"
-
-    # Clone the repository
-    msg_info "Cloning repository"
-    $STD git clone https://github.com/overlandla/nebenkosten.git
-    cd nebenkosten
-    msg_ok "Cloned repository"
-fi
-
-cd "$REPO_DIR"
-
-# Only create secrets if they don't exist (fresh install or if missing)
-if [ ! -f secrets/influxdb.env ]; then
-    msg_info "Creating secrets directory"
-    mkdir -p secrets
-    cat <<EOF > secrets/influxdb.env
+msg_info "Creating secrets directory"
+mkdir -p secrets
+cat <<EOF > secrets/influxdb.env
 # InfluxDB Configuration
 # Edit this file with your actual values
 
@@ -154,16 +239,11 @@ INFLUX_ORG=your-org-name
 # INFLUX_BUCKET_RAW=lampfi
 # INFLUX_BUCKET_PROCESSED=lampfi_processed
 EOF
-    chmod 600 secrets/influxdb.env
-    msg_ok "Created influxdb.env"
-else
-    msg_ok "Preserving existing InfluxDB configuration"
-fi
+chmod 600 secrets/influxdb.env
+msg_ok "Created influxdb.env"
 
-if [ ! -f secrets/tibber.env ]; then
-    msg_info "Creating Tibber secrets file"
-    mkdir -p secrets
-    cat <<EOF > secrets/tibber.env
+msg_info "Creating Tibber secrets file"
+cat <<EOF > secrets/tibber.env
 # Tibber API Configuration
 # Edit this file with your actual values (optional - only needed for Tibber sync)
 
@@ -173,17 +253,12 @@ TIBBER_API_TOKEN=your-tibber-api-token-here
 # Optional: Tibber API URL (override default)
 # TIBBER_API_URL=https://api.tibber.com/v1-beta/gql
 EOF
-    chmod 600 secrets/tibber.env
-    msg_ok "Created tibber.env"
-else
-    msg_ok "Preserving existing Tibber configuration"
-fi
+chmod 600 secrets/tibber.env
+msg_ok "Created tibber.env"
 
-# Only create config if it doesn't exist
-if [ ! -f config/config.yaml ]; then
-    msg_info "Creating config directory with defaults"
-    mkdir -p config
-    cat <<EOF > config/config.yaml
+msg_info "Creating config directory with defaults"
+mkdir -p config
+cat <<EOF > config/config.yaml
 # Configuration will be generated on first run
 # Or you can add your custom configuration here
 influx:
@@ -193,10 +268,7 @@ influx:
   timeout: 30000
   retry_attempts: 3
 EOF
-    msg_ok "Created config directory"
-else
-    msg_ok "Preserving existing config"
-fi
+msg_ok "Created config directory"
 
 msg_info "Building Docker images (this may take a few minutes)"
 $STD docker compose -f docker-compose.dagster.yml build
@@ -224,12 +296,7 @@ EOF
 
 systemctl daemon-reload
 systemctl enable dagster-workflows.service
-
-if [ "$IS_UPDATE" = true ]; then
-    msg_info "Restarting Dagster services after update"
-else
-    msg_info "Starting Dagster services"
-fi
+msg_info "Starting Dagster services"
 cd "$REPO_DIR"
 docker compose -f docker-compose.dagster.yml up -d
 msg_ok "Dagster services started"
@@ -249,26 +316,18 @@ curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflo
 chmod +x /usr/local/bin/configure-dagster
 msg_ok "Configuration wizard installed"
 
-if [ "$IS_UPDATE" != true ]; then
-    # Only run motd and customize if functions are available (Proxmox environment)
-    if command -v motd_ssh &> /dev/null; then
-        motd_ssh
-    fi
-    if command -v customize &> /dev/null; then
-        customize
-    fi
+# Only run motd and customize if functions are available (Proxmox environment)
+if command -v motd_ssh &> /dev/null; then
+    motd_ssh
+fi
+if command -v customize &> /dev/null; then
+    customize
 fi
 
 msg_info "Cleaning up"
 $STD apt-get -y autoremove
 $STD apt-get -y autoclean
 msg_ok "Cleaned"
-
-if [ "$IS_UPDATE" = true ]; then
-    msg_info "Dagster Utility Workflows Update Complete"
-else
-    msg_info "Dagster Utility Workflows Installation Complete"
-fi
 
 # Get the IP address
 IP_ADDR=$(hostname -I | awk '{print $1}')
