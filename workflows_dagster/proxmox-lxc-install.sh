@@ -66,6 +66,8 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
       DISK_PARAM="${STORAGE}:0"
     fi
 
+    # Temporarily disable error trap for pct create command
+    set +e
     pct create $CTID $TEMPLATE_STOR \
       -arch $(dpkg --print-architecture) \
       -cmode shell \
@@ -83,6 +85,13 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
       -swap $SWAP_SIZE \
       -tags proxmox \
       -unprivileged $UNPRIV
+    PCT_CREATE_EXIT=$?
+    set -e
+
+    if [ $PCT_CREATE_EXIT -ne 0 ]; then
+      msg_error "Failed to create LXC container (exit code: $PCT_CREATE_EXIT)"
+      exit $PCT_CREATE_EXIT
+    fi
     msg_ok "LXC Container $CTID was successfully created"
 
     msg_info "Starting LXC Container"
