@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import useMediaQuery from '@/hooks/useMediaQuery';
 import TimeRangeSelector, { TimeRange } from '@/components/TimeRangeSelector';
 import CostBreakdownChart from '@/components/CostBreakdownChart';
 import CostAllocationTable from '@/components/CostAllocationTable';
@@ -19,6 +20,8 @@ interface CostData {
 }
 
 export default function CostsPage() {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
   const [timeRange, setTimeRange] = useState<TimeRange>({
     start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
     end: new Date(),
@@ -104,16 +107,16 @@ export default function CostsPage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Cost Analysis & Billing</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Cost Analysis & Billing</h1>
               <p className="mt-1 text-sm text-gray-600">
                 Detailed cost breakdown and household allocation
               </p>
             </div>
             <Link
               href="/"
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-center"
             >
               ← Back to Dashboard
             </Link>
@@ -135,7 +138,7 @@ export default function CostsPage() {
         ) : (
           <div className="space-y-8">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Total Costs</h3>
                 <p className="text-3xl font-bold text-gray-900">€{grandTotal.toFixed(2)}</p>
