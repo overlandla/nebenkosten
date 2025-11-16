@@ -10,12 +10,16 @@ import {
   validateCostAllocation,
   getHouseholdMeters,
 } from '@/types/household';
+import PriceManagement from '@/components/PriceManagement';
 
 const STORAGE_KEY = 'household_config';
+
+type TabType = 'households' | 'prices';
 
 export default function SettingsPage() {
   const isMobile = useMediaQuery('(max-width: 640px)');
 
+  const [activeTab, setActiveTab] = useState<TabType>('households');
   const [config, setConfig] = useState<HouseholdConfig>(DEFAULT_HOUSEHOLD_CONFIG);
   const [selectedHousehold, setSelectedHousehold] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -42,16 +46,36 @@ export default function SettingsPage() {
     }
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
     try {
       const updatedConfig = {
         ...config,
         lastUpdated: new Date().toISOString(),
       };
+
+      // Save to localStorage
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedConfig));
+
+      // Also save to InfluxDB
+      try {
+        const response = await fetch('/api/household-config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedConfig),
+        });
+
+        if (response.ok) {
+          setSaveMessage('✓ Configuration saved to localStorage and InfluxDB!');
+        } else {
+          setSaveMessage('✓ Configuration saved to localStorage (InfluxDB sync failed)');
+        }
+      } catch (apiError) {
+        console.error('InfluxDB sync error:', apiError);
+        setSaveMessage('✓ Configuration saved to localStorage (InfluxDB sync failed)');
+      }
+
       setConfig(updatedConfig);
-      setSaveMessage('✓ Configuration saved successfully!');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (error) {
       setSaveMessage('✗ Failed to save configuration');
@@ -170,8 +194,37 @@ export default function SettingsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Action Buttons */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 mb-8">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setActiveTab('households')}
+              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                activeTab === 'households'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🏠 Households & Allocation
+            </button>
+            <button
+              onClick={() => setActiveTab('prices')}
+              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                activeTab === 'prices'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              💰 Price Management
+            </button>
+          </div>
+        </div>
+
+        {/* Household Configuration Tab */}
+        {activeTab === 'households' && (
+          <>
+            {/* Action Buttons */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex flex-wrap gap-3">
             <button
               onClick={handleSave}
@@ -461,6 +514,13 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+          </>
+        )}
+
+        {/* Price Management Tab */}
+        {activeTab === 'prices' && (
+          <PriceManagement />
+        )}
       </main>
     </div>
   );

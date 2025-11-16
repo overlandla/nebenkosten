@@ -52,11 +52,48 @@ export class MockQueryApi {
   }
 }
 
+export class MockWriteApi {
+  private points: any[] = [];
+  private shouldError: boolean = false;
+  private errorMessage: string = 'Mock write error';
+
+  writePoint(point: any): void {
+    if (this.shouldError) {
+      throw new Error(this.errorMessage);
+    }
+    this.points.push(point);
+  }
+
+  async close(): Promise<void> {
+    if (this.shouldError) {
+      throw new Error(this.errorMessage);
+    }
+    return Promise.resolve();
+  }
+
+  setShouldError(shouldError: boolean, message?: string): void {
+    this.shouldError = shouldError;
+    if (message) {
+      this.errorMessage = message;
+    }
+  }
+
+  getWrittenPoints(): any[] {
+    return this.points;
+  }
+
+  clearPoints(): void {
+    this.points = [];
+  }
+}
+
 export class MockInfluxDB {
   private queryApi: MockQueryApi;
+  private writeApi: MockWriteApi;
 
   constructor() {
     this.queryApi = new MockQueryApi();
+    this.writeApi = new MockWriteApi();
   }
 
   getQueryApi(org: string): MockQueryApi {
@@ -65,6 +102,14 @@ export class MockInfluxDB {
 
   getMockQueryApi(): MockQueryApi {
     return this.queryApi;
+  }
+
+  getWriteApi(org: string, bucket: string, precision?: string): MockWriteApi {
+    return this.writeApi;
+  }
+
+  getMockWriteApi(): MockWriteApi {
+    return this.writeApi;
   }
 }
 
