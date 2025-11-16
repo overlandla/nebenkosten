@@ -5,9 +5,14 @@ Monitors anomaly detection results and alerts on significant findings
 
 import logging
 
-from dagster import (AssetMaterialization, DagsterEventType,
-                     DefaultSensorStatus, RunRequest, SensorEvaluationContext,
-                     sensor)
+from dagster import (
+    AssetMaterialization,
+    DagsterEventType,
+    DefaultSensorStatus,
+    RunRequest,
+    SensorEvaluationContext,
+    sensor,
+)
 
 
 @sensor(

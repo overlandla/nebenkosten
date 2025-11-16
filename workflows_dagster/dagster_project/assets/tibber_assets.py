@@ -6,8 +6,13 @@ Fetches electricity consumption from Tibber API and writes to InfluxDB
 from datetime import datetime, timezone
 from typing import Optional
 
-from dagster import (AssetExecutionContext, MaterializeResult, MetadataValue,
-                     OpExecutionContext, asset)
+from dagster import (
+    AssetExecutionContext,
+    MaterializeResult,
+    MetadataValue,
+    OpExecutionContext,
+    asset,
+)
 from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 

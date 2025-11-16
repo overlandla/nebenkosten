@@ -9,11 +9,12 @@ import pandas as pd
 import pytest
 from dagster import materialize_to_memory
 
-from tests.fixtures.mock_data import (generate_multi_meter_data,
-                                      generate_tibber_api_response)
+from tests.fixtures.mock_data import (
+    generate_multi_meter_data,
+    generate_tibber_api_response,
+)
 from workflows_dagster.dagster_project import utility_repository
-from workflows_dagster.dagster_project.jobs import (analytics_job,
-                                                    tibber_sync_job)
+from workflows_dagster.dagster_project.jobs import analytics_job, tibber_sync_job
 
 
 class TestTibberSyncE2E:
@@ -192,7 +193,9 @@ class TestDataQuality:
         from dagster import build_asset_context
 
         from dagster_project.assets.analytics_assets import (
-            fetch_meter_data, interpolated_meter_series)
+            fetch_meter_data,
+            interpolated_meter_series,
+        )
         from tests.fixtures.mock_data import generate_meter_readings
 
         # Setup mocks

@@ -5,8 +5,13 @@ Monitors for failed runs and sends alerts
 
 import logging
 
-from dagster import (DefaultSensorStatus, RunFailureSensorContext, RunRequest,
-                     run_failure_sensor, sensor)
+from dagster import (
+    DefaultSensorStatus,
+    RunFailureSensorContext,
+    RunRequest,
+    run_failure_sensor,
+    sensor,
+)
 
 
 @run_failure_sensor(

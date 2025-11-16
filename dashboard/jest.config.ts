@@ -35,6 +35,12 @@ const config: Config = {
   // Coverage thresholds for tested files
   // API routes have lower coverage due to Next.js edge runtime mocking challenges
   coverageThreshold: {
+    global: {
+      branches: 50,
+      functions: 50,
+      lines: 50,
+      statements: 50,
+    },
     'lib/influxdb.ts': {
       branches: 75,
       functions: 100,

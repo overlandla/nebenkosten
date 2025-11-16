@@ -17,11 +17,13 @@ sys.path.insert(0, str(workflows_path))
 
 from dagster import build_asset_context
 
-from dagster_project.assets.analytics_assets import (anomaly_detection,
-                                                     consumption_data,
-                                                     interpolated_meter_series,
-                                                     meter_discovery,
-                                                     raw_meter_data)
+from dagster_project.assets.analytics_assets import (
+    anomaly_detection,
+    consumption_data,
+    interpolated_meter_series,
+    meter_discovery,
+    raw_meter_data,
+)
 from dagster_project.resources.config_resource import ConfigResource
 from dagster_project.resources.influxdb_resource import InfluxDBResource
 
@@ -311,7 +313,6 @@ meters:
         ) as mock_discover, patch(
             "src.influx_client.InfluxClient.fetch_all_meter_data"
         ) as mock_fetch:
-
             # Step 1: Discovery
             mock_discover.return_value = ["test_meter"]
             meters = meter_discovery(context, influx_resource, config_resource)

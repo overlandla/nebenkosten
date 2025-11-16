@@ -8,14 +8,21 @@ import pandas as pd
 import pytest
 from dagster import build_asset_context
 
-from tests.fixtures.mock_data import (generate_anomaly_data,
-                                      generate_consumption_data,
-                                      generate_meter_readings,
-                                      generate_multi_meter_data)
+from tests.fixtures.mock_data import (
+    generate_anomaly_data,
+    generate_consumption_data,
+    generate_meter_readings,
+    generate_multi_meter_data,
+)
 from workflows_dagster.dagster_project.assets.analytics_assets import (
-    anomaly_detection, consumption_data, fetch_meter_data,
-    interpolated_meter_series, master_meter_series, meter_discovery,
-    virtual_meter_data)
+    anomaly_detection,
+    consumption_data,
+    fetch_meter_data,
+    interpolated_meter_series,
+    master_meter_series,
+    meter_discovery,
+    virtual_meter_data,
+)
 
 
 class TestMeterDiscoveryAsset:

@@ -13,6 +13,7 @@ IMPROVEMENTS:
 """
 
 import os
+
 # Import utility analysis modules from src
 import sys
 from datetime import datetime, timedelta
@@ -21,8 +22,15 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from dagster import (AssetExecutionContext, AssetOut, MaterializeResult,
-                     MetadataValue, Output, asset, multi_asset)
+from dagster import (
+    AssetExecutionContext,
+    AssetOut,
+    MaterializeResult,
+    MetadataValue,
+    Output,
+    asset,
+    multi_asset,
+)
 
 # Add workflows_dagster to path to access src modules
 workflows_dagster_path = Path(__file__).parent.parent.parent

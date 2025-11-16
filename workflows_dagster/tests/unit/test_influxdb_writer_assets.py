@@ -9,12 +9,16 @@ import pandas as pd
 import pytest
 from dagster import build_asset_context
 
-from tests.fixtures.mock_data import (generate_anomaly_data,
-                                      generate_consumption_data,
-                                      generate_meter_readings)
+from tests.fixtures.mock_data import (
+    generate_anomaly_data,
+    generate_consumption_data,
+    generate_meter_readings,
+)
 from workflows_dagster.dagster_project.assets.influxdb_writer_assets import (
-    _create_anomaly_points, _create_points_from_dataframe,
-    write_processed_data_to_influxdb)
+    _create_anomaly_points,
+    _create_points_from_dataframe,
+    write_processed_data_to_influxdb,
+)
 
 
 def get_metadata_value(metadata_dict, key):

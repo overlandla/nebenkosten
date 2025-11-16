@@ -11,9 +11,11 @@ from dagster import AssetSelection, materialize
 
 from tests.fixtures.mock_data import generate_meter_readings
 from workflows_dagster.dagster_project.assets import (
-    fetch_meter_data, interpolated_meter_series, meter_discovery)
-from workflows_dagster.dagster_project.resources import (ConfigResource,
-                                                         InfluxDBResource)
+    fetch_meter_data,
+    interpolated_meter_series,
+    meter_discovery,
+)
+from workflows_dagster.dagster_project.resources import ConfigResource, InfluxDBResource
 
 
 class TestAssetPipeline:
@@ -66,10 +68,14 @@ class TestAssetPipeline:
     @pytest.mark.integration
     def test_asset_dependencies_resolve(self, mock_config_resource):
         """Test that asset dependencies are correctly defined"""
-        from dagster_project import (consumption_data, fetch_meter_data,
-                                     interpolated_meter_series,
-                                     meter_discovery, tibber_consumption_raw,
-                                     virtual_meter_data)
+        from dagster_project import (
+            consumption_data,
+            fetch_meter_data,
+            interpolated_meter_series,
+            meter_discovery,
+            tibber_consumption_raw,
+            virtual_meter_data,
+        )
 
         # Verify assets are importable and have correct structure
         assert tibber_consumption_raw is not None

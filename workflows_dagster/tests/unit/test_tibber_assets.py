@@ -10,7 +10,10 @@ import pytest
 from dagster import build_asset_context
 
 from workflows_dagster.dagster_project.assets.tibber_assets import (
-    _get_last_influxdb_timestamp, _write_to_influxdb, tibber_consumption_raw)
+    _get_last_influxdb_timestamp,
+    _write_to_influxdb,
+    tibber_consumption_raw,
+)
 
 
 class TestTibberConsumptionRawAsset:

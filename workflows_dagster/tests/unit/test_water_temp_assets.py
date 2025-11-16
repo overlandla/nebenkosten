@@ -9,8 +9,12 @@ import pytest
 from dagster import build_asset_context
 
 from workflows_dagster.dagster_project.assets.water_temp_assets import (
-    LAKE_CONFIGS, _get_last_influxdb_timestamp, _scrape_lake_temperature,
-    _write_to_influxdb, water_temperature_raw)
+    LAKE_CONFIGS,
+    _get_last_influxdb_timestamp,
+    _scrape_lake_temperature,
+    _write_to_influxdb,
+    water_temperature_raw,
+)
 
 
 class TestWaterTemperatureRawAsset:

@@ -7,12 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from workflows_dagster.dagster_project.resources.config_resource import \
-    ConfigResource
-from workflows_dagster.dagster_project.resources.influxdb_resource import \
-    InfluxDBResource
-from workflows_dagster.dagster_project.resources.tibber_resource import \
-    TibberResource
+from workflows_dagster.dagster_project.resources.config_resource import ConfigResource
+from workflows_dagster.dagster_project.resources.influxdb_resource import (
+    InfluxDBResource,
+)
+from workflows_dagster.dagster_project.resources.tibber_resource import TibberResource
 
 
 class TestInfluxDBResource:
