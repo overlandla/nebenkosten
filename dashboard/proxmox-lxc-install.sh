@@ -51,78 +51,16 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
     exit
   }
 
-  # Override build_container to use our custom install script
-  function build_container() {
-    # Call the original container creation logic
-    msg_info "Allocating disk space"
-    DISK_REF="$STORAGE:$DISK_SIZE"
-    if [ "$STORAGE_TYPE" = "dir" ] || [ "$STORAGE_TYPE" = "nfs" ]; then
-      DISK_REF="$STORAGE:0"
-    fi
-
-    msg_info "Creating LXC Container"
-    DISK_PARAM="${STORAGE}:${DISK_SIZE}"
-    if [ "$STORAGE_TYPE" = "dir" ] || [ "$STORAGE_TYPE" = "nfs" ]; then
-      DISK_PARAM="${STORAGE}:0"
-    fi
-
-    # Temporarily override error_handler to prevent trap from interfering with pct create
-    _original_error_handler="$(declare -f error_handler)"
-    error_handler() { :; }
-
-    pct create $CTID $TEMPLATE_STOR \
-      -arch $(dpkg --print-architecture) \
-      -cmode shell \
-      -cores $CORE_COUNT \
-      -description "# ${APP} LXC
+  # Set custom description for the container
+  export PCT_OPTIONS="-description \"# ${APP} LXC
 ## Created using https://github.com/overlandla/nebenkosten
-" \
-      -features $FEATURES \
-      -hostname $NSAPP \
-      -memory $RAM_SIZE \
-      -net0 name=eth0,bridge=$BRG,ip=$NET \
-      -onboot $START_ON_BOOT \
-      -ostype debian \
-      -rootfs $DISK_PARAM \
-      -swap $SWAP_SIZE \
-      -tags proxmox \
-      -unprivileged $UNPRIV || PCT_CREATE_EXIT=$?
+\""
 
-    # Restore the original error_handler
-    eval "$_original_error_handler"
-
-    if [ "${PCT_CREATE_EXIT:-0}" -ne 0 ]; then
-      msg_error "Failed to create LXC container (exit code: $PCT_CREATE_EXIT)"
-      exit $PCT_CREATE_EXIT
-    fi
-    msg_ok "LXC Container $CTID was successfully created"
-
-    msg_info "Starting LXC Container"
-    pct start $CTID
-    msg_ok "Started LXC Container"
-
-    msg_info "Checking network connectivity"
-    pct exec $CTID -- bash -c "for i in {1..30}; do ping -c1 1.1.1.1 &>/dev/null && break; sleep 1; done"
-    msg_ok "Network in LXC is reachable (ping)"
-
-    # Export the install helper functions for the install script
-    if [ "$var_os" = "alpine" ]; then
-      export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/alpine-install.func)"
-    else
-      export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/install.func)"
-    fi
-
-    # Use our custom install script from our repository
+  # Override default_install to use our custom install script
+  function default_install() {
     msg_info "Installing ${APP}"
-    pct exec $CTID -- bash -c "FUNCTIONS_FILE_PATH='$FUNCTIONS_FILE_PATH' bash <(curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/dashboard/install/utility-meter-dashboard-install.sh)"
+    bash <(curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/dashboard/install/utility-meter-dashboard-install.sh)
     msg_ok "Installed ${APP}"
-
-    # Run customization if function exists
-    if command -v customize &> /dev/null; then
-      msg_info "Customizing Container"
-      customize
-      msg_ok "Customized Container"
-    fi
   }
 
   # Build the container (this creates LXC and runs install portion inside it)
