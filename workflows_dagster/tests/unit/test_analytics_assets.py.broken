@@ -1,25 +1,27 @@
 """
 Unit tests for analytics assets
 """
-import pytest
+
 from unittest.mock import MagicMock, patch
+
 import pandas as pd
+import pytest
 from dagster import build_asset_context
 
+from tests.fixtures.mock_data import (
+    generate_anomaly_data,
+    generate_consumption_data,
+    generate_meter_readings,
+    generate_multi_meter_data,
+)
 from workflows_dagster.dagster_project.assets.analytics_assets import (
-    meter_discovery,
+    anomaly_detection,
+    consumption_data,
     fetch_meter_data,
     interpolated_meter_series,
     master_meter_series,
-    consumption_data,
+    meter_discovery,
     virtual_meter_data,
-    anomaly_detection
-)
-from tests.fixtures.mock_data import (
-    generate_meter_readings,
-    generate_consumption_data,
-    generate_multi_meter_data,
-    generate_anomaly_data
 )
 
 
@@ -28,19 +30,20 @@ class TestMeterDiscoveryAsset:
 
     @pytest.mark.unit
     @pytest.mark.influxdb
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
+    @patch("workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient")
     def test_discovers_meters(
-        self,
-        mock_influx_class,
-        mock_influxdb_resource,
-        mock_config_resource
+        self, mock_influx_class, mock_influxdb_resource, mock_config_resource
     ):
         """Test meter discovery returns list of meters"""
         context = build_asset_context()
 
         # Mock InfluxClient
         mock_client = MagicMock()
-        mock_client.discover_available_meters.return_value = ["strom_total", "gas_total", "wasser"]
+        mock_client.discover_available_meters.return_value = [
+            "strom_total",
+            "gas_total",
+            "wasser",
+        ]
         mock_influx_class.return_value = mock_client
 
         meters = meter_discovery(context, mock_influxdb_resource, mock_config_resource)
@@ -55,12 +58,9 @@ class TestFetchMeterDataAsset:
 
     @pytest.mark.unit
     @pytest.mark.influxdb
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
+    @patch("workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient")
     def test_fetches_data_for_all_meters(
-        self,
-        mock_influx_class,
-        mock_influxdb_resource,
-        mock_config_resource
+        self, mock_influx_class, mock_influxdb_resource, mock_config_resource
     ):
         """Test fetching raw data for all discovered meters"""
         context = build_asset_context()
@@ -71,7 +71,9 @@ class TestFetchMeterDataAsset:
         mock_client.fetch_all_meter_data.return_value = generate_meter_readings(days=10)
         mock_influx_class.return_value = mock_client
 
-        result = fetch_meter_data(context, meter_list, mock_influxdb_resource, mock_config_resource)
+        result = fetch_meter_data(
+            context, meter_list, mock_influxdb_resource, mock_config_resource
+        )
 
         assert len(result.value) == 2
         assert "meter1" in result.value
@@ -83,14 +85,14 @@ class TestInterpolatedMeterSeriesAsset:
     """Unit tests for interpolated_meter_series asset"""
 
     @pytest.mark.unit
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor')
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient')
+    @patch("workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor")
+    @patch("workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient")
     def test_creates_daily_and_monthly_series(
         self,
         mock_influx_class,
         mock_processor_class,
         mock_influxdb_resource,
-        mock_config_resource
+        mock_config_resource,
     ):
         """Test interpolation creates both daily and monthly series"""
         context = build_asset_context()
@@ -98,8 +100,12 @@ class TestInterpolatedMeterSeriesAsset:
 
         # Mock DataProcessor
         mock_processor = MagicMock()
-        mock_processor.create_standardized_daily_series.return_value = generate_meter_readings(days=31)
-        mock_processor.aggregate_daily_to_frequency.return_value = generate_meter_readings(days=2)
+        mock_processor.create_standardized_daily_series.return_value = (
+            generate_meter_readings(days=31)
+        )
+        mock_processor.aggregate_daily_to_frequency.return_value = (
+            generate_meter_readings(days=2)
+        )
         mock_processor_class.return_value = mock_processor
 
         # Mock InfluxClient
@@ -107,10 +113,7 @@ class TestInterpolatedMeterSeriesAsset:
         mock_influx_class.return_value = mock_client
 
         daily, monthly = interpolated_meter_series(
-            context,
-            raw_data,
-            mock_influxdb_resource,
-            mock_config_resource
+            context, raw_data, mock_influxdb_resource, mock_config_resource
         )
 
         assert len(daily.value) == 1
@@ -136,10 +139,7 @@ class TestMasterMeterSeriesAsset:
         }
 
         result = master_meter_series(
-            context,
-            daily_data,
-            monthly_data,
-            mock_config_resource
+            context, daily_data, monthly_data, mock_config_resource
         )
 
         # Should have gas_total master meter
@@ -157,7 +157,9 @@ class TestMasterMeterSeriesAsset:
         daily_data = {"gas_meter_1": generate_meter_readings(days=10)}
         monthly_data = {"gas_meter_1": generate_meter_readings(days=1)}
 
-        result = master_meter_series(context, daily_data, monthly_data, mock_config_resource)
+        result = master_meter_series(
+            context, daily_data, monthly_data, mock_config_resource
+        )
 
         # Verify result has expected structure
         for master_id, data in result.items():
@@ -169,7 +171,9 @@ class TestConsumptionDataAsset:
     """Unit tests for consumption_data asset"""
 
     @pytest.mark.unit
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator')
+    @patch(
+        "workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator"
+    )
     def test_calculates_consumption(self, mock_calc_class, mock_config_resource):
         """Test consumption calculation from readings"""
         context = build_asset_context()
@@ -179,17 +183,25 @@ class TestConsumptionDataAsset:
 
         # Mock calculator
         mock_calc = MagicMock()
-        mock_calc.calculate_consumption_from_readings.return_value = generate_consumption_data(days=30)
+        mock_calc.calculate_consumption_from_readings.return_value = (
+            generate_consumption_data(days=30)
+        )
         mock_calc_class.return_value = mock_calc
 
-        result = consumption_data(context, daily_series, master_series, mock_config_resource)
+        result = consumption_data(
+            context, daily_series, master_series, mock_config_resource
+        )
 
         assert "meter1" in result
         assert len(result["meter1"]) == 30
 
     @pytest.mark.unit
-    @patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator')
-    def test_combines_physical_and_master_meters(self, mock_calc_class, mock_config_resource):
+    @patch(
+        "workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator"
+    )
+    def test_combines_physical_and_master_meters(
+        self, mock_calc_class, mock_config_resource
+    ):
         """Test consumption includes both physical and master meters"""
         context = build_asset_context()
 
@@ -197,15 +209,19 @@ class TestConsumptionDataAsset:
         master_series = {
             "master_meter": {
                 "daily": generate_meter_readings(days=10),
-                "monthly": generate_meter_readings(days=1)
+                "monthly": generate_meter_readings(days=1),
             }
         }
 
         mock_calc = MagicMock()
-        mock_calc.calculate_consumption_from_readings.return_value = generate_consumption_data(days=9)
+        mock_calc.calculate_consumption_from_readings.return_value = (
+            generate_consumption_data(days=9)
+        )
         mock_calc_class.return_value = mock_calc
 
-        result = consumption_data(context, daily_series, master_series, mock_config_resource)
+        result = consumption_data(
+            context, daily_series, master_series, mock_config_resource
+        )
 
         assert "physical_meter" in result
         assert "master_meter" in result
@@ -222,7 +238,9 @@ class TestVirtualMeterDataAsset:
         # Create consumption data
         consumption = {
             "gas_total": generate_consumption_data(days=31, base_consumption=20.0),
-            "gastherme_gesamt": generate_consumption_data(days=31, base_consumption=15.0)
+            "gastherme_gesamt": generate_consumption_data(
+                days=31, base_consumption=15.0
+            ),
         }
 
         result = virtual_meter_data(context, consumption, mock_config_resource)
@@ -239,7 +257,9 @@ class TestVirtualMeterDataAsset:
         # Create consumption where subtraction would be negative
         consumption = {
             "gas_total": generate_consumption_data(days=10, base_consumption=5.0),
-            "gastherme_gesamt": generate_consumption_data(days=10, base_consumption=10.0)
+            "gastherme_gesamt": generate_consumption_data(
+                days=10, base_consumption=10.0
+            ),
         }
 
         result = virtual_meter_data(context, consumption, mock_config_resource)
@@ -272,7 +292,11 @@ class TestAnomalyDetectionAsset:
         context = build_asset_context()
 
         # Consistent consumption
-        consumption = {"meter1": generate_consumption_data(days=31, base_consumption=10.0, variation=0.5)}
+        consumption = {
+            "meter1": generate_consumption_data(
+                days=31, base_consumption=10.0, variation=0.5
+            )
+        }
         virtual_consumption = {}
 
         result = anomaly_detection(context, consumption, virtual_consumption)
@@ -288,7 +312,9 @@ class TestAnomalyDetectionAsset:
         context = build_asset_context()
 
         consumption = {"meter1": generate_anomaly_data(days=31, anomaly_days=[10])}
-        virtual_consumption = {"virtual1": generate_anomaly_data(days=31, anomaly_days=[20])}
+        virtual_consumption = {
+            "virtual1": generate_anomaly_data(days=31, anomaly_days=[20])
+        }
 
         result = anomaly_detection(context, consumption, virtual_consumption)
 

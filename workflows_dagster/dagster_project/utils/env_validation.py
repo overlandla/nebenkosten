@@ -2,8 +2,10 @@
 Environment variable validation for Dagster workflows
 Validates all required environment variables at startup
 """
+
 import os
 from typing import List, Tuple
+
 from dagster import get_dagster_logger
 
 
@@ -14,6 +16,10 @@ def validate_environment() -> None:
     Raises:
         ValueError: If any required environment variables are missing
     """
+    # Skip validation in testing mode
+    if os.environ.get("TESTING", "").lower() in ("true", "1", "yes"):
+        return
+
     logger = get_dagster_logger()
 
     # Required environment variables
@@ -59,7 +65,7 @@ def validate_environment() -> None:
         "DAGSTER_POSTGRES_PASSWORD",
         "DAGSTER_POSTGRES_DB",
         "DAGSTER_POSTGRES_HOST",
-        "DAGSTER_POSTGRES_PORT"
+        "DAGSTER_POSTGRES_PORT",
     ]
 
     postgres_set = [var for var in postgres_vars if os.environ.get(var)]

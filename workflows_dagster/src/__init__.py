@@ -1,12 +1,9 @@
 """
 Utility analysis modules for Dagster workflows
 """
-from .influx_client import InfluxClient
-from .data_processor import DataProcessor
-from .calculator import ConsumptionCalculator
 
-__all__ = [
-    "InfluxClient",
-    "DataProcessor",
-    "ConsumptionCalculator"
-]
+from .calculator import ConsumptionCalculator
+from .data_processor import DataProcessor
+from .influx_client import InfluxClient
+
+__all__ = ["InfluxClient", "DataProcessor", "ConsumptionCalculator"]

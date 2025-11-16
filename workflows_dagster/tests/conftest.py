@@ -1,11 +1,13 @@
 """
 Shared pytest fixtures for Dagster tests
 """
+
 import os
-import pytest
-import pandas as pd
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
+
+import pandas as pd
+import pytest
 from dagster import build_asset_context, build_op_context
 
 # Set test environment variables
@@ -24,7 +26,7 @@ def mock_influxdb_resource():
         bucket_raw="test_raw",
         bucket_processed="test_processed",
         timeout=10000,
-        retry_attempts=2
+        retry_attempts=2,
     )
     return resource
 
@@ -34,10 +36,7 @@ def mock_tibber_resource():
     """Mock Tibber resource for testing"""
     from dagster_project.resources.tibber_resource import TibberResource
 
-    resource = TibberResource(
-        api_url="https://api.tibber.com/v1-beta/gql",
-        timeout=30
-    )
+    resource = TibberResource(api_url="https://api.tibber.com/v1-beta/gql", timeout=30)
     return resource
 
 
@@ -48,7 +47,8 @@ def mock_config_resource(tmp_path):
 
     # Create test config files
     config_file = tmp_path / "config.yaml"
-    config_file.write_text("""
+    config_file.write_text(
+        """
 influxdb:
   url: "http://localhost:8086"
   bucket_raw: "test_raw"
@@ -62,10 +62,12 @@ gas_conversion:
 tibber:
   meter_id: "haupt_strom"
   lookback_hours: 48
-""")
+"""
+    )
 
     meters_file = tmp_path / "meters.yaml"
-    meters_file.write_text("""
+    meters_file.write_text(
+        """
 meters:
   - meter_id: "strom_total"
     type: "physical"
@@ -94,20 +96,23 @@ meters:
       gastherme_gesamt:
         from_unit: "kWh"
         to_unit: "m³"
-""")
+"""
+    )
 
     patterns_file = tmp_path / "patterns.yaml"
-    patterns_file.write_text("""
+    patterns_file.write_text(
+        """
 patterns:
   strom_total:
     monthly_percentages: [0.09, 0.09, 0.08, 0.08, 0.07, 0.07, 0.08, 0.08, 0.09, 0.09, 0.09, 0.09]
-""")
+"""
+    )
 
     resource = ConfigResource(
         config_path=str(config_file),
         meters_config_path=str(meters_file),
         seasonal_patterns_path=str(patterns_file),
-        start_year=2020
+        start_year=2020,
     )
     return resource
 
@@ -116,9 +121,7 @@ patterns:
 def sample_meter_data():
     """Sample meter reading data"""
     dates = pd.date_range(start="2024-01-01", end="2024-01-31", freq="D")
-    data = pd.DataFrame({
-        "value": range(100, 100 + len(dates))
-    }, index=dates)
+    data = pd.DataFrame({"value": range(100, 100 + len(dates))}, index=dates)
     return data
 
 
@@ -126,9 +129,10 @@ def sample_meter_data():
 def sample_consumption_data():
     """Sample consumption data"""
     dates = pd.date_range(start="2024-01-01", end="2024-01-31", freq="D")
-    data = pd.DataFrame({
-        "value": [10.5, 12.3, 11.8, 9.5, 10.2] * 6 + [10.5]  # 31 days
-    }, index=dates[:31])
+    data = pd.DataFrame(
+        {"value": [10.5, 12.3, 11.8, 9.5, 10.2] * 6 + [10.5]},  # 31 days
+        index=dates[:31],
+    )
     return data
 
 
@@ -139,11 +143,11 @@ def sample_tibber_response():
     return [
         {
             "from": (now - timedelta(hours=i)).isoformat() + "Z",
-            "to": (now - timedelta(hours=i-1)).isoformat() + "Z",
+            "to": (now - timedelta(hours=i - 1)).isoformat() + "Z",
             "consumption": 1.2 + (i * 0.1),
             "cost": 0.25 + (i * 0.02),
             "unitPrice": 0.21,
-            "unitPriceVAT": 0.04
+            "unitPriceVAT": 0.04,
         }
         for i in range(48, 0, -1)
     ]
@@ -155,12 +159,15 @@ def mock_influx_client():
 
     Note: Patching where it's used (analytics_assets) not where it's defined
     """
-    with patch('workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient') as mock:
+    with patch(
+        "workflows_dagster.dagster_project.assets.analytics_assets.InfluxClient"
+    ) as mock:
         instance = MagicMock()
         instance.discover_available_meters.return_value = ["strom_total", "gas_total"]
-        instance.fetch_all_meter_data.return_value = pd.DataFrame({
-            "value": range(100, 150)
-        }, index=pd.date_range("2024-01-01", periods=50, freq="D"))
+        instance.fetch_all_meter_data.return_value = pd.DataFrame(
+            {"value": range(100, 150)},
+            index=pd.date_range("2024-01-01", periods=50, freq="D"),
+        )
         instance.meter_data_cache = {}
         mock.return_value = instance
         yield instance
@@ -172,14 +179,18 @@ def mock_data_processor():
 
     Note: Patching where it's used (analytics_assets) not where it's defined
     """
-    with patch('workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor') as mock:
+    with patch(
+        "workflows_dagster.dagster_project.assets.analytics_assets.DataProcessor"
+    ) as mock:
         instance = MagicMock()
-        instance.create_standardized_daily_series.return_value = pd.DataFrame({
-            "value": range(100, 131)
-        }, index=pd.date_range("2024-01-01", periods=31, freq="D"))
-        instance.aggregate_daily_to_frequency.return_value = pd.DataFrame({
-            "value": [100, 130]
-        }, index=pd.date_range("2024-01-01", periods=2, freq="M"))
+        instance.create_standardized_daily_series.return_value = pd.DataFrame(
+            {"value": range(100, 131)},
+            index=pd.date_range("2024-01-01", periods=31, freq="D"),
+        )
+        instance.aggregate_daily_to_frequency.return_value = pd.DataFrame(
+            {"value": [100, 130]},
+            index=pd.date_range("2024-01-01", periods=2, freq="M"),
+        )
         mock.return_value = instance
         yield instance
 
@@ -190,11 +201,14 @@ def mock_consumption_calculator():
 
     Note: Patching where it's used (analytics_assets) not where it's defined
     """
-    with patch('workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator') as mock:
+    with patch(
+        "workflows_dagster.dagster_project.assets.analytics_assets.ConsumptionCalculator"
+    ) as mock:
         instance = MagicMock()
-        instance.calculate_consumption_from_readings.return_value = pd.DataFrame({
-            "value": [10.5] * 30
-        }, index=pd.date_range("2024-01-01", periods=30, freq="D"))
+        instance.calculate_consumption_from_readings.return_value = pd.DataFrame(
+            {"value": [10.5] * 30},
+            index=pd.date_range("2024-01-01", periods=30, freq="D"),
+        )
         mock.return_value = instance
         yield instance
 

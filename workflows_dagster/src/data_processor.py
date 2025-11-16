@@ -2,11 +2,13 @@
 Data Processor for Utility Meter Interpolation
 Handles interpolation of sparse meter readings to create standardized time series
 """
-import pandas as pd
-import numpy as np
+
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 
@@ -35,7 +37,7 @@ class DataProcessor:
         influx_client: InfluxClient,
         high_freq_threshold_medium: int = 100,
         high_freq_threshold_very: int = 1000,
-        target_reduction_points: int = 50
+        target_reduction_points: int = 50,
     ):
         """
         Initialize DataProcessor
@@ -55,8 +57,7 @@ class DataProcessor:
         self.target_reduction_points = target_reduction_points
 
     def estimate_consumption_rate(
-        self,
-        raw_data: pd.DataFrame
+        self, raw_data: pd.DataFrame
     ) -> Tuple[float, float, str]:
         """
         Estimate consumption rate using statistical regression
@@ -84,22 +85,22 @@ class DataProcessor:
             return 0.0, 0.0, "insufficient_data"
 
         # Convert timestamps to days since first measurement for regression
-        first_timestamp = raw_data['timestamp'].iloc[0]
+        first_timestamp = raw_data["timestamp"].iloc[0]
         df = raw_data.copy()
-        df['days_since_start'] = (
-            df['timestamp'] - first_timestamp
+        df["days_since_start"] = (
+            df["timestamp"] - first_timestamp
         ).dt.total_seconds() / (24 * 3600)
 
-        X = df['days_since_start'].values.reshape(-1, 1)
-        y = df['value'].values
+        X = df["days_since_start"].values.reshape(-1, 1)
+        y = df["value"].values
 
         # Method 1: Scipy linear regression (provides p-value)
         try:
             slope, intercept, r_value, p_value, std_err = stats.linregress(
-                df['days_since_start'], df['value']
+                df["days_since_start"], df["value"]
             )
             scipy_rate = slope
-            scipy_r2 = r_value ** 2
+            scipy_r2 = r_value**2
 
             logging.debug(
                 f"Scipy regression: {scipy_rate:.4f} units/day "
@@ -128,8 +129,10 @@ class DataProcessor:
             pairwise_rates = []
             for i in range(len(df) - 1):
                 for j in range(i + 1, len(df)):
-                    time_diff = df['days_since_start'].iloc[j] - df['days_since_start'].iloc[i]
-                    value_diff = df['value'].iloc[j] - df['value'].iloc[i]
+                    time_diff = (
+                        df["days_since_start"].iloc[j] - df["days_since_start"].iloc[i]
+                    )
+                    value_diff = df["value"].iloc[j] - df["value"].iloc[i]
                     if time_diff > 0:
                         rate = value_diff / time_diff
                         pairwise_rates.append(rate)
@@ -145,8 +148,10 @@ class DataProcessor:
 
         # Method 4: Simple first/last rate (fallback)
         if len(df) >= 2:
-            total_time = df['days_since_start'].iloc[-1] - df['days_since_start'].iloc[0]
-            total_value = df['value'].iloc[-1] - df['value'].iloc[0]
+            total_time = (
+                df["days_since_start"].iloc[-1] - df["days_since_start"].iloc[0]
+            )
+            total_value = df["value"].iloc[-1] - df["value"].iloc[0]
             simple_rate = total_value / total_time if total_time > 0 else 0.0
             logging.debug(f"Simple first-to-last rate: {simple_rate:.4f} units/day")
         else:
@@ -187,9 +192,7 @@ class DataProcessor:
         return chosen_rate, chosen_r2, chosen_method
 
     def reduce_high_frequency_data(
-        self,
-        raw_data: pd.DataFrame,
-        entity_id: str
+        self, raw_data: pd.DataFrame, entity_id: str
     ) -> pd.DataFrame:
         """
         Reduce high-frequency data to manageable number of points
@@ -233,19 +236,15 @@ class DataProcessor:
                 middle_sampled = middle_data.iloc[::step]
 
                 reduced_data = pd.concat(
-                    [first_point, middle_sampled, last_point],
-                    ignore_index=True
+                    [first_point, middle_sampled, last_point], ignore_index=True
                 )
             else:
-                reduced_data = pd.concat(
-                    [first_point, last_point],
-                    ignore_index=True
-                )
+                reduced_data = pd.concat([first_point, last_point], ignore_index=True)
 
         # Strategy 2: Medium dense data - daily sampling
         elif len(raw_data) > self.high_freq_threshold_medium:
-            raw_indexed = raw_data.set_index('timestamp')
-            daily_data = raw_indexed.resample('D').last().dropna()
+            raw_indexed = raw_data.set_index("timestamp")
+            daily_data = raw_indexed.resample("D").last().dropna()
             reduced_data = daily_data.reset_index()
 
         else:
@@ -253,17 +252,17 @@ class DataProcessor:
 
         # Ensure first and last points are preserved exactly
         if not reduced_data.empty:
-            if reduced_data['timestamp'].min() > raw_data['timestamp'].min():
+            if reduced_data["timestamp"].min() > raw_data["timestamp"].min():
                 first_row = raw_data.iloc[0:1]
                 reduced_data = pd.concat([first_row, reduced_data], ignore_index=True)
 
-            if reduced_data['timestamp'].max() < raw_data['timestamp'].max():
+            if reduced_data["timestamp"].max() < raw_data["timestamp"].max():
                 last_row = raw_data.iloc[-1:]
                 reduced_data = pd.concat([reduced_data, last_row], ignore_index=True)
 
             # Remove any duplicates and sort
-            reduced_data = reduced_data.drop_duplicates(subset=['timestamp'])
-            reduced_data = reduced_data.sort_values('timestamp').reset_index(drop=True)
+            reduced_data = reduced_data.drop_duplicates(subset=["timestamp"])
+            reduced_data = reduced_data.sort_values("timestamp").reset_index(drop=True)
 
         logging.info(
             f"Reduced to {len(reduced_data)} points "
@@ -278,7 +277,7 @@ class DataProcessor:
         start_date: str,
         end_date: str,
         installation_date: Optional[str] = None,
-        deinstallation_date: Optional[str] = None
+        deinstallation_date: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Create standardized daily series with one data point per day
@@ -334,17 +333,15 @@ class DataProcessor:
             raw_data = self.reduce_high_frequency_data(raw_data, entity_id)
 
         # Setup time range
-        start_ts = pd.Timestamp(start_date, tz='UTC')
-        end_ts = pd.Timestamp(end_date, tz='UTC')
+        start_ts = pd.Timestamp(start_date, tz="UTC")
+        end_ts = pd.Timestamp(end_date, tz="UTC")
 
         installation_ts = (
-            pd.Timestamp(installation_date, tz='UTC')
-            if installation_date
-            else start_ts
+            pd.Timestamp(installation_date, tz="UTC") if installation_date else start_ts
         )
 
         effective_end = (
-            pd.Timestamp(deinstallation_date, tz='UTC')
+            pd.Timestamp(deinstallation_date, tz="UTC")
             if deinstallation_date
             else end_ts
         )
@@ -365,14 +362,18 @@ class DataProcessor:
 
         # Backward extrapolation if needed
         earliest_data = raw_data.iloc[0]
-        earliest_timestamp = earliest_data['timestamp']
-        earliest_value = earliest_data['value']
+        earliest_timestamp = earliest_data["timestamp"]
+        earliest_value = earliest_data["value"]
 
         if earliest_timestamp > effective_start:
-            logging.debug(f"Need backward extrapolation from {earliest_timestamp} to {effective_start}")
+            logging.debug(
+                f"Need backward extrapolation from {earliest_timestamp} to {effective_start}"
+            )
 
             if len(raw_data) >= 2:
-                rate_per_day, r_squared, method = self.estimate_consumption_rate(raw_data)
+                rate_per_day, r_squared, method = self.estimate_consumption_rate(
+                    raw_data
+                )
                 logging.debug(
                     f"Backward extrapolation rate: {rate_per_day:.4f} units/day "
                     f"using {method}"
@@ -387,58 +388,64 @@ class DataProcessor:
                     if extrapolated_value < 0:
                         # Meter would hit zero before start date
                         days_to_zero = earliest_value / rate_per_day
-                        zero_timestamp = earliest_timestamp - pd.Timedelta(days=days_to_zero)
+                        zero_timestamp = earliest_timestamp - pd.Timedelta(
+                            days=days_to_zero
+                        )
 
                         if zero_timestamp < effective_start:
                             zero_timestamp = effective_start
 
-                        zero_row = pd.DataFrame({
-                            'timestamp': [zero_timestamp],
-                            'value': [0.0]
-                        })
+                        zero_row = pd.DataFrame(
+                            {"timestamp": [zero_timestamp], "value": [0.0]}
+                        )
                         raw_data = pd.concat([zero_row, raw_data], ignore_index=True)
 
                         if zero_timestamp > effective_start:
-                            start_row = pd.DataFrame({
-                                'timestamp': [effective_start],
-                                'value': [0.0]
-                            })
-                            raw_data = pd.concat([start_row, raw_data], ignore_index=True)
+                            start_row = pd.DataFrame(
+                                {"timestamp": [effective_start], "value": [0.0]}
+                            )
+                            raw_data = pd.concat(
+                                [start_row, raw_data], ignore_index=True
+                            )
                     else:
-                        start_row = pd.DataFrame({
-                            'timestamp': [effective_start],
-                            'value': [extrapolated_value]
-                        })
+                        start_row = pd.DataFrame(
+                            {
+                                "timestamp": [effective_start],
+                                "value": [extrapolated_value],
+                            }
+                        )
                         raw_data = pd.concat([start_row, raw_data], ignore_index=True)
 
                     logging.debug(f"Added backward extrapolation to {effective_start}")
                 else:
                     # Zero consumption rate - assume meter started at 0
-                    start_row = pd.DataFrame({
-                        'timestamp': [effective_start],
-                        'value': [0.0]
-                    })
+                    start_row = pd.DataFrame(
+                        {"timestamp": [effective_start], "value": [0.0]}
+                    )
                     raw_data = pd.concat([start_row, raw_data], ignore_index=True)
                     logging.debug("Zero rate - assuming meter started at 0")
             else:
                 # Single data point - assume started at 0
-                start_row = pd.DataFrame({
-                    'timestamp': [effective_start],
-                    'value': [0.0]
-                })
+                start_row = pd.DataFrame(
+                    {"timestamp": [effective_start], "value": [0.0]}
+                )
                 raw_data = pd.concat([start_row, raw_data], ignore_index=True)
                 logging.debug("Single data point - assuming meter started at 0")
 
         # Forward extrapolation if needed
         latest_data = raw_data.iloc[-1]
-        latest_timestamp = latest_data['timestamp']
-        latest_value = latest_data['value']
+        latest_timestamp = latest_data["timestamp"]
+        latest_value = latest_data["value"]
 
         if latest_timestamp < effective_end:
-            logging.debug(f"Need forward extrapolation from {latest_timestamp} to {effective_end}")
+            logging.debug(
+                f"Need forward extrapolation from {latest_timestamp} to {effective_end}"
+            )
 
             if len(raw_data) >= 2:
-                rate_per_day, r_squared, method = self.estimate_consumption_rate(raw_data)
+                rate_per_day, r_squared, method = self.estimate_consumption_rate(
+                    raw_data
+                )
 
                 logging.debug(
                     f"Forward extrapolation rate: {rate_per_day:.4f} units/day "
@@ -451,10 +458,9 @@ class DataProcessor:
                     ).total_seconds() / (24 * 3600)
                     extrapolated_value = latest_value + (rate_per_day * days_forward)
 
-                    end_row = pd.DataFrame({
-                        'timestamp': [effective_end],
-                        'value': [extrapolated_value]
-                    })
+                    end_row = pd.DataFrame(
+                        {"timestamp": [effective_end], "value": [extrapolated_value]}
+                    )
                     raw_data = pd.concat([raw_data, end_row], ignore_index=True)
 
                     logging.debug(
@@ -462,51 +468,48 @@ class DataProcessor:
                     )
                 else:
                     # Constant value forward
-                    end_row = pd.DataFrame({
-                        'timestamp': [effective_end],
-                        'value': [latest_value]
-                    })
+                    end_row = pd.DataFrame(
+                        {"timestamp": [effective_end], "value": [latest_value]}
+                    )
                     raw_data = pd.concat([raw_data, end_row], ignore_index=True)
                     logging.debug("Zero rate - extending with constant value")
             else:
                 # Only one point - extend with constant value
-                end_row = pd.DataFrame({
-                    'timestamp': [effective_end],
-                    'value': [latest_value]
-                })
+                end_row = pd.DataFrame(
+                    {"timestamp": [effective_end], "value": [latest_value]}
+                )
                 raw_data = pd.concat([raw_data, end_row], ignore_index=True)
                 logging.debug("Single point - extending with constant value")
 
         # Create daily timestamp range
         daily_range = pd.date_range(
-            start=effective_start,
-            end=effective_end,
-            freq='D',
-            tz='UTC'
+            start=effective_start, end=effective_end, freq="D", tz="UTC"
         )
         logging.debug(f"Creating {len(daily_range)} daily data points")
 
         # Prepare for interpolation
-        raw_data = raw_data.sort_values('timestamp')
-        raw_data = raw_data.drop_duplicates(subset=['timestamp'])
+        raw_data = raw_data.sort_values("timestamp")
+        raw_data = raw_data.drop_duplicates(subset=["timestamp"])
         raw_data = raw_data.reset_index(drop=True)
 
         # Combine raw data timestamps with daily grid for better interpolation
-        all_timestamps = sorted(set(list(raw_data['timestamp']) + list(daily_range)))
+        all_timestamps = sorted(set(list(raw_data["timestamp"]) + list(daily_range)))
 
-        interpolation_df = pd.DataFrame({'timestamp': all_timestamps})
-        interpolation_df = interpolation_df.merge(raw_data, on='timestamp', how='left')
-        interpolation_df = interpolation_df.set_index('timestamp').sort_index()
+        interpolation_df = pd.DataFrame({"timestamp": all_timestamps})
+        interpolation_df = interpolation_df.merge(raw_data, on="timestamp", how="left")
+        interpolation_df = interpolation_df.set_index("timestamp").sort_index()
 
         # Perform time-based linear interpolation
-        interpolation_df['value'] = interpolation_df['value'].interpolate(method='time')
+        interpolation_df["value"] = interpolation_df["value"].interpolate(method="time")
 
         # Fill any remaining NaNs (edge cases)
-        interpolation_df['value'] = interpolation_df['value'].fillna(method='ffill').fillna(method='bfill')
+        interpolation_df["value"] = (
+            interpolation_df["value"].fillna(method="ffill").fillna(method="bfill")
+        )
 
         # Extract only the daily end-of-day points
         result_df = interpolation_df.loc[daily_range].reset_index()
-        result_df.columns = ['timestamp', 'value']
+        result_df.columns = ["timestamp", "value"]
 
         # Cache and return
         self.interpolated_series_cache[cache_key] = result_df
@@ -519,9 +522,7 @@ class DataProcessor:
         return result_df
 
     def aggregate_daily_to_frequency(
-        self,
-        daily_df: pd.DataFrame,
-        freq: str
+        self, daily_df: pd.DataFrame, freq: str
     ) -> pd.DataFrame:
         """
         Aggregate standardized daily series to specified frequency
@@ -556,15 +557,15 @@ class DataProcessor:
         if daily_df.empty:
             return pd.DataFrame()
 
-        if freq == 'D':
+        if freq == "D":
             return daily_df.copy()  # Already daily
 
         # Ensure timestamp column exists
-        if 'timestamp' not in daily_df.columns:
+        if "timestamp" not in daily_df.columns:
             if isinstance(daily_df.index, pd.DatetimeIndex):
                 df = daily_df.reset_index()
-                if 'timestamp' not in df.columns:
-                    df = df.rename(columns={df.columns[0]: 'timestamp'})
+                if "timestamp" not in df.columns:
+                    df = df.rename(columns={df.columns[0]: "timestamp"})
             else:
                 logging.error("Cannot find timestamp column in daily_df")
                 return pd.DataFrame()
@@ -572,7 +573,7 @@ class DataProcessor:
             df = daily_df.copy()
 
         # Set timestamp as index for resampling
-        df = df.set_index('timestamp')
+        df = df.set_index("timestamp")
 
         # Resample to specified frequency (take last value of period)
         aggregated = df.resample(freq).last()

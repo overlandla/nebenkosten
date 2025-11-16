@@ -1,16 +1,18 @@
 """
 Mock data generators for testing
 """
-import pandas as pd
+
 from datetime import datetime, timedelta
 from typing import Dict, List
+
+import pandas as pd
 
 
 def generate_meter_readings(
     start_date: str = "2024-01-01",
     days: int = 31,
     initial_value: float = 100.0,
-    daily_increment: float = 10.5
+    daily_increment: float = 10.5,
 ) -> pd.DataFrame:
     """
     Generate mock meter reading data
@@ -34,7 +36,7 @@ def generate_consumption_data(
     start_date: str = "2024-01-01",
     days: int = 31,
     base_consumption: float = 10.5,
-    variation: float = 2.0
+    variation: float = 2.0,
 ) -> pd.DataFrame:
     """
     Generate mock consumption data with variation
@@ -49,12 +51,12 @@ def generate_consumption_data(
         DataFrame with consumption values
     """
     import random
+
     random.seed(42)  # Reproducible
 
     dates = pd.date_range(start=start_date, periods=days, freq="D")
     values = [
-        base_consumption + random.uniform(-variation, variation)
-        for _ in range(days)
+        base_consumption + random.uniform(-variation, variation) for _ in range(days)
     ]
 
     return pd.DataFrame({"value": values}, index=dates)
@@ -74,20 +76,18 @@ def generate_tibber_api_response(hours: int = 48) -> List[Dict]:
     return [
         {
             "from": (now - timedelta(hours=i)).isoformat() + "Z",
-            "to": (now - timedelta(hours=i-1)).isoformat() + "Z",
+            "to": (now - timedelta(hours=i - 1)).isoformat() + "Z",
             "consumption": round(1.0 + (i % 10) * 0.1, 2),
             "cost": round(0.20 + (i % 10) * 0.02, 3),
             "unitPrice": 0.21,
-            "unitPriceVAT": 0.04
+            "unitPriceVAT": 0.04,
         }
         for i in range(hours, 0, -1)
     ]
 
 
 def generate_multi_meter_data(
-    meter_ids: List[str],
-    start_date: str = "2024-01-01",
-    days: int = 31
+    meter_ids: List[str], start_date: str = "2024-01-01", days: int = 31
 ) -> Dict[str, pd.DataFrame]:
     """
     Generate mock data for multiple meters
@@ -106,15 +106,13 @@ def generate_multi_meter_data(
             start_date=start_date,
             days=days,
             initial_value=100.0 + (i * 50),
-            daily_increment=5.0 + (i * 2)
+            daily_increment=5.0 + (i * 2),
         )
     return data
 
 
 def generate_anomaly_data(
-    start_date: str = "2024-01-01",
-    days: int = 31,
-    anomaly_days: List[int] = None
+    start_date: str = "2024-01-01", days: int = 31, anomaly_days: List[int] = None
 ) -> pd.DataFrame:
     """
     Generate consumption data with anomalies
@@ -160,7 +158,7 @@ def generate_master_meter_config() -> Dict:
                 "end_date": "2023-12-31",
                 "composition_type": "single",
                 "source_meters": ["gas_meter_old"],
-                "source_unit": "m³"
+                "source_unit": "m³",
             },
             {
                 "start_date": "2024-01-01",
@@ -168,9 +166,9 @@ def generate_master_meter_config() -> Dict:
                 "composition_type": "single",
                 "source_meters": ["gas_meter_new"],
                 "source_unit": "m³",
-                "apply_offset_from_previous_period": True
-            }
-        ]
+                "apply_offset_from_previous_period": True,
+            },
+        ],
     }
 
 
@@ -190,9 +188,6 @@ def generate_virtual_meter_config() -> Dict:
         "base_meter": "gas_total",
         "subtract_meters": ["gastherme_gesamt"],
         "subtract_meter_conversions": {
-            "gastherme_gesamt": {
-                "from_unit": "kWh",
-                "to_unit": "m³"
-            }
-        }
+            "gastherme_gesamt": {"from_unit": "kWh", "to_unit": "m³"}
+        },
     }

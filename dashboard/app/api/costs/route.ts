@@ -45,7 +45,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
-        next(row: string[], tableMeta: InfluxTableMeta) {
+        next(row: string[], tableMeta: any) {
           try {
             const o = tableMeta.toObject(row);
 
@@ -54,10 +54,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
               return;
             }
 
-            const consumption = parseFloat(o.consumption);
-            const cost = parseFloat(o.cost);
-            const unit_price = parseFloat(o.unit_price);
-            const unit_price_vat = parseFloat(o.unit_price_vat);
+            const consumption = parseFloat(String(o.consumption));
+            const cost = parseFloat(String(o.cost ?? 0));
+            const unit_price = parseFloat(String(o.unit_price ?? 0));
+            const unit_price_vat = parseFloat(String(o.unit_price_vat ?? 0));
 
             // Validate numeric values
             if (isNaN(consumption) && isNaN(cost)) {

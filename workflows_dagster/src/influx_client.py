@@ -2,12 +2,15 @@
 InfluxDB Client for Dagster Workflows
 Fetches and caches meter data from InfluxDB
 """
-import pandas as pd
-from influxdb_client import InfluxDBClient as InfluxClient_Official, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
-from typing import List, Optional
-from datetime import datetime
+
 import logging
+from datetime import datetime
+from typing import List, Optional
+
+import pandas as pd
+from influxdb_client import InfluxDBClient as InfluxClient_Official
+from influxdb_client import Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 
 
 class InfluxClient:
@@ -38,9 +41,7 @@ class InfluxClient:
 
         # Initialize InfluxDB client
         self.client = InfluxClient_Official(
-            url=self.url,
-            token=self.token,
-            org=self.org
+            url=self.url, token=self.token, org=self.org
         )
         self.query_api = self.client.query_api()
 
@@ -57,7 +58,7 @@ class InfluxClient:
         Example:
             ['gas_zahler', 'haupt_strom', 'haupt_wasser']
         """
-        query = f'''
+        query = f"""
         from(bucket: "{self.bucket}")
         |> range(start: 1970-01-01T00:00:00Z)
         |> filter(fn: (r) => r["domain"] == "input_number")
@@ -65,7 +66,7 @@ class InfluxClient:
         |> group(columns: ["entity_id"])
         |> distinct(column: "entity_id")
         |> yield()
-        '''
+        """
 
         try:
             result = self.query_api.query_data_frame(query)
@@ -80,7 +81,7 @@ class InfluxClient:
                 return []
 
             # Filter out None values and empty strings
-            entity_ids = result['entity_id'].dropna().unique().tolist()
+            entity_ids = result["entity_id"].dropna().unique().tolist()
             entity_ids = [eid for eid in entity_ids if eid and str(eid).strip()]
 
             return sorted(entity_ids)
@@ -90,9 +91,7 @@ class InfluxClient:
             return []
 
     def fetch_all_meter_data(
-        self,
-        entity_id: str,
-        start_date: Optional[datetime] = None
+        self, entity_id: str, start_date: Optional[datetime] = None
     ) -> pd.DataFrame:
         """
         Fetch all available data for a specific input_number meter
@@ -117,9 +116,13 @@ class InfluxClient:
             logging.debug(f"Using cached data for {entity_id}")
             return self.meter_data_cache[cache_key]
 
-        start_str = start_date.strftime("%Y-%m-%dT%H:%M:%SZ") if start_date else "1970-01-01T00:00:00Z"
+        start_str = (
+            start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            if start_date
+            else "1970-01-01T00:00:00Z"
+        )
 
-        query = f'''
+        query = f"""
         from(bucket: "{self.bucket}")
         |> range(start: {start_str})
         |> filter(fn: (r) => r["entity_id"] == "{entity_id}")
@@ -127,7 +130,7 @@ class InfluxClient:
         |> filter(fn: (r) => r["_field"] == "value")
         |> sort(columns: ["_time"])
         |> yield()
-        '''
+        """
 
         try:
             result = self.query_api.query_data_frame(query)
@@ -136,21 +139,21 @@ class InfluxClient:
             if isinstance(result, list):
                 if len(result) == 0:
                     logging.warning(f"No data found for {entity_id}")
-                    return pd.DataFrame(columns=['timestamp', 'value'])
+                    return pd.DataFrame(columns=["timestamp", "value"])
                 result = pd.concat(result, ignore_index=True)
 
             if result.empty:
                 logging.warning(f"No data found for {entity_id}")
-                return pd.DataFrame(columns=['timestamp', 'value'])
+                return pd.DataFrame(columns=["timestamp", "value"])
 
             # Clean and prepare data
-            df = result[['_time', '_value']].copy()
-            df['_time'] = pd.to_datetime(df['_time'], utc=True)
-            df = df.sort_values('_time').reset_index(drop=True)
-            df.columns = ['timestamp', 'value']
+            df = result[["_time", "_value"]].copy()
+            df["_time"] = pd.to_datetime(df["_time"], utc=True)
+            df = df.sort_values("_time").reset_index(drop=True)
+            df.columns = ["timestamp", "value"]
 
             # Remove duplicates (keep last value for same timestamp)
-            df = df.drop_duplicates(subset=['timestamp'], keep='last')
+            df = df.drop_duplicates(subset=["timestamp"], keep="last")
 
             # Cache the result
             self.meter_data_cache[cache_key] = df
@@ -164,7 +167,7 @@ class InfluxClient:
 
         except Exception as e:
             logging.error(f"Error fetching data for {entity_id}: {e}")
-            return pd.DataFrame(columns=['timestamp', 'value'])
+            return pd.DataFrame(columns=["timestamp", "value"])
 
     def write_data_to_influx(
         self,
@@ -173,7 +176,7 @@ class InfluxClient:
         timestamp: datetime,
         measurement: str,
         domain: str = "input_number",
-        source: str = "dagster"
+        source: str = "dagster",
     ) -> bool:
         """
         Write a single data point to InfluxDB
@@ -221,7 +224,7 @@ class InfluxClient:
 
     def close(self):
         """Close the InfluxDB client connection"""
-        if hasattr(self, 'client'):
+        if hasattr(self, "client"):
             self.client.close()
 
     def __del__(self):

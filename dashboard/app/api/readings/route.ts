@@ -66,7 +66,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
-        next(row: string[], tableMeta: InfluxTableMeta) {
+        next(row: string[], tableMeta: any) {
           try {
             const o = tableMeta.toObject(row);
 
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             }
 
             // Parse and validate numeric value
-            const value = parseFloat(o._value);
+            const value = parseFloat(String(o._value));
             if (isNaN(value)) {
               console.warn('Skipping row with invalid numeric value:', o._value);
               return;

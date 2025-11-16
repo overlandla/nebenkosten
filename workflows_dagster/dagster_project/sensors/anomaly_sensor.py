@@ -2,22 +2,24 @@
 Anomaly Alert Sensor
 Monitors anomaly detection results and alerts on significant findings
 """
+
+import logging
+
 from dagster import (
-    sensor,
+    AssetMaterialization,
+    DagsterEventType,
+    DefaultSensorStatus,
     RunRequest,
     SensorEvaluationContext,
-    AssetMaterialization,
-    DefaultSensorStatus,
-    DagsterEventType
+    sensor,
 )
-import logging
 
 
 @sensor(
     name="anomaly_alert_sensor",
     asset_selection=["anomaly_detection"],
     minimum_interval_seconds=3600,  # Check every hour
-    default_status=DefaultSensorStatus.RUNNING
+    default_status=DefaultSensorStatus.RUNNING,
 )
 def anomaly_alert_sensor(context: SensorEvaluationContext):
     """
@@ -44,18 +46,18 @@ def anomaly_alert_sensor(context: SensorEvaluationContext):
         return
 
     # Extract metadata from the latest materialization
-    if hasattr(events, 'asset_materialization') and events.asset_materialization:
+    if hasattr(events, "asset_materialization") and events.asset_materialization:
         metadata = events.asset_materialization.metadata
-        
+
         # Check if we have anomaly counts in metadata
         if metadata:
             total_anomalies = 0
             anomaly_meters = []
-            
+
             for key, value in metadata.items():
-                if 'anomaly' in key.lower() or 'count' in key.lower():
+                if "anomaly" in key.lower() or "count" in key.lower():
                     context.log.info(f"Anomaly metadata: {key} = {value}")
-                    
+
             # TODO: Parse actual anomaly data
             # For now, log that we checked
             context.log.info(
@@ -70,7 +72,7 @@ def anomaly_alert_sensor(context: SensorEvaluationContext):
     #         f"High anomaly count detected: {total_anomalies} anomalies "
     #         f"across {len(anomaly_meters)} meters"
     #     )
-    #     
+    #
     #     # Could yield a RunRequest to trigger notification job
     #     # yield RunRequest(
     #     #     run_key=f"anomaly_alert_{context.cursor}",

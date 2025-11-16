@@ -1,13 +1,15 @@
 """
 Unit tests for DataProcessor
 """
-import pytest
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-from unittest.mock import Mock, MagicMock
+
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import MagicMock, Mock
+
+import numpy as np
+import pandas as pd
+import pytest
 
 # Add src to path
 workflows_path = Path(__file__).parent.parent.parent
@@ -41,10 +43,9 @@ class TestDataProcessor:
 
     def test_estimate_consumption_rate_insufficient_data(self, processor):
         """Test rate estimation with insufficient data"""
-        df = pd.DataFrame({
-            'timestamp': [pd.Timestamp('2024-01-01', tz='UTC')],
-            'value': [100.0]
-        })
+        df = pd.DataFrame(
+            {"timestamp": [pd.Timestamp("2024-01-01", tz="UTC")], "value": [100.0]}
+        )
 
         rate, r2, method = processor.estimate_consumption_rate(df)
 
@@ -55,23 +56,23 @@ class TestDataProcessor:
     def test_estimate_consumption_rate_linear_data(self, processor):
         """Test rate estimation with linear data"""
         # Create perfect linear data: 2.5 units per day
-        timestamps = pd.date_range('2024-01-01', periods=10, freq='D', tz='UTC')
+        timestamps = pd.date_range("2024-01-01", periods=10, freq="D", tz="UTC")
         values = [100 + 2.5 * i for i in range(10)]
-        df = pd.DataFrame({'timestamp': timestamps, 'value': values})
+        df = pd.DataFrame({"timestamp": timestamps, "value": values})
 
         rate, r2, method = processor.estimate_consumption_rate(df)
 
         assert abs(rate - 2.5) < 0.01  # Should be very close to 2.5
         assert r2 > 0.99  # Should have excellent fit
-        assert 'regression' in method.lower()
+        assert "regression" in method.lower()
 
     def test_estimate_consumption_rate_noisy_data(self, processor):
         """Test rate estimation with noisy data"""
         np.random.seed(42)
-        timestamps = pd.date_range('2024-01-01', periods=30, freq='D', tz='UTC')
+        timestamps = pd.date_range("2024-01-01", periods=30, freq="D", tz="UTC")
         # Base rate of 2.0 with noise
         values = [100 + 2.0 * i + np.random.normal(0, 0.5) for i in range(30)]
-        df = pd.DataFrame({'timestamp': timestamps, 'value': values})
+        df = pd.DataFrame({"timestamp": timestamps, "value": values})
 
         rate, r2, method = processor.estimate_consumption_rate(df)
 
@@ -80,9 +81,9 @@ class TestDataProcessor:
 
     def test_estimate_consumption_rate_zero_rate(self, processor):
         """Test rate estimation with constant value (zero consumption)"""
-        timestamps = pd.date_range('2024-01-01', periods=10, freq='D', tz='UTC')
+        timestamps = pd.date_range("2024-01-01", periods=10, freq="D", tz="UTC")
         values = [100.0] * 10  # Constant value
-        df = pd.DataFrame({'timestamp': timestamps, 'value': values})
+        df = pd.DataFrame({"timestamp": timestamps, "value": values})
 
         rate, r2, method = processor.estimate_consumption_rate(df)
 
@@ -91,76 +92,100 @@ class TestDataProcessor:
 
     def test_reduce_high_frequency_data_no_reduction_needed(self, processor):
         """Test that low-frequency data is not reduced"""
-        df = pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=50, freq='D', tz='UTC'),
-            'value': range(50)
-        })
+        df = pd.DataFrame(
+            {
+                "timestamp": pd.date_range(
+                    "2024-01-01", periods=50, freq="D", tz="UTC"
+                ),
+                "value": range(50),
+            }
+        )
 
-        result = processor.reduce_high_frequency_data(df, 'test_meter')
+        result = processor.reduce_high_frequency_data(df, "test_meter")
 
         assert len(result) == len(df)  # No reduction
 
     def test_reduce_high_frequency_data_medium_density(self, processor):
         """Test reduction of medium density data"""
         # 500 points (> 100 threshold)
-        df = pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=500, freq='H', tz='UTC'),
-            'value': range(500)
-        })
+        df = pd.DataFrame(
+            {
+                "timestamp": pd.date_range(
+                    "2024-01-01", periods=500, freq="H", tz="UTC"
+                ),
+                "value": range(500),
+            }
+        )
 
-        result = processor.reduce_high_frequency_data(df, 'test_meter')
+        result = processor.reduce_high_frequency_data(df, "test_meter")
 
         assert len(result) < len(df)  # Should be reduced
-        assert result['timestamp'].iloc[0] == df['timestamp'].iloc[0]  # First preserved
-        assert result['timestamp'].iloc[-1] == df['timestamp'].iloc[-1]  # Last preserved
+        assert result["timestamp"].iloc[0] == df["timestamp"].iloc[0]  # First preserved
+        assert (
+            result["timestamp"].iloc[-1] == df["timestamp"].iloc[-1]
+        )  # Last preserved
 
     def test_reduce_high_frequency_data_very_dense(self, processor):
         """Test reduction of very dense data"""
         # 2000 points (> 1000 threshold)
-        df = pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=2000, freq='T', tz='UTC'),
-            'value': range(2000)
-        })
+        df = pd.DataFrame(
+            {
+                "timestamp": pd.date_range(
+                    "2024-01-01", periods=2000, freq="T", tz="UTC"
+                ),
+                "value": range(2000),
+            }
+        )
 
-        result = processor.reduce_high_frequency_data(df, 'test_meter')
+        result = processor.reduce_high_frequency_data(df, "test_meter")
 
         assert len(result) <= 55  # Should be close to target (50) + first/last
         assert len(result) >= 45
-        assert result['timestamp'].iloc[0] == df['timestamp'].iloc[0]  # First preserved
-        assert result['timestamp'].iloc[-1] == df['timestamp'].iloc[-1]  # Last preserved
+        assert result["timestamp"].iloc[0] == df["timestamp"].iloc[0]  # First preserved
+        assert (
+            result["timestamp"].iloc[-1] == df["timestamp"].iloc[-1]
+        )  # Last preserved
 
     def test_aggregate_daily_to_frequency_daily(self, processor):
         """Test that daily data returns unchanged"""
-        df = pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=10, freq='D', tz='UTC'),
-            'value': range(10)
-        })
+        df = pd.DataFrame(
+            {
+                "timestamp": pd.date_range(
+                    "2024-01-01", periods=10, freq="D", tz="UTC"
+                ),
+                "value": range(10),
+            }
+        )
 
-        result = processor.aggregate_daily_to_frequency(df, 'D')
+        result = processor.aggregate_daily_to_frequency(df, "D")
 
         pd.testing.assert_frame_equal(result, df)
 
     def test_aggregate_daily_to_frequency_monthly(self, processor):
         """Test aggregation to monthly frequency"""
         # Create 3 months of daily data
-        df = pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=90, freq='D', tz='UTC'),
-            'value': range(90)
-        })
+        df = pd.DataFrame(
+            {
+                "timestamp": pd.date_range(
+                    "2024-01-01", periods=90, freq="D", tz="UTC"
+                ),
+                "value": range(90),
+            }
+        )
 
-        result = processor.aggregate_daily_to_frequency(df, 'M')
+        result = processor.aggregate_daily_to_frequency(df, "M")
 
         assert len(result) == 3  # Should have 3 months
-        assert 'timestamp' in result.columns
-        assert 'value' in result.columns
+        assert "timestamp" in result.columns
+        assert "value" in result.columns
         # Last value of each month should be preserved
-        assert result.iloc[0]['value'] == 30  # Last day of Jan (approx)
+        assert result.iloc[0]["value"] == 30  # Last day of Jan (approx)
 
     def test_aggregate_daily_to_frequency_empty(self, processor):
         """Test aggregation of empty DataFrame"""
         df = pd.DataFrame()
 
-        result = processor.aggregate_daily_to_frequency(df, 'M')
+        result = processor.aggregate_daily_to_frequency(df, "M")
 
         assert result.empty
 
@@ -173,14 +198,14 @@ class TestDataProcessorIntegration:
         """Create mock client with test data"""
         client = Mock(spec=InfluxClient)
         client.meter_data_cache = {}
-        
+
         # Mock fetch method to return test data
         def mock_fetch(entity_id, start_date=None):
             # Return sparse data (readings every 5 days)
-            timestamps = pd.date_range('2024-01-01', '2024-01-31', freq='5D', tz='UTC')
+            timestamps = pd.date_range("2024-01-01", "2024-01-31", freq="5D", tz="UTC")
             values = [100 + 2.5 * i for i in range(len(timestamps))]
-            return pd.DataFrame({'timestamp': timestamps, 'value': values})
-        
+            return pd.DataFrame({"timestamp": timestamps, "value": values})
+
         client.fetch_all_meter_data = Mock(side_effect=mock_fetch)
         return client
 
@@ -189,49 +214,47 @@ class TestDataProcessorIntegration:
         processor = DataProcessor(mock_influx_client_with_data)
 
         result = processor.create_standardized_daily_series(
-            'test_meter',
-            '2024-01-01',
-            '2024-01-31'
+            "test_meter", "2024-01-01", "2024-01-31"
         )
 
         assert not result.empty
-        assert 'timestamp' in result.columns
-        assert 'value' in result.columns
+        assert "timestamp" in result.columns
+        assert "value" in result.columns
         assert len(result) == 31  # Should have exactly 31 daily points
         # Values should be monotonically increasing
-        assert result['value'].is_monotonic_increasing
+        assert result["value"].is_monotonic_increasing
 
-    def test_create_standardized_daily_series_with_installation_date(self, mock_influx_client_with_data):
+    def test_create_standardized_daily_series_with_installation_date(
+        self, mock_influx_client_with_data
+    ):
         """Test series creation respects installation date"""
         processor = DataProcessor(mock_influx_client_with_data)
 
         result = processor.create_standardized_daily_series(
-            'test_meter',
-            '2024-01-01',
-            '2024-01-31',
-            installation_date='2024-01-10'  # Meter installed mid-month
+            "test_meter",
+            "2024-01-01",
+            "2024-01-31",
+            installation_date="2024-01-10",  # Meter installed mid-month
         )
 
         assert not result.empty
         # Should start from installation date or later
-        assert result['timestamp'].min() >= pd.Timestamp('2024-01-10', tz='UTC')
+        assert result["timestamp"].min() >= pd.Timestamp("2024-01-10", tz="UTC")
 
-    def test_create_standardized_daily_series_caching(self, mock_influx_client_with_data):
+    def test_create_standardized_daily_series_caching(
+        self, mock_influx_client_with_data
+    ):
         """Test that results are cached"""
         processor = DataProcessor(mock_influx_client_with_data)
 
         # First call
         result1 = processor.create_standardized_daily_series(
-            'test_meter',
-            '2024-01-01',
-            '2024-01-31'
+            "test_meter", "2024-01-01", "2024-01-31"
         )
 
         # Second call with same parameters
         result2 = processor.create_standardized_daily_series(
-            'test_meter',
-            '2024-01-01',
-            '2024-01-31'
+            "test_meter", "2024-01-01", "2024-01-31"
         )
 
         # Should be cached - fetch should only be called once
@@ -239,5 +262,5 @@ class TestDataProcessorIntegration:
         pd.testing.assert_frame_equal(result1, result2)
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

@@ -18,4 +18,4 @@ isort==5.13.2
 mypy==1.7.1
 
 # Include production requirements
--r requirements-worker.txt
+-r requirements-dagster.txt

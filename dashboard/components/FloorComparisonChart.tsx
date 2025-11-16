@@ -51,7 +51,7 @@ export default function FloorComparisonChart({
 
   // Calculate totals per floor
   const floorTotals = meters.map((meter) => {
-    const total = chartData.reduce((sum, item) => sum + (item[meter.id] || 0), 0);
+    const total = chartData.reduce((sum, item) => sum + (Number(item[meter.id]) || 0), 0);
     return { meter, total };
   });
 

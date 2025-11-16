@@ -2,20 +2,24 @@
 Failure Sensor for Analytics Pipeline
 Monitors for failed runs and sends alerts
 """
-from dagster import (
-    sensor,
-    RunRequest,
-    RunFailureSensorContext,
-    run_failure_sensor,
-    DefaultSensorStatus
-)
+
 import logging
+
+from dagster import (
+    DefaultSensorStatus,
+    RunFailureSensorContext,
+    RunRequest,
+    run_failure_sensor,
+    sensor,
+)
+
+from ..jobs import analytics_job
 
 
 @run_failure_sensor(
     name="analytics_failure_sensor",
-    monitored_jobs=["analytics_job"],
-    default_status=DefaultSensorStatus.RUNNING
+    monitored_jobs=[analytics_job],
+    default_status=DefaultSensorStatus.RUNNING,
 )
 def analytics_failure_sensor(context: RunFailureSensorContext):
     """
@@ -31,12 +35,20 @@ def analytics_failure_sensor(context: RunFailureSensorContext):
     """
     run_id = context.dagster_run.run_id
     job_name = context.dagster_run.job_name
-    
+
     # Extract failure information
     failure_event = context.failure_event
     if failure_event:
-        error_message = str(failure_event.message) if hasattr(failure_event, 'message') else "Unknown error"
-        step_key = failure_event.step_key if hasattr(failure_event, 'step_key') else "Unknown step"
+        error_message = (
+            str(failure_event.message)
+            if hasattr(failure_event, "message")
+            else "Unknown error"
+        )
+        step_key = (
+            failure_event.step_key
+            if hasattr(failure_event, "step_key")
+            else "Unknown step"
+        )
     else:
         error_message = "No failure event details available"
         step_key = "Unknown"

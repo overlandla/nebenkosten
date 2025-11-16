@@ -1,16 +1,18 @@
 """
 Unit tests for Tibber ingestion assets
 """
-import pytest
-from unittest.mock import MagicMock, patch
+
 from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
+import pytest
 from dagster import build_asset_context
 
 from workflows_dagster.dagster_project.assets.tibber_assets import (
-    tibber_consumption_raw,
     _get_last_influxdb_timestamp,
-    _write_to_influxdb
+    _write_to_influxdb,
+    tibber_consumption_raw,
 )
 
 
@@ -19,13 +21,12 @@ class TestTibberConsumptionRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._write_to_influxdb')
+    @patch(
+        "workflows_dagster.dagster_project.assets.tibber_assets._get_last_influxdb_timestamp"
+    )
+    @patch("workflows_dagster.dagster_project.assets.tibber_assets._write_to_influxdb")
     def test_asset_with_new_data(
-        self,
-        mock_write,
-        mock_get_timestamp,
-        sample_tibber_response
+        self, mock_write, mock_get_timestamp, sample_tibber_response
     ):
         """Test asset processes new data correctly"""
         context = build_asset_context()
@@ -47,10 +48,7 @@ class TestTibberConsumptionRawAsset:
         }
 
         result = tibber_consumption_raw(
-            context,
-            mock_influxdb,
-            mock_tibber,
-            mock_config
+            context, mock_influxdb, mock_tibber, mock_config
         )
 
         assert result.metadata["records_fetched"] == 48
@@ -59,13 +57,12 @@ class TestTibberConsumptionRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._get_last_influxdb_timestamp')
-    @patch('workflows_dagster.dagster_project.assets.tibber_assets._write_to_influxdb')
+    @patch(
+        "workflows_dagster.dagster_project.assets.tibber_assets._get_last_influxdb_timestamp"
+    )
+    @patch("workflows_dagster.dagster_project.assets.tibber_assets._write_to_influxdb")
     def test_asset_with_no_new_data(
-        self,
-        mock_write,
-        mock_get_timestamp,
-        sample_tibber_response
+        self, mock_write, mock_get_timestamp, sample_tibber_response
     ):
         """Test asset handles case with no new data"""
         context = build_asset_context()
@@ -87,10 +84,7 @@ class TestTibberConsumptionRawAsset:
         }
 
         result = tibber_consumption_raw(
-            context,
-            mock_influxdb,
-            mock_tibber,
-            mock_config
+            context, mock_influxdb, mock_tibber, mock_config
         )
 
         assert result.metadata["records_written"] == 0
@@ -164,11 +158,7 @@ class TestTibberConsumptionRawAsset:
         mock_influxdb.bucket_raw = "test_raw"
         mock_influxdb.org = "test-org"
 
-        count = _write_to_influxdb(
-            mock_influxdb,
-            "haupt_strom",
-            sample_tibber_response
-        )
+        count = _write_to_influxdb(mock_influxdb, "haupt_strom", sample_tibber_response)
 
         assert count == len(sample_tibber_response)
         mock_write_api.write.assert_called_once()
@@ -195,7 +185,7 @@ class TestTibberConsumptionRawAsset:
                 "consumption": 1.5,
                 "cost": 0.30,
                 "unitPrice": 0.20,
-                "unitPriceVAT": 0.04
+                "unitPriceVAT": 0.04,
             }
         ]
 
