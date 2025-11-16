@@ -59,18 +59,59 @@ msg_ok "Docker service started"
 
 msg_info "Setting up Dagster Workflows"
 INSTALL_DIR="/opt/dagster-workflows"
+REPO_DIR="$INSTALL_DIR/nebenkosten"
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
-# Clone the repository
-msg_info "Cloning repository"
-$STD git clone https://github.com/overlandla/nebenkosten.git
-cd nebenkosten
-msg_ok "Cloned repository"
+# Detect if this is an update or fresh install
+if [ -d "$REPO_DIR/.git" ]; then
+    IS_UPDATE=true
+    msg_info "Existing installation detected - running update"
 
-msg_info "Creating secrets directory"
-mkdir -p secrets
-cat <<EOF > secrets/influxdb.env
+    # Stop services if running
+    if systemctl is-active --quiet dagster-workflows.service; then
+        msg_info "Stopping services for update"
+        systemctl stop dagster-workflows.service
+        cd "$REPO_DIR"
+        docker compose -f docker-compose.dagster.yml down
+    fi
+
+    # Backup existing configuration
+    if [ -d "$REPO_DIR/secrets" ]; then
+        msg_info "Backing up existing secrets"
+        cp -r "$REPO_DIR/secrets" "$REPO_DIR/secrets.backup.$(date +%Y%m%d_%H%M%S)"
+        msg_ok "Secrets backed up"
+    fi
+    if [ -d "$REPO_DIR/config" ]; then
+        msg_info "Backing up existing config"
+        cp -r "$REPO_DIR/config" "$REPO_DIR/config.backup.$(date +%Y%m%d_%H%M%S)"
+        msg_ok "Config backed up"
+    fi
+
+    # Pull latest changes
+    msg_info "Pulling latest code from repository"
+    cd "$REPO_DIR"
+    $STD git fetch origin
+    $STD git reset --hard origin/main
+    msg_ok "Code updated"
+else
+    IS_UPDATE=false
+    msg_info "Fresh installation detected"
+
+    # Clone the repository
+    msg_info "Cloning repository"
+    $STD git clone https://github.com/overlandla/nebenkosten.git
+    cd nebenkosten
+    msg_ok "Cloned repository"
+fi
+
+cd "$REPO_DIR"
+
+# Only create secrets if they don't exist (fresh install or if missing)
+if [ ! -f secrets/influxdb.env ]; then
+    msg_info "Creating secrets directory"
+    mkdir -p secrets
+    cat <<EOF > secrets/influxdb.env
 # InfluxDB Configuration
 # Edit this file with your actual values
 
@@ -87,8 +128,16 @@ INFLUX_ORG=your-org-name
 # INFLUX_BUCKET_RAW=lampfi
 # INFLUX_BUCKET_PROCESSED=lampfi_processed
 EOF
+    chmod 600 secrets/influxdb.env
+    msg_ok "Created influxdb.env"
+else
+    msg_ok "Preserving existing InfluxDB configuration"
+fi
 
-cat <<EOF > secrets/tibber.env
+if [ ! -f secrets/tibber.env ]; then
+    msg_info "Creating Tibber secrets file"
+    mkdir -p secrets
+    cat <<EOF > secrets/tibber.env
 # Tibber API Configuration
 # Edit this file with your actual values (optional - only needed for Tibber sync)
 
@@ -98,13 +147,17 @@ TIBBER_API_TOKEN=your-tibber-api-token-here
 # Optional: Tibber API URL (override default)
 # TIBBER_API_URL=https://api.tibber.com/v1-beta/gql
 EOF
+    chmod 600 secrets/tibber.env
+    msg_ok "Created tibber.env"
+else
+    msg_ok "Preserving existing Tibber configuration"
+fi
 
-chmod 600 secrets/*.env
-msg_ok "Created secrets directory"
-
-msg_info "Creating config directory with defaults"
-mkdir -p config
-cat <<EOF > config/config.yaml
+# Only create config if it doesn't exist
+if [ ! -f config/config.yaml ]; then
+    msg_info "Creating config directory with defaults"
+    mkdir -p config
+    cat <<EOF > config/config.yaml
 # Configuration will be generated on first run
 # Or you can add your custom configuration here
 influx:
@@ -114,7 +167,10 @@ influx:
   timeout: 30000
   retry_attempts: 3
 EOF
-msg_ok "Created config directory"
+    msg_ok "Created config directory"
+else
+    msg_ok "Preserving existing config"
+fi
 
 msg_info "Building Docker images (this may take a few minutes)"
 $STD docker compose -f docker-compose.dagster.yml build
@@ -140,13 +196,17 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
+systemctl daemon-reload
 systemctl enable dagster-workflows.service
-msg_ok "Created systemd service"
 
-msg_info "Starting Dagster services"
-cd $INSTALL_DIR/nebenkosten
+if [ "$IS_UPDATE" = true ]; then
+    msg_info "Restarting Dagster services after update"
+else
+    msg_info "Starting Dagster services"
+fi
+cd "$REPO_DIR"
 docker compose -f docker-compose.dagster.yml up -d
-msg_ok "Started Dagster services"
+msg_ok "Dagster services started"
 
 msg_info "Waiting for services to be healthy"
 sleep 15
@@ -163,15 +223,21 @@ curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflo
 chmod +x /usr/local/bin/configure-dagster
 msg_ok "Configuration wizard installed"
 
-motd_ssh
-customize
+if [ "$IS_UPDATE" != true ]; then
+    motd_ssh
+    customize
+fi
 
 msg_info "Cleaning up"
 $STD apt-get -y autoremove
 $STD apt-get -y autoclean
 msg_ok "Cleaned"
 
-msg_info "Dagster Utility Workflows Installation Complete"
+if [ "$IS_UPDATE" = true ]; then
+    msg_info "Dagster Utility Workflows Update Complete"
+else
+    msg_info "Dagster Utility Workflows Installation Complete"
+fi
 
 # Get the IP address
 IP_ADDR=$(hostname -I | awk '{print $1}')

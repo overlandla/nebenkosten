@@ -89,6 +89,26 @@ docker exec dagster-user-code dagster job execute -j analytics_processing
 
 That's it! 🎉
 
+## 🔄 Updating an Existing Installation
+
+The same script can be used to update an existing installation! Simply run it again:
+
+```bash
+bash -c "$(wget -qLO - https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflows_dagster/proxmox-lxc-install.sh)"
+```
+
+The script will automatically:
+- ✅ Detect the existing installation
+- ✅ Stop running containers gracefully
+- ✅ Backup your `secrets/` and `config/` directories with timestamps
+- ✅ Pull the latest code
+- ✅ Preserve all your settings
+- ✅ Rebuild Docker images and restart services
+
+**Your secrets and configuration are safe - they will be preserved during updates!**
+
+Backups are created with timestamps like `secrets.backup.20241116_143022` for easy rollback if needed.
+
 ## 📊 What You Get
 
 - **Real-time data orchestration** with Dagster
@@ -233,13 +253,9 @@ curl http://localhost:3000
 - **Asset materialization**: You can materialize individual assets instead of running entire jobs
 - **Custom schedules**: Edit `workflows_dagster/dagster_project/schedules/__init__.py` to customize timing
 - **Partitioned assets**: Future enhancement for incremental processing
-- **Backups**: Backup `/opt/dagster-workflows/nebenkosten/secrets/` before updates
-- **Updates**:
-  ```bash
-  cd /opt/dagster-workflows/nebenkosten
-  git pull
-  docker compose -f docker-compose.dagster.yml up -d --build
-  ```
+- **Backups**: Secrets and config are automatically backed up during updates with timestamps
+- **Updates**: Just re-run the install script - it will automatically detect and update the existing installation
+- **Rollback**: If an update causes issues, restore from timestamped backup directories
 
 ## 🔐 Security Tips
 
