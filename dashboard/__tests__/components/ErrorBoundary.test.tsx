@@ -114,7 +114,7 @@ describe('ErrorBoundary', () => {
 
     expect(mockReload).toHaveBeenCalled();
 
-    window.location = originalLocation;
+    (window as any).location = originalLocation;
   });
 
   // FIXME: Skipping due to jsdom window.location mocking issues
@@ -143,7 +143,7 @@ describe('ErrorBoundary', () => {
 
     expect(mockHref).toBe('/');
 
-    window.location = originalLocation;
+    (window as any).location = originalLocation;
   });
 
   it('should log error to console', () => {
@@ -158,7 +158,7 @@ describe('ErrorBoundary', () => {
 
   it('should display component stack in development', () => {
     const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
+    (process.env as any).NODE_ENV = 'development';
 
     render(
       <ErrorBoundary>
@@ -168,12 +168,12 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByText(/Component Stack/i)).toBeInTheDocument();
 
-    process.env.NODE_ENV = originalEnv;
+    (process.env as any).NODE_ENV = originalEnv;
   });
 
   it('should hide component stack in production', () => {
     const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
+    (process.env as any).NODE_ENV = 'production';
 
     render(
       <ErrorBoundary>
@@ -183,7 +183,7 @@ describe('ErrorBoundary', () => {
 
     expect(screen.queryByText(/Component Stack/i)).not.toBeInTheDocument();
 
-    process.env.NODE_ENV = originalEnv;
+    (process.env as any).NODE_ENV = originalEnv;
   });
 
   it('should catch errors from multiple children', () => {

@@ -22,7 +22,7 @@ export async function GET(): Promise<NextResponse> {
 
     return new Promise<NextResponse>((resolve) => {
       queryApi.queryRows(query, {
-        next(row: string[], tableMeta: InfluxTableMeta) {
+        next(row: string[], tableMeta: any) {
           try {
             const o = tableMeta.toObject(row);
             if (o.meter_id && typeof o.meter_id === 'string') {
