@@ -67,7 +67,11 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
     fi
 
     # Temporarily disable error trap for pct create command
-    set +e
+    # Save current trap and disable it
+    OLD_TRAP=$(trap -p ERR)
+    trap - ERR
+    set +eE
+
     pct create $CTID $TEMPLATE_STOR \
       -arch $(dpkg --print-architecture) \
       -cmode shell \
@@ -86,7 +90,10 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
       -tags proxmox \
       -unprivileged $UNPRIV
     PCT_CREATE_EXIT=$?
+
+    # Restore error trap
     set -e
+    eval "$OLD_TRAP"
 
     if [ $PCT_CREATE_EXIT -ne 0 ]; then
       msg_error "Failed to create LXC container (exit code: $PCT_CREATE_EXIT)"
