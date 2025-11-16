@@ -151,7 +151,9 @@ class TestConsumptionCalculator:
         new_readings = pd.DataFrame(
             {
                 "timestamp": new_dates,
-                "value": [0 + i * 0.5 for i in range(len(new_dates))],  # New meter starts at 0
+                "value": [
+                    0 + i * 0.5 for i in range(len(new_dates))
+                ],  # New meter starts at 0
             }
         )
 
