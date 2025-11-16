@@ -92,8 +92,3 @@ jobs:
 
       - name: Build application
         run: npm run build
-        env:
-          NEXT_PUBLIC_INFLUX_URL: ${{ secrets.NEXT_PUBLIC_INFLUX_URL }}
-          NEXT_PUBLIC_INFLUX_TOKEN: ${{ secrets.NEXT_PUBLIC_INFLUX_TOKEN }}
-          NEXT_PUBLIC_INFLUX_ORG: ${{ secrets.NEXT_PUBLIC_INFLUX_ORG }}
-          NEXT_PUBLIC_INFLUX_BUCKET: ${{ secrets.NEXT_PUBLIC_INFLUX_BUCKET }}
