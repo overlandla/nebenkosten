@@ -5,7 +5,7 @@ from .tibber_assets import tibber_consumption_raw
 from .water_temp_assets import water_temperature_raw
 from .analytics_assets import (
     meter_discovery,
-    fetch_meter_data,
+    raw_meter_data,
     interpolated_meter_series,
     master_meter_series,
     consumption_data,
@@ -21,7 +21,7 @@ __all__ = [
     "water_temperature_raw",
     # Analytics pipeline
     "meter_discovery",
-    "fetch_meter_data",
+    "raw_meter_data",
     "interpolated_meter_series",
     "master_meter_series",
     "consumption_data",

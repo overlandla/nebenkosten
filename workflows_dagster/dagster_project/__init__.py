@@ -16,7 +16,7 @@ from .assets import (
     tibber_consumption_raw,
     water_temperature_raw,
     meter_discovery,
-    fetch_meter_data,
+    raw_meter_data,
     interpolated_meter_series,
     master_meter_series,
     consumption_data,
@@ -40,7 +40,7 @@ utility_repository = Definitions(
         water_temperature_raw,
         # Analytics pipeline
         meter_discovery,
-        fetch_meter_data,
+        raw_meter_data,
         interpolated_meter_series,
         master_meter_series,
         consumption_data,
