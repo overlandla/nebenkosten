@@ -1,0 +1,111 @@
+name: Dagster CI
+
+on:
+  push:
+    paths:
+      - 'workflows_dagster/**'
+      - 'requirements-dagster.txt'
+      - 'requirements-dev.txt'
+      - 'requirements-test.txt'
+      - '.github/workflows/dagster-ci.yml'
+  pull_request:
+    paths:
+      - 'workflows_dagster/**'
+      - 'requirements-dagster.txt'
+      - 'requirements-dev.txt'
+      - 'requirements-test.txt'
+      - '.github/workflows/dagster-ci.yml'
+
+jobs:
+  lint:
+    name: Lint Dagster Code
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workflows_dagster
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r ../requirements-dagster.txt
+          pip install -r ../requirements-dev.txt
+
+      - name: Run Black (code formatter check)
+        run: black --check .
+
+      - name: Run isort (import sorting check)
+        run: isort --check-only .
+
+      - name: Run flake8 (linter)
+        run: flake8 .
+
+      - name: Run mypy (type checker)
+        run: mypy dagster_project || true
+        continue-on-error: true
+
+  test:
+    name: Test Dagster Workflows
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workflows_dagster
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dagster_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      TESTING: 'true'
+      INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
+      INFLUX_ORG: ${{ secrets.INFLUX_ORG }}
+      DAGSTER_POSTGRES_USER: postgres
+      DAGSTER_POSTGRES_PASSWORD: postgres
+      DAGSTER_POSTGRES_DB: dagster_test
+      DAGSTER_POSTGRES_HOST: localhost
+      DAGSTER_POSTGRES_PORT: 5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r ../requirements-dagster.txt
+          pip install -r ../requirements-test.txt
+
+      - name: Run pytest
+        run: pytest -v --cov=dagster_project --cov-report=term --cov-report=html
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dagster-coverage-report
+          path: workflows_dagster/htmlcov/
