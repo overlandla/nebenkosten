@@ -139,21 +139,19 @@ class TestConsumptionCalculator:
 
     def test_combine_meter_readings_basic(self, calculator):
         """Test combining old and new meter readings"""
+        old_dates = pd.date_range("2024-01-01", "2024-06-15", freq="D", tz="UTC")
         old_readings = pd.DataFrame(
             {
-                "timestamp": pd.date_range(
-                    "2024-01-01", "2024-06-15", freq="D", tz="UTC"
-                ),
-                "value": [100 + i * 0.5 for i in range(166)],
+                "timestamp": old_dates,
+                "value": [100 + i * 0.5 for i in range(len(old_dates))],
             }
         )
 
+        new_dates = pd.date_range("2024-06-15", "2024-12-31", freq="D", tz="UTC")
         new_readings = pd.DataFrame(
             {
-                "timestamp": pd.date_range(
-                    "2024-06-15", "2024-12-31", freq="D", tz="UTC"
-                ),
-                "value": [0 + i * 0.5 for i in range(200)],  # New meter starts at 0
+                "timestamp": new_dates,
+                "value": [0 + i * 0.5 for i in range(len(new_dates))],  # New meter starts at 0
             }
         )
 

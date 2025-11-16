@@ -59,9 +59,7 @@ class TestInfluxDBResource:
                 os.environ["INFLUX_ORG"] = org
 
     @pytest.mark.unit
-    @patch(
-        "workflows_dagster.dagster_project.resources.influxdb_resource.InfluxDBClient"
-    )
+    @patch("dagster_project.resources.influxdb_resource.InfluxDBClient")
     def test_get_client_creates_client(self, mock_client_class, mock_influxdb_resource):
         """Test get_client creates InfluxDBClient with correct params"""
         mock_influxdb_resource.get_client()
