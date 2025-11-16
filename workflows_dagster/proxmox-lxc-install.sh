@@ -66,31 +66,32 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
       DISK_PARAM="${STORAGE}:0"
     fi
 
-    # Run pct create in a subshell to isolate from error trap
-    (
-      set +eE
-      trap - ERR
-      pct create $CTID $TEMPLATE_STOR \
-        -arch $(dpkg --print-architecture) \
-        -cmode shell \
-        -cores $CORE_COUNT \
-        -description "# ${APP} LXC
+    # Temporarily override error_handler to prevent trap from interfering with pct create
+    _original_error_handler="$(declare -f error_handler)"
+    error_handler() { :; }
+
+    pct create $CTID $TEMPLATE_STOR \
+      -arch $(dpkg --print-architecture) \
+      -cmode shell \
+      -cores $CORE_COUNT \
+      -description "# ${APP} LXC
 ## Created using https://github.com/overlandla/nebenkosten
 " \
-        -features $FEATURES \
-        -hostname $NSAPP \
-        -memory $RAM_SIZE \
-        -net0 name=eth0,bridge=$BRG,ip=$NET \
-        -onboot $START_ON_BOOT \
-        -ostype debian \
-        -rootfs $DISK_PARAM \
-        -swap $SWAP_SIZE \
-        -tags proxmox \
-        -unprivileged $UNPRIV
-    )
-    PCT_CREATE_EXIT=$?
+      -features $FEATURES \
+      -hostname $NSAPP \
+      -memory $RAM_SIZE \
+      -net0 name=eth0,bridge=$BRG,ip=$NET \
+      -onboot $START_ON_BOOT \
+      -ostype debian \
+      -rootfs $DISK_PARAM \
+      -swap $SWAP_SIZE \
+      -tags proxmox \
+      -unprivileged $UNPRIV || PCT_CREATE_EXIT=$?
 
-    if [ $PCT_CREATE_EXIT -ne 0 ]; then
+    # Restore the original error_handler
+    eval "$_original_error_handler"
+
+    if [ "${PCT_CREATE_EXIT:-0}" -ne 0 ]; then
       msg_error "Failed to create LXC container (exit code: $PCT_CREATE_EXIT)"
       exit $PCT_CREATE_EXIT
     fi
