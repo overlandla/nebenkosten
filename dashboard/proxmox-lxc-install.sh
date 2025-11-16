@@ -28,6 +28,7 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
   var_os="debian"
   var_version="12"
   var_unprivileged="1"
+  var_install=""  # Disable framework's default install script
 
   # Initialize Proxmox build environment
   header_info "$APP"
@@ -86,7 +87,6 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
 
   # Build the container (this creates LXC and runs install portion inside it)
   start
-  build_container
   description
 
   # Show completion message
