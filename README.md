@@ -29,6 +29,46 @@ This system processes electricity, gas, water, and heat meter readings from Infl
 
 ## Quick Start
 
+### Option 1: Proxmox LXC Deployment (Recommended)
+
+For Proxmox users, we provide simple Makefile-based installation:
+
+**Dashboard:**
+```bash
+# On Proxmox host, create LXC
+pct create 110 local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
+  --hostname utility-dashboard --cores 2 --memory 2048 --rootfs local-lvm:4 \
+  --net0 name=eth0,bridge=vmbr0,ip=dhcp --unprivileged 1 --features nesting=1
+
+# Inside LXC
+pct enter 110
+apt-get update && apt-get install -y git make
+git clone https://github.com/overlandla/nebenkosten.git
+cd nebenkosten
+make install-dashboard
+```
+
+**Dagster Workflows:**
+```bash
+# On Proxmox host, create LXC
+pct create 111 local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
+  --hostname dagster-workflows --cores 2 --memory 4096 --rootfs local-lvm:8 \
+  --net0 name=eth0,bridge=vmbr0,ip=dhcp --unprivileged 1 --features nesting=1
+
+# Inside LXC
+pct enter 111
+apt-get update && apt-get install -y git make
+git clone https://github.com/overlandla/nebenkosten.git
+cd nebenkosten
+make install-dagster
+```
+
+See [dashboard/PROXMOX_INSTALLATION.md](dashboard/PROXMOX_INSTALLATION.md) and [workflows_dagster/PROXMOX_INSTALLATION.md](workflows_dagster/PROXMOX_INSTALLATION.md) for details.
+
+### Option 2: Docker Deployment
+
+For Docker/NAS deployment:
+
 ### Prerequisites
 
 - Docker & Docker Compose installed on NAS

@@ -84,20 +84,17 @@ else
     msg_ok "System packages updated"
 fi
 
-# Set $STD for quiet operation if not already set
-STD="${STD:--qq}"
-
 msg_info "Installing Dependencies"
-$STD apt-get install -y curl
-$STD apt-get install -y sudo
-$STD apt-get install -y mc
-$STD apt-get install -y git
-$STD apt-get install -y rsync
+apt-get install -y curl >/dev/null 2>&1
+apt-get install -y sudo >/dev/null 2>&1
+apt-get install -y mc >/dev/null 2>&1
+apt-get install -y git >/dev/null 2>&1
+apt-get install -y rsync >/dev/null 2>&1
 msg_ok "Installed Dependencies"
 
 msg_info "Installing Node.js v20 LTS"
-$STD bash <(curl -fsSL https://deb.nodesource.com/setup_20.x)
-$STD apt-get install -y nodejs
+bash <(curl -fsSL https://deb.nodesource.com/setup_20.x) >/dev/null 2>&1
+apt-get install -y nodejs >/dev/null 2>&1
 msg_ok "Installed Node.js v20 LTS"
 
 msg_info "Setting up Utility Meter Dashboard"

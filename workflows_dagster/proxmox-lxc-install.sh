@@ -14,115 +14,72 @@
 #
 # Documentation: https://github.com/overlandla/nebenkosten/blob/main/workflows_dagster/PROXMOX_INSTALLATION.md
 
+set -e
+
 # Detect if we're running on Proxmox host (not inside container)
 if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv ]; then
   # Running on Proxmox host - create LXC container
-  source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
 
-  # Application metadata
-  APP="Dagster Workflows"
-  var_tags="automation;data;dagster;docker"
-  var_cpu="2"
-  var_ram="4096"
-  var_disk="8"
-  var_os="debian"
-  var_version="12"
-  var_unprivileged="1"
+  echo "Creating Dagster Workflows LXC Container..."
 
-  # Initialize Proxmox build environment
-  header_info "$APP"
-  variables
-  color
-  catch_errors
+  # Get next available CT ID
+  CTID=$(pvesh get /cluster/nextid)
 
-  # Update function - runs when script is executed inside existing LXC
-  function update_script() {
-    header_info
-    check_container_storage
-    check_container_resources
+  # Configuration
+  STORAGE="local-lvm"
+  TEMPLATE_STORAGE="local"
+  TEMPLATE="debian-12-standard_12.7-1_amd64.tar.zst"
+  HOSTNAME="dagster-workflows"
+  CORES="2"
+  MEMORY="4096"
+  DISK="8"
 
-    if [[ ! -d /opt/dagster-workflows/nebenkosten/.git ]]; then
-      msg_error "No ${APP} Installation Found!"
-      exit
-    fi
+  # Download template if needed
+  if ! pveam list $TEMPLATE_STORAGE | grep -q $TEMPLATE; then
+    echo "Downloading Debian 12 template..."
+    pveam download $TEMPLATE_STORAGE $TEMPLATE
+  fi
 
-    msg_info "Downloading update script"
-    bash <(curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflows_dagster/install/dagster-workflows-install.sh)
-    exit
-  }
+  # Create container
+  echo "Creating container $CTID..."
+  pct create $CTID $TEMPLATE_STORAGE:vztmpl/$TEMPLATE \
+    --hostname $HOSTNAME \
+    --cores $CORES \
+    --memory $MEMORY \
+    --rootfs $STORAGE:$DISK \
+    --net0 name=eth0,bridge=vmbr0,ip=dhcp \
+    --unprivileged 1 \
+    --features nesting=1 \
+    --onboot 0
 
-  # Override build_container to use our custom install script
-  function build_container() {
-    # Call the original container creation logic
-    msg_info "Allocating disk space"
-    DISK_REF="$STORAGE:$DISK_SIZE"
-    if [ "$STORAGE_TYPE" = "dir" ] || [ "$STORAGE_TYPE" = "nfs" ]; then
-      DISK_REF="$STORAGE:0"
-    fi
+  # Start container
+  echo "Starting container..."
+  pct start $CTID
 
-    msg_info "Creating LXC Container"
-    DISK_PARAM="${STORAGE}:${DISK_SIZE}"
-    if [ "$STORAGE_TYPE" = "dir" ] || [ "$STORAGE_TYPE" = "nfs" ]; then
-      DISK_PARAM="${STORAGE}:0"
-    fi
+  # Wait for network
+  echo "Waiting for network..."
+  sleep 10
 
-    pct create $CTID $TEMPLATE_STOR \
-      -arch $(dpkg --print-architecture) \
-      -cmode shell \
-      -cores $CORE_COUNT \
-      -description "# ${APP} LXC
-## Created using https://github.com/overlandla/nebenkosten
-" \
-      -features $FEATURES \
-      -hostname $NSAPP \
-      -memory $RAM_SIZE \
-      -net0 name=eth0,bridge=$BRG,ip=$NET \
-      -onboot $START_ON_BOOT \
-      -ostype debian \
-      -rootfs $DISK_PARAM \
-      -swap $SWAP_SIZE \
-      -tags proxmox \
-      -unprivileged $UNPRIV
-    msg_ok "LXC Container $CTID was successfully created"
+  # Install base packages
+  echo "Installing base packages (curl, etc)..."
+  pct exec $CTID -- bash -c "apt-get update -qq && apt-get install -y -qq curl sudo"
 
-    msg_info "Starting LXC Container"
-    pct start $CTID
-    msg_ok "Started LXC Container"
+  # Install
+  echo "Running installation..."
+  pct exec $CTID -- bash -c "curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflows_dagster/install/dagster-workflows-install.sh | bash"
 
-    msg_info "Checking network connectivity"
-    pct exec $CTID -- bash -c "for i in {1..30}; do ping -c1 1.1.1.1 &>/dev/null && break; sleep 1; done"
-    msg_ok "Network in LXC is reachable (ping)"
+  # Get IP
+  IP=$(pct exec $CTID -- hostname -I | awk '{print $1}')
 
-    # Export the install helper functions for the install script
-    if [ "$var_os" = "alpine" ]; then
-      export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/alpine-install.func)"
-    else
-      export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/install.func)"
-    fi
+  echo ""
+  echo "✓ Installation complete!"
+  echo "  Container ID: $CTID"
+  echo "  IP Address: $IP"
+  echo "  Dagster: http://${IP}:3000"
+  echo ""
+  echo "To access container shell: pct enter $CTID"
+  echo ""
 
-    # Use our custom install script from our repository
-    msg_info "Installing ${APP}"
-    pct exec $CTID -- bash -c "FUNCTIONS_FILE_PATH='$FUNCTIONS_FILE_PATH' bash <(curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflows_dagster/install/dagster-workflows-install.sh)"
-    msg_ok "Installed ${APP}"
-
-    # Run customization if function exists
-    if command -v customize &> /dev/null; then
-      msg_info "Customizing Container"
-      customize
-      msg_ok "Customized Container"
-    fi
-  }
-
-  # Build the container (this creates LXC and runs install portion inside it)
-  start
-  build_container
-  description
-
-  # Show completion message
-  msg_ok "Completed Successfully!\n"
-  echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-  echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-  echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3000${CL}"
   exit 0
 fi
 
@@ -131,5 +88,5 @@ fi
 # ============================================================================
 
 # If we're inside an LXC and being run directly, run the install/update script
-msg_info "Downloading and running install/update script"
+echo "Running install/update script..."
 bash <(curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflows_dagster/install/dagster-workflows-install.sh)
