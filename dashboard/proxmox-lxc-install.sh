@@ -18,13 +18,39 @@
 #
 # Documentation: https://github.com/overlandla/nebenkosten/blob/main/dashboard/PROXMOX_INSTALLATION.md
 
-source /dev/stdin <<< "$FUNCTIONS_FILE_PATH"
-color
-verb_ip6
-catch_errors
-setting_up_container
-network_check
-update_os
+# Detect if running in Proxmox helper script environment or standalone
+if [ -n "$FUNCTIONS_FILE_PATH" ]; then
+    # Running as Proxmox helper script (fresh install from host)
+    source /dev/stdin <<< "$FUNCTIONS_FILE_PATH"
+    color
+    verb_ip6
+    catch_errors
+    setting_up_container
+    network_check
+    update_os
+else
+    # Running standalone (update inside existing LXC)
+    # Define minimal functions for standalone operation
+    set -e
+    BL="\033[36m"
+    GN="\033[1;92m"
+    CL="\033[m"
+    YW="\033[1;33m"
+    RD="\033[01;31m"
+
+    msg_info() { echo -e "${BL}[INFO]${CL} $1"; }
+    msg_ok() { echo -e "${GN}[OK]${CL} $1"; }
+    msg_error() { echo -e "${RD}[ERROR]${CL} $1"; }
+
+    # Update OS when running standalone
+    msg_info "Updating system packages"
+    apt-get update
+    apt-get -y upgrade
+    msg_ok "System packages updated"
+fi
+
+# Set $STD for quiet operation if not already set
+STD="${STD:--qq}"
 
 msg_info "Installing Dependencies"
 $STD apt-get install -y curl
@@ -154,8 +180,13 @@ else
 fi
 
 if [ "$IS_UPDATE" != true ]; then
-    motd_ssh
-    customize
+    # Only run motd and customize if functions are available (Proxmox environment)
+    if command -v motd_ssh &> /dev/null; then
+        motd_ssh
+    fi
+    if command -v customize &> /dev/null; then
+        customize
+    fi
 fi
 
 msg_info "Cleaning up"
