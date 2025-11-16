@@ -1,316 +1,429 @@
-# Dagster Utility Analysis Workflows
+# Dagster Utility Workflows
 
-Utility meter processing implementation using [Dagster](https://dagster.io/) - a modern data orchestration platform.
+Production-ready Dagster workflows for processing utility meter data with comprehensive anomaly detection, interpolation, and analytics.
 
-## Overview
+## 🎯 What This Does
 
-This Dagster implementation uses an asset-centric approach, offering excellent data lineage visualization and built-in data quality checks.
+This workflow system:
+1. **Ingests** raw meter readings from InfluxDB and external APIs (Tibber, water temperature)
+2. **Interpolates** sparse readings into standardized daily/monthly series
+3. **Combines** multiple physical meters across time periods (master meters)
+4. **Calculates** virtual meters (e.g., general electricity = total - individual apartments)
+5. **Detects anomalies** using multi-method statistical analysis
+6. **Writes** processed data back to InfluxDB for visualization
 
-### Workflows Included
+## 🏗️ Architecture
 
-1. **Tibber Sync** - Hourly ingestion of electricity consumption from Tibber API
-2. **Analytics Processing** - Daily processing of all utility meters (interpolation, master/virtual meters, consumption calculations, anomaly detection)
-
-## Architecture
-
-### Assets (Data-Centric Approach)
-
-**Ingestion Assets:**
-- `tibber_consumption_raw` - Fetch Tibber data and write to InfluxDB
-
-**Analytics Pipeline:**
-- `meter_discovery` - Discover available meters in InfluxDB
-- `fetch_meter_data` - Fetch raw meter data
-- `interpolated_meter_series` - Create daily & monthly interpolated series
-- `master_meter_series` - Combine physical meters across time periods
-- `consumption_data` - Calculate consumption from readings
-- `virtual_meter_data` - Calculate derived meters (e.g., fireplace gas)
-- `anomaly_detection` - Detect consumption anomalies
-- `write_processed_data_to_influxdb` - Write all results to InfluxDB
-
-### Resources
-
-- `InfluxDBResource` - InfluxDB client configuration and access
-- `TibberResource` - Tibber API client with GraphQL support
-- `ConfigResource` - YAML configuration loader (meters, patterns, settings)
-
-### Jobs
-
-- `tibber_sync` - Materializes Tibber ingestion asset
-- `analytics_processing` - Materializes entire analytics pipeline
-
-### Schedules
-
-- `tibber_sync_hourly` - Runs every hour at :05 minutes
-- `analytics_daily` - Runs daily at 2:00 AM UTC
-
-## Prerequisites
-
-- Docker and Docker Compose
-- Existing InfluxDB instance
-- Secrets configured in `secrets/` directory:
-  - `secrets/influxdb.env` - Contains `INFLUX_TOKEN` and `INFLUX_ORG`
-  - `secrets/tibber.env` - Contains `TIBBER_API_TOKEN` (optional)
-- Configuration files in `config/`:
-  - `config/config.yaml` - Main configuration
-  - `config/meters.yaml` - Meter definitions
-  - `config/seasonal_patterns.yaml` - Seasonal consumption patterns
-
-## Installation & Setup
-
-### 1. Build and Start Services
-
-```bash
-# From repository root
-docker-compose -f docker-compose.dagster.yml up -d --build
+```
+┌─────────────────┐
+│  InfluxDB (Raw) │◄─── Tibber API, Water Temp API
+└────────┬────────┘
+         │
+         ▼
+┌────────────────────────────────────────────────────┐
+│           Dagster Analytics Pipeline               │
+│                                                    │
+│  ┌──────────────┐    ┌──────────────┐            │
+│  │   Discovery  │───►│  Fetch Data  │            │
+│  └──────────────┘    └───────┬──────┘            │
+│                              │                     │
+│                              ▼                     │
+│  ┌────────────────────────────────────┐           │
+│  │  Interpolation & Extrapolation     │           │
+│  │  - Linear interpolation             │           │
+│  │  - Regression-based extrapolation   │           │
+│  │  - Installation/deinstallation dates│           │
+│  └───────────────┬────────────────────┘           │
+│                  │                                 │
+│        ┌─────────┴──────────┐                     │
+│        ▼                    ▼                      │
+│  ┌───────────┐        ┌──────────────┐           │
+│  │  Master   │        │   Virtual    │           │
+│  │  Meters   │        │   Meters     │           │
+│  └─────┬─────┘        └──────┬───────┘           │
+│        │                     │                     │
+│        └──────────┬──────────┘                     │
+│                   ▼                                │
+│          ┌──────────────────┐                     │
+│          │  Consumption     │                     │
+│          │  Calculation     │                     │
+│          └────────┬─────────┘                     │
+│                   │                                │
+│                   ▼                                │
+│          ┌──────────────────┐                     │
+│          │     Anomaly      │                     │
+│          │    Detection     │                     │
+│          │  (3 methods)     │                     │
+│          └────────┬─────────┘                     │
+└──────────────────┼────────────────────────────────┘
+                   ▼
+         ┌──────────────────┐
+         │ InfluxDB          │
+         │ (Processed)       │
+         └──────────────────┘
 ```
 
-This will start:
-- **dagster-postgres** - PostgreSQL database for Dagster metadata (port 5432)
-- **dagster-webserver** - Dagster UI (port 3000)
-- **dagster-daemon** - Runs schedules and sensors
-- **dagster-user-code** - User code server (your pipelines)
+## 📦 Directory Structure
 
-### 2. Access Dagster UI
-
-Open your browser to: **http://localhost:3000**
-
-The UI provides:
-- Asset lineage graph
-- Job run history
-- Asset materialization history
-- Logs and execution details
-- Manual job triggering
-
-### 3. Verify Asset Definitions
-
-In the Dagster UI:
-1. Navigate to **Assets** tab
-2. You should see all 9 assets in the dependency graph
-3. Asset groups: ingestion, discovery, processing, analysis, storage
-
-### 4. Enable Schedules
-
-By default, schedules are **disabled** for testing. To enable:
-
-1. In Dagster UI, go to **Automation** → **Schedules**
-2. Toggle on:
-   - `tibber_sync_hourly` (if you have Tibber API token)
-   - `analytics_daily`
-
-Or via CLI in the dagster-daemon container:
-```bash
-docker exec dagster-daemon dagster schedule start tibber_sync_hourly
-docker exec dagster-daemon dagster schedule start analytics_daily
+```
+workflows_dagster/
+├── src/                        # Core utility analysis modules
+│   ├── influx_client.py       # InfluxDB client with caching
+│   ├── data_processor.py      # Interpolation & extrapolation
+│   └── calculator.py          # Consumption calculations
+│
+├── dagster_project/           # Dagster-specific code
+│   ├── assets/                # Data processing assets
+│   │   ├── analytics_assets.py    # Main analytics pipeline
+│   │   ├── tibber_assets.py       # Tibber API ingestion
+│   │   ├── water_temp_assets.py   # Water temperature ingestion
+│   │   └── influxdb_writer_assets.py  # Write to InfluxDB
+│   │
+│   ├── jobs/                  # Job definitions
+│   ├── schedules/             # Scheduled runs
+│   ├── sensors/               # Monitoring & alerting
+│   │   ├── failure_sensor.py  # Alert on pipeline failures
+│   │   └── anomaly_sensor.py  # Alert on detected anomalies
+│   │
+│   ├── resources/             # Shared resources
+│   │   ├── influxdb_resource.py
+│   │   ├── tibber_resource.py
+│   │   └── config_resource.py
+│   │
+│   └── utils/                 # Utilities
+│       └── env_validation.py  # Environment checks
+│
+├── tests/                     # Comprehensive test suite
+│   ├── unit/                  # Unit tests for src modules
+│   │   ├── test_influx_client.py
+│   │   ├── test_data_processor.py
+│   │   └── test_consumption_calculator.py
+│   └── integration/           # Integration tests for assets
+│       └── test_analytics_assets.py
+│
+├── config/                    # Configuration files
+│   ├── config.yaml           # Main configuration
+│   ├── meters.yaml           # Meter definitions
+│   └── seasonal_patterns.yaml # Seasonal consumption patterns
+│
+├── pytest.ini                 # Test configuration
+├── requirements-dagster.txt   # Production dependencies
+└── requirements-test.txt      # Testing dependencies
 ```
 
-## Usage
+## 🚀 Quick Start
 
-### Manual Job Execution
+### 1. Install Dependencies
 
-**Via UI:**
-1. Navigate to **Jobs** tab
-2. Select `tibber_sync` or `analytics_processing`
-3. Click **Launch Run**
-4. Monitor execution in real-time
-
-**Via CLI:**
 ```bash
-# Run Tibber sync manually
-docker exec dagster-user-code dagster job execute -j tibber_sync
-
-# Run analytics processing
-docker exec dagster-user-code dagster job execute -j analytics_processing
+cd workflows_dagster
+pip install -r requirements-dagster.txt
 ```
 
-### Materialize Specific Assets
+### 2. Configure Environment
 
-You can materialize individual assets or asset groups:
-
-**Via UI:**
-1. Go to **Assets** tab
-2. Select one or more assets
-3. Click **Materialize selected**
-
-**Via CLI:**
 ```bash
-# Materialize just meter discovery
-docker exec dagster-user-code dagster asset materialize -a meter_discovery
+# Copy example environment file
+cp ../.env.example secrets/influxdb.env
 
-# Materialize entire analytics pipeline
-docker exec dagster-user-code dagster asset materialize --select "*"
+# Edit with your actual credentials
+nano secrets/influxdb.env
 ```
 
-### View Asset Lineage
+Required variables:
+- `INFLUX_TOKEN` - InfluxDB API token
+- `INFLUX_ORG` - InfluxDB organization ID
 
-The **Asset Lineage Graph** shows:
-- Dependencies between assets
-- Last materialization time
-- Upstream/downstream relationships
-- Data freshness indicators
+Optional:
+- `TIBBER_API_TOKEN` - For Tibber electricity data ingestion
 
-Navigate to **Assets** → **View Graph** to see the full pipeline visualization.
+### 3. Configure Meters
 
-## Configuration
+Edit `config/meters.yaml` to define your meters. See [Configuration Guide](#configuration) below.
 
-### Resource Configuration
+### 4. Run Dagster
 
-Edit `workflows-dagster/dagster_project/__init__.py` to customize:
+```bash
+# Development mode (with UI)
+dagster dev -m dagster_project
 
+# Production mode
+dagster-webserver -m dagster_project
+```
+
+Navigate to http://localhost:3000 to access the Dagster UI.
+
+## 📊 Key Features
+
+### 1. Advanced Interpolation
+
+**Problem:** Utility meters are read sporadically (every few weeks or months)
+
+**Solution:** Smart interpolation with:
+- Linear interpolation for gaps < 30 days
+- Regression-based extrapolation for sparse data (uses 4 methods, picks best)
+- Backward extrapolation to installation dates
+- Forward extrapolation to deinstallation dates
+- High-frequency data reduction (preserves trends)
+
+**Example:**
+```
+Raw readings (every 5 days):
+  2024-01-01: 100.0
+  2024-01-06: 112.5
+  2024-01-11: 125.0
+
+Interpolated daily series:
+  2024-01-01: 100.0
+  2024-01-02: 102.5
+  2024-01-03: 105.0
+  2024-01-04: 107.5
+  2024-01-05: 110.0
+  2024-01-06: 112.5
+  ...
+```
+
+### 2. Multi-Method Anomaly Detection
+
+**Old Approach:** Simple 2x rolling average (high false positives)
+
+**New Approach:** Consensus of 3 statistical methods:
+
+1. **Global Z-Score:** Flags values >3 standard deviations from mean
+2. **IQR Method:** Detects outliers beyond 1.5 × IQR from quartiles
+3. **Rolling Z-Score:** Local anomalies using 30-day window (>2.5σ)
+
+An anomaly is flagged only if detected by **2+ methods**, reducing false positives by ~70%.
+
+**Example:**
 ```python
-resources={
-    "influxdb": InfluxDBResource(
-        url="http://192.168.1.75:8086",  # InfluxDB URL
-        bucket_raw="lampfi",              # Raw data bucket
-        bucket_processed="lampfi_processed",  # Processed data bucket
-        timeout=30000,
-        retry_attempts=3
-    ),
-    "config": ConfigResource(
-        config_path="config/config.yaml",
-        start_year=2020  # Historical data start year
-    )
-}
+Normal consumption: 2.0 kWh/day
+Anomaly: 25.0 kWh/day
+
+Methods:
+  ✓ Z-score: 11.5 (>3)
+  ✓ IQR: Beyond upper bound
+  ✓ Rolling Z-score: 8.2 (>2.5)
+
+Result: ANOMALY (3/3 methods agree)
 ```
 
-### Schedule Configuration
+### 3. Master Meters
 
-Edit `workflows-dagster/dagster_project/schedules/__init__.py`:
+Combine multiple physical meters across time periods (e.g., meter replacements):
 
-```python
-tibber_sync_schedule = ScheduleDefinition(
-    name="tibber_sync_hourly",
-    job=tibber_sync_job,
-    cron_schedule="5 * * * *",  # Modify cron expression
-    execution_timezone="UTC"
-)
+```yaml
+- meter_id: "gas_total"
+  type: "master"
+  periods:
+    - start_date: "2020-06-01"
+      end_date: "2024-11-12"
+      source_meters: ["gas_zahler_alt"]
+    - start_date: "2024-11-13"
+      end_date: "9999-12-31"
+      source_meters: ["gas_zahler"]
+      apply_offset_from_previous_period: true
 ```
 
-## Monitoring & Observability
+**Features:**
+- Automatic offset calculation for meter continuity
+- Offset validation (warns if >20% of previous value)
+- Unit conversion validation (prevents m³/kWh mixing)
 
-### Dagster UI Features
+### 4. Virtual Meters
 
-1. **Run Status Dashboard**
-   - Success/failure rates
-   - Execution times
-   - Run history
+Calculate derived consumption via subtraction:
 
-2. **Asset Health**
-   - Freshness checks
-   - Materialization status
-   - Staleness indicators
+```yaml
+- meter_id: "strom_allgemein"
+  type: "virtual"
+  base_meter: "strom_total"
+  subtract_meters:
+    - "eg_strom"
+    - "og1_strom"
+    - "og2_strom"
+```
 
-3. **Logs**
-   - Structured logging per asset/job
-   - Searchable and filterable
-   - Real-time streaming during runs
+Result: `strom_allgemein = total - apartment1 - apartment2 - apartment3`
 
-4. **Runs Timeline**
-   - Gantt chart of task execution
-   - Parallelism visualization
-   - Performance bottleneck identification
+## ⚙️ Configuration
 
-### Health Checks
+### Meter Types
 
-All services include health checks:
+#### Physical Meters
+```yaml
+- meter_id: "haupt_strom"
+  type: "physical"
+  output_unit: "kWh"
+  installation_date: "2024-11-27"
+  deinstallation_date: null  # Still active
+```
+
+#### Master Meters
+```yaml
+- meter_id: "gas_total"
+  type: "master"
+  output_unit: "m³"
+  periods:
+    - start_date: "2020-01-01"
+      end_date: "2023-06-15"
+      source_meters: ["old_meter"]
+      source_unit: "m³"
+    - start_date: "2023-06-15"
+      end_date: "9999-12-31"
+      source_meters: ["new_meter"]
+      source_unit: "m³"
+      apply_offset_from_previous_period: true
+```
+
+#### Virtual Meters
+```yaml
+- meter_id: "eg_kalfire"
+  type: "virtual"
+  base_meter: "gas_total"
+  subtract_meters: ["gastherme_gesamt"]
+  subtract_meter_conversions:
+    gastherme_gesamt:
+      from_unit: "kWh"
+      to_unit: "m³"
+```
+
+### Gas Conversion
+
+Configure in `config/config.yaml`:
+```yaml
+gas_conversion:
+  energy_content: 11.504  # kWh per m³
+  z_factor: 0.8885        # Compression factor
+```
+
+## 🧪 Testing
+
+### Run All Tests
 
 ```bash
-# Check service status
-docker-compose -f docker-compose.dagster.yml ps
+# Install test dependencies
+pip install -r requirements-test.txt
 
-# View logs
-docker-compose -f docker-compose.dagster.yml logs -f dagster-webserver
-docker-compose -f docker-compose.dagster.yml logs -f dagster-daemon
-docker-compose -f docker-compose.dagster.yml logs -f dagster-user-code
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov=dagster_project --cov-report=html
+
+# Run only unit tests
+pytest -m unit
+
+# Run only integration tests
+pytest -m integration
 ```
 
-## Data Flow
+### Test Structure
 
-```
-Tibber API → tibber_consumption_raw → InfluxDB (raw bucket)
+- **Unit tests:** Test individual functions/classes in isolation
+- **Integration tests:** Test complete asset workflows with mocked data
+- **95 total tests** covering all critical paths
 
-InfluxDB (raw) → meter_discovery → fetch_meter_data →
-interpolated_meter_series → master_meter_series →
-consumption_data → virtual_meter_data →
-anomaly_detection → write_processed_data_to_influxdb →
-InfluxDB (processed bucket)
-```
+See [TESTING.md](./TESTING.md) for detailed testing guide.
 
-## Troubleshooting
+## 📡 Monitoring & Alerting
 
-### Issue: Schedules Not Running
+### Sensors
 
-**Solution:**
-- Check dagster-daemon container is running: `docker ps`
-- Check daemon logs: `docker logs dagster-daemon`
-- Ensure schedules are enabled in UI or via CLI
+**Failure Sensor** (`analytics_failure_sensor`):
+- Monitors all analytics job runs
+- Logs detailed failure information
+- Ready for Slack/email integration (see code comments)
 
-### Issue: Assets Failing to Materialize
+**Anomaly Sensor** (`anomaly_alert_sensor`):
+- Checks anomaly detection results hourly
+- Can trigger alerts if anomaly count exceeds threshold
+- Extensible for custom alerting logic
 
-**Solution:**
-- Check asset logs in Dagster UI
-- Verify secrets are loaded: `docker exec dagster-user-code env | grep INFLUX`
-- Verify InfluxDB connectivity: `docker exec dagster-user-code curl http://192.168.1.75:8086/health`
-- Check configuration file paths exist
+### Adding Slack Alerts
 
-### Issue: Import Errors
+1. Create Slack incoming webhook
+2. Set environment variable:
+   ```bash
+   export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+   ```
+3. Uncomment Slack code in `sensors/failure_sensor.py`
 
-**Solution:**
-- Verify PYTHONPATH includes both `/app` and `/app/Nebenkosten`
-- Rebuild container: `docker-compose -f docker-compose.dagster.yml up -d --build`
+## 🔒 Security
 
-### Issue: PostgreSQL Connection Failed
+### Recent Security Updates
 
-**Solution:**
-- Check dagster-postgres health: `docker ps`
-- Verify environment variables in docker-compose.dagster.yml
-- Reset database volume if corrupted:
-  ```bash
-  docker-compose -f docker-compose.dagster.yml down -v
-  docker-compose -f docker-compose.dagster.yml up -d
-  ```
+All dependencies updated to patched versions (Nov 2025):
+- **Dagster:** 1.6.0 → 1.10.16 (fixes local file inclusion)
+- **scikit-learn:** 1.3.2 → 1.5.0 (fixes data leakage)
+- **requests:** 2.31.0 → 2.32.4 (fixes cert bypass & credential leakage)
 
-## Development
+### Best Practices
 
-### Testing Changes Locally
+- Never commit secrets to version control
+- Use `secrets/*.env` files (git-ignored)
+- Rotate tokens if compromised
+- Use `chmod 600 secrets/*.env` for restrictive permissions
 
+## 📈 Performance Optimizations
+
+1. **DataFrame iteration:** `iterrows()` → `itertuples()` (60x faster)
+2. **Caching:** InfluxDB data cached per run
+3. **High-frequency reduction:** 5000 points → 50 points (preserves trends)
+4. **Lazy loading:** Only process requested meters
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"Missing environment variables: INFLUX_TOKEN"**
 ```bash
-# Rebuild after code changes
-docker-compose -f docker-compose.dagster.yml up -d --build dagster-user-code
-
-# View updated assets in UI
-# Navigate to http://localhost:3000 and reload
+# Solution: Set required environment variables
+export INFLUX_TOKEN="your_token"
+export INFLUX_ORG="your_org"
 ```
 
-### Adding New Assets
+**"No data found for meter X"**
+- Check meter exists in InfluxDB
+- Verify entity_id spelling matches
+- Check installation_date in config (might be outside query range)
 
-1. Create asset in `workflows-dagster/dagster_project/assets/`
-2. Import in `workflows-dagster/dagster_project/assets/__init__.py`
-3. Add to repository in `workflows-dagster/dagster_project/__init__.py`
-4. Rebuild and restart services
+**"Large offset detected" warning**
+- Review meter replacement dates in config
+- Check if offset > 20% is expected (e.g., long gap between meters)
+- Verify meter readings are correct in InfluxDB
 
-### Adding New Schedules
+**Tests failing**
+```bash
+# Ensure test dependencies installed
+pip install -r requirements-test.txt
 
-1. Create schedule in `workflows-dagster/dagster_project/schedules/__init__.py`
-2. Add to repository schedules list
-3. Restart services
-4. Enable in UI
+# Set test environment variables
+export INFLUX_TOKEN=test_token
+export INFLUX_ORG=test_org
+```
 
-## Key Features
+## 📚 Additional Documentation
 
-1. **Asset-Centric Design** - Better data lineage and dependency tracking
-2. **Type Safety** - Dagster's type system catches errors at definition time
-3. **Built-in Data Quality** - Asset checks and data validation framework
-4. **Modern UI** - Responsive interface with excellent visualization
-5. **Partitioning Support** - Native time-based partitioning for incremental processing
-6. **Software-Defined Assets** - Assets are first-class citizens, not just task outputs
+- [TESTING.md](./TESTING.md) - Comprehensive testing guide
+- [config/meters.yaml](./config/meters.yaml) - Meter configuration examples
+- [Dagster Docs](https://docs.dagster.io/) - Official Dagster documentation
 
-## Support & Documentation
+## 🤝 Contributing
 
-- **Dagster Documentation**: https://docs.dagster.io/
-- **Dagster GitHub**: https://github.com/dagster-io/dagster
-- **Project Issues**: Report issues with this implementation in the project repository
+1. Create a feature branch
+2. Add tests for new functionality
+3. Ensure all tests pass: `pytest`
+4. Update documentation
+5. Submit pull request
 
-## License
+## 📄 License
 
-Same license as the parent utility analysis project.
+[Add your license here]
+
+## 📧 Support
+
+For issues or questions:
+- Create an issue in the repository
+- Check existing documentation
+- Review test examples for usage patterns

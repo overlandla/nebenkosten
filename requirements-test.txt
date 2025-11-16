@@ -1,4 +1,5 @@
 # Testing dependencies for Dagster workflows
+# SECURITY: Updated to match requirements-dagster.txt secure versions
 
 # Test framework
 pytest==7.4.3
@@ -7,25 +8,26 @@ pytest-mock==3.12.0        # Mocking utilities
 pytest-timeout==2.2.0      # Test timeouts
 pytest-xdist==3.5.0        # Parallel test execution
 pytest-asyncio==0.21.1     # Async test support
+pytest-env==1.1.3          # Environment variables in pytest.ini
 
 # Mocking and fixtures
 responses==0.24.1          # HTTP request mocking
 freezegun==1.4.0           # Time/date mocking
 faker==21.0.0              # Fake data generation
 
-# Dagster testing utilities
-dagster==1.6.0             # Same version as main requirements
-dagster-webserver==1.6.0
+# Dagster testing utilities (SECURITY UPDATE: 1.6.0 -> 1.10.16)
+dagster==1.10.16
+dagster-webserver==1.10.16
 
-# Core dependencies (from requirements-dagster.txt)
+# Core dependencies (from requirements-dagster.txt with security updates)
 influxdb-client==1.38.0
 pandas==2.1.3
 numpy==1.26.2
 scipy==1.11.4
-scikit-learn==1.3.2
+scikit-learn==1.5.0        # SECURITY UPDATE: 1.3.2 -> 1.5.0
 pyyaml==6.0.1
 python-dotenv==1.0.0
-requests==2.31.0
+requests==2.32.4           # SECURITY UPDATE: 2.31.0 -> 2.32.4
 openpyxl==3.1.2
 plotly==5.18.0
 psycopg2-binary==2.9.9

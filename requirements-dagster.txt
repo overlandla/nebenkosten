@@ -1,20 +1,23 @@
 # Dagster core
-# Note: dagster and dagster-webserver use 1.x versioning
-# dagster-postgres and dagster-docker use 0.x versioning
-dagster==1.6.0
-dagster-webserver==1.6.0
-dagster-postgres==0.22.0  # Compatible with dagster 1.6.0
-dagster-docker==0.22.0  # Compatible with dagster 1.6.0
+# SECURITY UPDATE: Upgraded from 1.6.0 to 1.10.16 to fix GHSA-h7x8-jv97-fvvm (Local File Inclusion)
+dagster==1.10.16
+dagster-webserver==1.10.16
+dagster-postgres==0.26.16  # Compatible with dagster 1.10.16
+dagster-docker==0.26.16  # Compatible with dagster 1.10.16
 
 # Existing dependencies (matching worker requirements)
 influxdb-client==1.38.0
 pandas==2.1.3
 numpy==1.26.2
 scipy==1.11.4
-scikit-learn==1.3.2
+# SECURITY UPDATE: Upgraded from 1.3.2 to 1.5.0 to fix PYSEC-2024-110 (TF-IDF sensitive data leakage)
+scikit-learn==1.5.0
 pyyaml==6.0.1
 python-dotenv==1.0.0
-requests==2.31.0
+# SECURITY UPDATE: Upgraded from 2.31.0 to 2.32.4 to fix:
+#   - GHSA-9wx4-h78v-vm56 (cert verification bypass)
+#   - GHSA-9hjg-9r4m-mvj7 (.netrc credential leakage)
+requests==2.32.4
 beautifulsoup4==4.12.2
 openpyxl==3.1.2
 plotly==5.18.0
