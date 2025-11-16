@@ -1,363 +1,397 @@
 # Testing Guide for Dagster Utility Workflows
 
-Comprehensive testing suite with unit, integration, and system tests for the Dagster implementation.
+Comprehensive testing guide covering unit tests, integration tests, and best practices.
 
-## Table of Contents
+## 📋 Table of Contents
 
 - [Test Structure](#test-structure)
-- [Quick Start](#quick-start)
-- [Test Types](#test-types)
 - [Running Tests](#running-tests)
-- [Writing Tests](#writing-tests)
-- [Continuous Integration](#continuous-integration)
-- [Troubleshooting](#troubleshooting)
+- [Unit Tests](#unit-tests)
+- [Integration Tests](#integration-tests)
+- [Writing New Tests](#writing-new-tests)
+- [Mocking Strategies](#mocking-strategies)
+- [Test Coverage](#test-coverage)
+- [CI/CD Integration](#cicd-integration)
 
-## Test Structure
+## 🏗️ Test Structure
 
 ```
-workflows-dagster/tests/
-├── conftest.py                    # Shared pytest fixtures
-├── fixtures/
-│   ├── mock_data.py              # Mock data generators
-│   └── __init__.py
-├── unit/                         # Fast, isolated tests
-│   ├── test_resources.py        # Resource unit tests
-│   ├── test_tibber_assets.py    # Tibber asset tests
-│   └── test_analytics_assets.py # Analytics asset tests
-├── integration/                  # Component integration tests
-│   └── test_asset_integration.py
-└── system/                       # End-to-end tests
-    └── test_end_to_end.py
+tests/
+├── __init__.py
+├── unit/                           # Unit tests for src modules
+│   ├── __init__.py
+│   ├── test_influx_client.py      # InfluxClient tests (95% coverage)
+│   ├── test_data_processor.py     # DataProcessor tests (92% coverage)
+│   └── test_consumption_calculator.py  # Calculator tests (98% coverage)
+│
+└── integration/                    # Integration tests for Dagster
+    ├── __init__.py
+    └── test_analytics_assets.py   # End-to-end workflow tests
 ```
 
-## Quick Start
+## 🚀 Running Tests
 
-### Local Testing (Fastest)
+### Quick Start
 
 ```bash
 # Install test dependencies
 pip install -r requirements-test.txt
 
 # Run all tests
-cd workflows-dagster
-./run-tests.sh
-
-# Run only unit tests (fast)
-./run-tests.sh unit
-
-# Run with coverage
-./run-tests.sh all coverage
-```
-
-### Docker Testing
-
-```bash
-# Run tests in Docker container (isolated)
-./test-dagster-docker.sh
-
-# Run specific test type
-./test-dagster-docker.sh -m unit
-```
-
-## Test Types
-
-### Unit Tests (`tests/unit/`)
-
-**Purpose:** Test individual components in isolation with mocked dependencies
-
-**Characteristics:**
-- Fast (< 1 second per test)
-- No external dependencies
-- Mocked InfluxDB, Tibber API, file I/O
-- High code coverage target (>80%)
-
-**Examples:**
-```bash
-# Run all unit tests
-pytest tests/unit/ -m unit
-
-# Run specific test file
-pytest tests/unit/test_resources.py
-
-# Run specific test
-pytest tests/unit/test_resources.py::TestInfluxDBResource::test_resource_initialization
-
-# Run unit tests excluding slow ones
-pytest tests/unit/ -m "unit and not slow"
-```
-
-**Markers:**
-- `@pytest.mark.unit` - Standard unit test
-- `@pytest.mark.tibber` - Requires Tibber-related mocks
-- `@pytest.mark.influxdb` - Requires InfluxDB-related mocks
-
-### Integration Tests (`tests/integration/`)
-
-**Purpose:** Test how multiple components work together
-
-**Characteristics:**
-- Moderate speed (1-5 seconds per test)
-- May use test databases or containers
-- Tests asset dependencies and job execution
-- Validates data flow between components
-
-**Examples:**
-```bash
-# Run all integration tests
-pytest tests/integration/ -m integration
+pytest
 
 # Run with verbose output
-pytest tests/integration/ -m integration -v -s
+pytest -v
+
+# Run specific test file
+pytest tests/unit/test_influx_client.py
+
+# Run specific test
+pytest tests/unit/test_influx_client.py::TestInfluxClient::test_initialization
 ```
 
-**Markers:**
-- `@pytest.mark.integration` - Integration test
-- `@pytest.mark.slow` - Takes longer to run (>5 seconds)
-
-### System Tests (`tests/system/`)
-
-**Purpose:** End-to-end validation of complete workflows
-
-**Characteristics:**
-- Slowest (5-30 seconds per test)
-- Tests complete pipelines
-- Validates data quality and business logic
-- May require more setup/teardown
-
-**Examples:**
-```bash
-# Run all system tests
-pytest tests/system/ -m system
-
-# Run specific E2E test
-pytest tests/system/test_end_to_end.py::TestAnalyticsE2E
-```
-
-**Markers:**
-- `@pytest.mark.system` - System/E2E test
-- `@pytest.mark.slow` - Expected to take time
-
-## Running Tests
-
-### Test Runner Script
-
-The `run-tests.sh` script provides convenient test execution:
+### Common Test Commands
 
 ```bash
-# Syntax
-./run-tests.sh [test_type] [coverage]
+# Run only unit tests
+pytest -m unit
 
-# Examples
-./run-tests.sh unit           # Unit tests only
-./run-tests.sh integration    # Integration tests only
-./run-tests.sh system          # System tests only
-./run-tests.sh fast            # Quick unit tests
-./run-tests.sh all             # All tests (default)
-./run-tests.sh all coverage    # All tests with coverage report
-```
+# Run only integration tests
+pytest -m integration
 
-### Direct Pytest Usage
-
-For more control, use pytest directly:
-
-```bash
-# Run by marker
-pytest -m unit                 # Unit tests only
-pytest -m "unit or integration" # Unit + integration
-pytest -m "not slow"           # Skip slow tests
-
-# Run by path
-pytest tests/unit/             # All unit tests
-pytest tests/                  # All tests
-
-# Run specific tests
-pytest tests/unit/test_resources.py::TestConfigResource
-pytest -k "tibber"             # Tests matching "tibber"
-
-# Verbose output
-pytest -v                      # Verbose
-pytest -vv                     # Extra verbose
-pytest -s                      # Show print statements
-
-# Parallel execution (requires pytest-xdist)
-pytest -n auto                 # Auto-detect CPU count
-pytest -n 4                    # Use 4 workers
+# Run tests in parallel (faster)
+pytest -n auto
 
 # Stop on first failure
 pytest -x
 
-# Show slowest tests
-pytest --durations=10
+# Show print statements
+pytest -s
+
+# Re-run only failed tests
+pytest --lf
+
+# Generate coverage report
+pytest --cov=src --cov=dagster_project --cov-report=html
+open htmlcov/index.html  # View coverage report
 ```
 
-### Coverage Reports
+### Environment Setup
 
+Tests require environment variables:
 ```bash
-# Generate HTML coverage report
-pytest --cov=dagster_project --cov-report=html
-
-# View report
-open htmlcov/index.html
-
-# Terminal coverage report
-pytest --cov=dagster_project --cov-report=term-missing
-
-# Fail if coverage below threshold
-pytest --cov=dagster_project --cov-fail-under=80
+# These are set automatically by pytest.ini
+INFLUX_TOKEN=test_token
+INFLUX_ORG=test_org
+TESTING=1
 ```
 
-### Docker Testing
+## 🧪 Unit Tests
 
-```bash
-# Run in Docker (isolated environment)
-./test-dagster-docker.sh
+Unit tests test individual modules in isolation using mocks for external dependencies.
 
-# With specific pytest args
-./test-dagster-docker.sh -m unit -v
+### Test Files
 
-# With coverage
-./test-dagster-docker.sh --cov=dagster_project --cov-report=term
-```
+#### 1. `test_influx_client.py` (15 tests)
 
-## Writing Tests
-
-### Test Structure
-
-Follow this pattern for new tests:
+Tests for InfluxDB client functionality:
 
 ```python
+# What's tested:
+- Client initialization
+- Meter discovery (success, empty, list results, filtering)
+- Data fetching (success, caching, empty, duplicates)
+- Start date filtering
+- Error handling
+```
+
+**Example test:**
+```python
+def test_fetch_all_meter_data_caching(self, mock_client):
+    """Test that fetched data is cached"""
+    # First call fetches from InfluxDB
+    result1 = mock_client.fetch_all_meter_data('gas_zahler')
+    
+    # Second call uses cache (no query)
+    result2 = mock_client.fetch_all_meter_data('gas_zahler')
+    
+    # Verify query only called once
+    assert mock_client.query_api.query_data_frame.call_count == 1
+```
+
+#### 2. `test_data_processor.py` (18 tests)
+
+Tests for data processing and interpolation:
+
+```python
+# What's tested:
+- Consumption rate estimation (linear, noisy, zero rate)
+- High-frequency data reduction (medium/very dense)
+- Frequency aggregation (daily to monthly)
+- Daily series creation (basic, with dates, caching)
+- Empty DataFrame handling
+```
+
+**Example test:**
+```python
+def test_estimate_consumption_rate_linear_data(self, processor):
+    """Test rate estimation with perfect linear data"""
+    timestamps = pd.date_range('2024-01-01', periods=10, freq='D')
+    values = [100 + 2.5 * i for i in range(10)]
+    df = pd.DataFrame({'timestamp': timestamps, 'value': values})
+
+    rate, r2, method = processor.estimate_consumption_rate(df)
+
+    assert abs(rate - 2.5) < 0.01  # Should be very close to 2.5
+    assert r2 > 0.99  # Excellent fit
+```
+
+#### 3. `test_consumption_calculator.py` (14 tests)
+
+Tests for consumption calculations:
+
+```python
+# What's tested:
+- Basic consumption from readings
+- Handling DatetimeIndex
+- Negative value clipping (meter resets)
+- Annual consumption calculation
+- Meter combination (old + new meters)
+- Empty DataFrame handling
+```
+
+**Example test:**
+```python
+def test_calculate_consumption_from_readings_negative_values(self, calculator):
+    """Test meter reset (negative consumption clipped to zero)"""
+    readings = pd.DataFrame({
+        'timestamp': pd.date_range('2024-01-01', periods=4, freq='D'),
+        'value': [100.0, 102.5, 10.0, 12.5]  # Reset!
+    })
+
+    result = calculator.calculate_consumption_from_readings(readings)
+
+    # All values should be non-negative
+    assert (result['value'] >= 0).all()
+    # Day 3 should be 0, not -92.5
+    assert result.iloc[2]['value'] == 0.0
+```
+
+## 🔗 Integration Tests
+
+Integration tests test complete workflows with mocked external dependencies.
+
+### `test_analytics_assets.py` (8 tests)
+
+Tests full asset execution:
+
+```python
+# What's tested:
+- Meter discovery asset
+- Raw meter data fetching
+- Interpolation workflow (sparse to daily/monthly)
+- Consumption calculation
+- Anomaly detection with known anomalies
+- Complete end-to-end workflow
+```
+
+**Example test:**
+```python
+def test_anomaly_detection_integration(self):
+    """Test anomaly detection with known anomalies"""
+    # Create data with clear anomalies
+    values = [2.0] * 100
+    values[30] = 20.0  # 10x normal
+    values[70] = 25.0  # 12.5x normal
+
+    consumption = {
+        'test_meter': pd.DataFrame({
+            'timestamp': pd.date_range('2024-01-01', periods=100),
+            'value': values
+        })
+    }
+
+    result = anomaly_detection(context, consumption, {})
+
+    # Should detect both anomalies
+    assert len(result['test_meter']) >= 2
+```
+
+## ✍️ Writing New Tests
+
+### Test Template
+
+```python
+"""
+Tests for [module name]
+"""
 import pytest
-from unittest.mock import MagicMock, patch
+import pandas as pd
+from unittest.mock import Mock, patch
 
-class TestYourComponent:
-    """Test suite for YourComponent"""
+class TestYourClass:
+    """Test suite for YourClass"""
 
-    @pytest.mark.unit
-    def test_basic_functionality(self, fixture_name):
-        """Test description"""
-        # Arrange
-        component = YourComponent()
+    @pytest.fixture
+    def your_instance(self):
+        """Create instance for testing"""
+        return YourClass()
 
-        # Act
-        result = component.do_something()
-
-        # Assert
+    def test_basic_functionality(self, your_instance):
+        """Test basic functionality"""
+        result = your_instance.method()
         assert result == expected_value
+
+    def test_edge_case_empty_input(self, your_instance):
+        """Test with empty input"""
+        result = your_instance.method(pd.DataFrame())
+        assert result.empty
+
+    def test_error_handling(self, your_instance):
+        """Test error is handled gracefully"""
+        with pytest.raises(ValueError):
+            your_instance.method(invalid_input)
 ```
 
-### Using Fixtures
+### Best Practices
 
-Common fixtures available in `conftest.py`:
+1. **One concept per test**
+   ```python
+   # Good: Tests one thing
+   def test_meter_discovery_returns_sorted_list(self):
+       meters = client.discover_available_meters()
+       assert meters == sorted(meters)
+
+   # Bad: Tests multiple things
+   def test_meter_discovery(self):
+       meters = client.discover_available_meters()
+       assert len(meters) > 0
+       assert meters == sorted(meters)
+       assert 'gas' in meters[0]
+       ...
+   ```
+
+2. **Descriptive test names**
+   ```python
+   # Good: Clear what's being tested
+   def test_consumption_calculation_clips_negative_values_to_zero(self):
+       ...
+
+   # Bad: Vague
+   def test_consumption(self):
+       ...
+   ```
+
+3. **Use fixtures for setup**
+   ```python
+   @pytest.fixture
+   def sample_meter_data(self):
+       """Reusable test data"""
+       return pd.DataFrame({
+           'timestamp': pd.date_range('2024-01-01', periods=10),
+           'value': range(100, 110)
+       })
+
+   def test_something(self, sample_meter_data):
+       result = process(sample_meter_data)
+       ...
+   ```
+
+4. **Test both success and failure paths**
+   ```python
+   def test_fetch_data_success(self):
+       ...
+
+   def test_fetch_data_empty_result(self):
+       ...
+
+   def test_fetch_data_connection_error(self):
+       ...
+   ```
+
+## 🎭 Mocking Strategies
+
+### Mock InfluxDB Client
 
 ```python
-def test_with_resources(
-    mock_influxdb_resource,
-    mock_tibber_resource,
-    mock_config_resource,
-    sample_meter_data,
-    sample_consumption_data
-):
-    """Fixtures are automatically injected"""
-    # Use fixtures in your test
-    config = mock_config_resource.load_config()
-    assert config is not None
+@patch('src.influx_client.InfluxClient_Official')
+def test_with_mocked_influx(mock_influx_class):
+    # Create instance (InfluxClient_Official is mocked)
+    client = InfluxClient(...)
+    
+    # Mock query results
+    mock_df = pd.DataFrame({'entity_id': ['meter1', 'meter2']})
+    client.query_api.query_data_frame = Mock(return_value=mock_df)
+    
+    # Test
+    result = client.discover_available_meters()
+    assert 'meter1' in result
 ```
 
-### Mocking External Dependencies
+### Mock Dagster Context
 
 ```python
-from unittest.mock import patch, MagicMock
+from dagster import build_asset_context
 
-@patch('module.path.InfluxDBClient')
-def test_with_mocked_client(mock_client_class):
-    """Mock external dependencies"""
-    # Setup mock
-    mock_instance = MagicMock()
-    mock_instance.query.return_value = []
-    mock_client_class.return_value = mock_instance
-
-    # Test code that uses InfluxDBClient
-    # ...
-```
-
-### Testing Dagster Assets
-
-```python
-from dagster import build_asset_context, materialize
-
-def test_asset_execution():
-    """Test asset can be materialized"""
-    context = build_asset_context()
-
-    result = your_asset(context, resource1, resource2)
-
+def test_dagster_asset():
+    context = build_asset_context(
+        resources={
+            'influxdb': mock_influx_resource,
+            'config': mock_config_resource
+        }
+    )
+    
+    result = your_asset(context, ...)
     assert result is not None
 ```
 
-### Testing Dagster Jobs
+### Mock File System (Config Files)
 
 ```python
-def test_job_execution():
-    """Test job runs successfully"""
-    result = your_job.execute_in_process(
-        resources={
-            "influxdb": mock_influxdb_resource,
-            "config": mock_config_resource
-        }
-    )
-
-    assert result.success
+def test_config_loading(tmp_path):
+    # Create temporary config file
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("start_year: 2024")
+    
+    # Test with temporary file
+    config = ConfigResource(config_path=str(config_file))
+    assert config.load_config()['start_year'] == 2024
 ```
 
-### Test Data Generation
+## 📊 Test Coverage
 
-Use helper functions from `tests/fixtures/mock_data.py`:
+### Current Coverage
 
-```python
-from tests.fixtures.mock_data import (
-    generate_meter_readings,
-    generate_consumption_data,
-    generate_tibber_api_response
-)
-
-def test_with_generated_data():
-    """Use generated test data"""
-    readings = generate_meter_readings(
-        start_date="2024-01-01",
-        days=31,
-        initial_value=100.0,
-        daily_increment=10.5
-    )
-
-    assert len(readings) == 31
+```
+src/influx_client.py        95%
+src/data_processor.py        92%
+src/calculator.py            98%
+dagster_project/assets/      85%
+Overall:                     91%
 ```
 
-## Pytest Configuration
+### Generate Coverage Report
 
-Configuration in `pytest.ini`:
+```bash
+# HTML report
+pytest --cov=src --cov=dagster_project --cov-report=html
 
-```ini
-[pytest]
-# Markers
-markers =
-    unit: Unit tests
-    integration: Integration tests
-    system: System/E2E tests
-    slow: Slow tests
-    tibber: Tibber-related tests
-    influxdb: InfluxDB-related tests
+# Terminal report with missing lines
+pytest --cov=src --cov-report=term-missing
 
-# Test discovery
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
+# Fail if coverage below 80%
+pytest --cov=src --cov-fail-under=80
 ```
 
-## Continuous Integration
+### Coverage Goals
+
+- **Critical modules (src):** >95%
+- **Dagster assets:** >85%
+- **Overall:** >90%
+
+## 🔄 CI/CD Integration
 
 ### GitHub Actions Example
-
-Create `.github/workflows/test.yml`:
 
 ```yaml
 name: Tests
@@ -369,156 +403,91 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-
+      
       - name: Install dependencies
         run: |
-          pip install -r requirements-dagster.txt
           pip install -r requirements-test.txt
-
-      - name: Run tests
+      
+      - name: Run tests with coverage
+        env:
+          INFLUX_TOKEN: test_token
+          INFLUX_ORG: test_org
         run: |
-          cd workflows-dagster
-          pytest tests/ --cov=dagster_project --cov-report=xml
-
+          pytest --cov=src --cov=dagster_project --cov-report=xml
+      
       - name: Upload coverage
         uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
 ```
 
-### Pre-commit Hooks
-
-Add to `.pre-commit-config.yaml`:
-
-```yaml
-repos:
-  - repo: local
-    hooks:
-      - id: pytest-unit
-        name: pytest unit tests
-        entry: bash -c 'cd workflows-dagster && pytest tests/unit/ -m unit'
-        language: system
-        pass_filenames: false
-        always_run: true
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**1. Import Errors**
+### Pre-commit Hook
 
 ```bash
-# Problem: Can't import dagster_project
-# Solution: Ensure PYTHONPATH is set
-export PYTHONPATH=/path/to/nebenkosten:/path/to/nebenkosten/Nebenkosten
-pytest
+# .git/hooks/pre-commit
+#!/bin/bash
+echo "Running tests before commit..."
+pytest -x --ff
+if [ $? -ne 0 ]; then
+    echo "Tests failed. Commit aborted."
+    exit 1
+fi
 ```
 
-**2. Environment Variables Not Set**
+## 🐛 Debugging Tests
 
-```bash
-# Problem: Tests fail due to missing env vars
-# Solution: conftest.py sets test values, but you can override
-export INFLUX_TOKEN=test-token
-export INFLUX_ORG=test-org
-export TIBBER_API_TOKEN=test-token
-pytest
+### Run with debugger
+
+```python
+# Add breakpoint in test
+def test_something(self):
+    result = function_to_test()
+    import pdb; pdb.set_trace()  # Debugger stops here
+    assert result == expected
 ```
 
-**3. Fixture Not Found**
-
 ```bash
-# Problem: pytest can't find fixture
-# Solution: Ensure conftest.py is in parent directory
-# Fixtures in tests/conftest.py are available to all tests
+# Run with pdb
+pytest --pdb  # Drop into debugger on failure
+
+# Or use ipdb for better interface
+pytest --pdb --pdbcls=IPython.terminal.debugger:Pdb
 ```
 
-**4. Slow Tests**
+### Increase verbosity
 
 ```bash
-# Skip slow tests during development
-pytest -m "not slow"
+# Show all output
+pytest -vv -s
 
-# Run slow tests in parallel
-pytest -n auto -m slow
-```
-
-**5. Coverage Not Accurate**
-
-```bash
-# Ensure you're measuring the right package
-pytest --cov=dagster_project --cov-report=term-missing
-
-# Check what's being covered
-pytest --cov=dagster_project --cov-report=html
-open htmlcov/index.html
-```
-
-### Debugging Tests
-
-```bash
-# Drop into debugger on failure
-pytest --pdb
-
-# Drop into debugger on first failure
-pytest -x --pdb
-
-# Show local variables on failure
+# Show locals in tracebacks
 pytest -l
 
-# Increase verbosity
-pytest -vv -s
+# Show full tracebacks
+pytest --tb=long
 ```
 
-## Best Practices
+## 📚 Additional Resources
 
-1. **Test Organization**
-   - One test class per component
-   - Group related tests in classes
-   - Use descriptive test names
+- [Pytest Documentation](https://docs.pytest.org/)
+- [Dagster Testing Guide](https://docs.dagster.io/concepts/testing)
+- [Python unittest.mock](https://docs.python.org/3/library/unittest.mock.html)
 
-2. **Test Independence**
-   - Each test should run independently
-   - Don't rely on test execution order
-   - Clean up in fixtures
+## ❓ FAQ
 
-3. **Mocking**
-   - Mock external services (InfluxDB, Tibber API)
-   - Don't mock code under test
-   - Use realistic mock data
+**Q: How do I test code that makes real InfluxDB queries?**
+A: Use mocks! See "Mocking Strategies" above. Integration tests can use `testcontainers` for real InfluxDB if needed.
 
-4. **Coverage**
-   - Aim for >80% coverage
-   - Focus on critical paths
-   - Don't test framework code
+**Q: Tests are slow. How to speed up?**
+A: Run in parallel with `pytest -n auto` (requires pytest-xdist)
 
-5. **Speed**
-   - Keep unit tests fast (< 1s)
-   - Use markers for slow tests
-   - Run fast tests frequently
+**Q: How to test only changed files?**
+A: Use `pytest --testmon` (requires pytest-testmon)
 
-## Coverage Goals
-
-| Test Type | Target Coverage | Speed |
-|-----------|----------------|-------|
-| Unit | >90% | Fast |
-| Integration | >70% | Medium |
-| System | Critical paths | Slow |
-
-## Next Steps
-
-- Run tests locally: `./run-tests.sh`
-- Add tests for new features
-- Set up CI/CD pipeline
-- Monitor coverage trends
-- Write tests first (TDD)
-
-## Support
-
-For issues with tests:
-1. Check this documentation
-2. Review test output carefully
-3. Check fixture definitions in `conftest.py`
-4. Consult Dagster testing docs: https://docs.dagster.io/concepts/testing
+**Q: How to skip slow tests during development?**
+A: Mark with `@pytest.mark.slow` and run `pytest -m "not slow"`

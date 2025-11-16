@@ -31,6 +31,9 @@ from .jobs import tibber_sync_job, water_temp_sync_job, analytics_job
 # Import schedules
 from .schedules import tibber_sync_schedule, water_temp_sync_schedule, analytics_schedule
 
+# Import sensors
+from .sensors import analytics_failure_sensor, anomaly_alert_sensor
+
 # Define the repository
 utility_repository = Definitions(
     assets=[
@@ -58,6 +61,10 @@ utility_repository = Definitions(
         tibber_sync_schedule,
         water_temp_sync_schedule,
         analytics_schedule
+    ],
+    sensors=[
+        analytics_failure_sensor,
+        anomaly_alert_sensor
     ],
     resources={
         "influxdb": InfluxDBResource(
