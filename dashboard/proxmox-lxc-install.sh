@@ -60,7 +60,15 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
     cd /opt/utility-meter-dashboard
     REPO_DIR="/tmp/nebenkosten-update"
     rm -rf "$REPO_DIR"
-    $STD git clone https://github.com/overlandla/nebenkosten.git "$REPO_DIR"
+
+    # Use stored GitHub auth if available
+    if [ -f /root/.github_clone_url ]; then
+      GITHUB_CLONE_URL=$(cat /root/.github_clone_url)
+    else
+      GITHUB_CLONE_URL="https://github.com/overlandla/nebenkosten.git"
+    fi
+
+    $STD git clone "$GITHUB_CLONE_URL" "$REPO_DIR"
     rsync -av --exclude='.env.local' --exclude='.env.local.backup' "$REPO_DIR/dashboard/" /opt/utility-meter-dashboard/
     rm -rf "$REPO_DIR"
     msg_ok "Updated ${APP}"
@@ -141,7 +149,15 @@ else
       cd /opt/utility-meter-dashboard
       REPO_DIR="/tmp/nebenkosten-update"
       rm -rf "$REPO_DIR"
-      git clone https://github.com/overlandla/nebenkosten.git "$REPO_DIR"
+
+      # Use stored GitHub auth if available
+      if [ -f /root/.github_clone_url ]; then
+        GITHUB_CLONE_URL=$(cat /root/.github_clone_url)
+      else
+        GITHUB_CLONE_URL="https://github.com/overlandla/nebenkosten.git"
+      fi
+
+      git clone "$GITHUB_CLONE_URL" "$REPO_DIR" 2>&1 | grep -v "Username\|Password" || true
       rsync -av --exclude='.env.local' --exclude='.env.local.backup' "$REPO_DIR/dashboard/" /opt/utility-meter-dashboard/
       rm -rf "$REPO_DIR"
       msg_ok "Updated code"
@@ -177,6 +193,42 @@ fi
 # Set $STD for quiet operation if not already set
 STD="${STD:--qq}"
 
+# GitHub Authentication Helper
+# Checks if repo is accessible and prompts for token if needed
+setup_github_auth() {
+    REPO_URL="https://github.com/overlandla/nebenkosten.git"
+
+    # Check if repo is accessible without auth
+    if git ls-remote "$REPO_URL" >/dev/null 2>&1; then
+        GITHUB_CLONE_URL="$REPO_URL"
+        return 0
+    fi
+
+    # Repo requires authentication
+    # Check for token in environment variable first
+    if [ -n "$GITHUB_TOKEN" ]; then
+        GITHUB_CLONE_URL="https://${GITHUB_TOKEN}@github.com/overlandla/nebenkosten.git"
+        return 0
+    fi
+
+    # Prompt for token
+    msg_info "Repository requires authentication"
+    echo -e "${YW}Please enter your GitHub Personal Access Token:${CL}"
+    echo -e "${BL}(Create one at: https://github.com/settings/tokens)${CL}"
+    read -s GITHUB_TOKEN
+    echo ""
+
+    if [ -z "$GITHUB_TOKEN" ]; then
+        msg_error "GitHub token is required for private repositories"
+        exit 1
+    fi
+
+    GITHUB_CLONE_URL="https://${GITHUB_TOKEN}@github.com/overlandla/nebenkosten.git"
+}
+
+# Set up GitHub authentication
+setup_github_auth
+
 msg_info "Installing Dependencies"
 $STD apt-get install -y curl
 $STD apt-get install -y sudo
@@ -197,10 +249,15 @@ cd $INSTALL_DIR
 
 # Clone the repository (fresh installation)
 msg_info "Cloning repository"
-$STD git clone https://github.com/overlandla/nebenkosten.git temp-repo
+$STD git clone "$GITHUB_CLONE_URL" temp-repo
 mv temp-repo/dashboard/* .
 mv temp-repo/dashboard/.* . 2>/dev/null || true
 rm -rf temp-repo
+
+# Save GitHub clone URL for future updates (mask token in logs)
+echo "$GITHUB_CLONE_URL" > /root/.github_clone_url
+chmod 600 /root/.github_clone_url
+
 msg_ok "Cloned repository"
 
 msg_info "Installing npm dependencies"

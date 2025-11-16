@@ -65,6 +65,13 @@ if [ -f /etc/pve/.version ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv
 
     msg_info "Updating ${APP}"
     cd /opt/dagster-workflows/nebenkosten
+
+    # Update remote URL with stored auth if available
+    if [ -f /root/.github_clone_url ]; then
+      GITHUB_CLONE_URL=$(cat /root/.github_clone_url)
+      git remote set-url origin "$GITHUB_CLONE_URL" 2>/dev/null || true
+    fi
+
     $STD git fetch origin
     $STD git reset --hard origin/main
     msg_ok "Updated ${APP}"
@@ -146,6 +153,13 @@ else
 
       msg_info "Updating code"
       cd /opt/dagster-workflows/nebenkosten
+
+      # Update remote URL with stored auth if available
+      if [ -f /root/.github_clone_url ]; then
+        GITHUB_CLONE_URL=$(cat /root/.github_clone_url)
+        git remote set-url origin "$GITHUB_CLONE_URL" 2>/dev/null || true
+      fi
+
       git fetch origin
       git reset --hard origin/main
       msg_ok "Updated code"
@@ -176,6 +190,42 @@ fi
 
 # Set $STD for quiet operation if not already set
 STD="${STD:--qq}"
+
+# GitHub Authentication Helper
+# Checks if repo is accessible and prompts for token if needed
+setup_github_auth() {
+    REPO_URL="https://github.com/overlandla/nebenkosten.git"
+
+    # Check if repo is accessible without auth
+    if git ls-remote "$REPO_URL" >/dev/null 2>&1; then
+        GITHUB_CLONE_URL="$REPO_URL"
+        return 0
+    fi
+
+    # Repo requires authentication
+    # Check for token in environment variable first
+    if [ -n "$GITHUB_TOKEN" ]; then
+        GITHUB_CLONE_URL="https://${GITHUB_TOKEN}@github.com/overlandla/nebenkosten.git"
+        return 0
+    fi
+
+    # Prompt for token
+    msg_info "Repository requires authentication"
+    echo -e "${YW}Please enter your GitHub Personal Access Token:${CL}"
+    echo -e "${BL}(Create one at: https://github.com/settings/tokens)${CL}"
+    read -s GITHUB_TOKEN
+    echo ""
+
+    if [ -z "$GITHUB_TOKEN" ]; then
+        msg_error "GitHub token is required for private repositories"
+        exit 1
+    fi
+
+    GITHUB_CLONE_URL="https://${GITHUB_TOKEN}@github.com/overlandla/nebenkosten.git"
+}
+
+# Set up GitHub authentication
+setup_github_auth
 
 msg_info "Installing Dependencies"
 $STD apt-get install -y curl
@@ -216,8 +266,13 @@ cd $INSTALL_DIR
 
 # Clone the repository (fresh installation)
 msg_info "Cloning repository"
-$STD git clone https://github.com/overlandla/nebenkosten.git
+$STD git clone "$GITHUB_CLONE_URL"
 cd nebenkosten
+
+# Save GitHub clone URL for future updates
+echo "$GITHUB_CLONE_URL" > /root/.github_clone_url
+chmod 600 /root/.github_clone_url
+
 msg_ok "Cloned repository"
 
 msg_info "Creating secrets directory"
