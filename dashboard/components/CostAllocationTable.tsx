@@ -1,5 +1,6 @@
 'use client';
 
+import useMediaQuery from '@/hooks/useMediaQuery';
 import { Household } from '@/types/household';
 
 interface CostAllocationTableProps {
@@ -16,6 +17,7 @@ export default function CostAllocationTable({
   households,
   totalCosts,
 }: CostAllocationTableProps) {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   // Calculate allocated costs for each household
   const allocations = households.map((household) => {
     const electricityCost =
@@ -52,8 +54,97 @@ export default function CostAllocationTable({
         Cost Allocation by Household
       </h3>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+      {/* Mobile Card View */}
+      {isMobile ? (
+        <div className="space-y-4">
+          {unitAllocations.map(({ household, costs }) => (
+            <div
+              key={household.id}
+              className="border border-gray-200 rounded-lg p-4 space-y-3"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+                <div className="flex items-center space-x-2">
+                  <div
+                    className="w-4 h-4 rounded-full"
+                    style={{ backgroundColor: household.color }}
+                  />
+                  <span className="font-semibold text-gray-900">{household.name}</span>
+                </div>
+                <span className="text-sm text-gray-500">
+                  {((costs.total / grandTotal) * 100).toFixed(1)}%
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-gray-500">⚡ Electricity</p>
+                  <p className="text-lg font-semibold text-gray-900">€{costs.electricity.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">🔥 Gas</p>
+                  <p className="text-lg font-semibold text-gray-900">€{costs.gas.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">💧 Water</p>
+                  <p className="text-lg font-semibold text-gray-900">€{costs.water.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">🌡️ Heat</p>
+                  <p className="text-lg font-semibold text-gray-900">€{costs.heat.toFixed(2)}</p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-200">
+                <p className="text-xs text-gray-500">Total</p>
+                <p className="text-2xl font-bold text-gray-900">€{costs.total.toFixed(2)}</p>
+              </div>
+            </div>
+          ))}
+
+          {/* Mobile Total Card */}
+          <div className="border-2 border-gray-900 rounded-lg p-4 bg-gray-50">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-300">
+              <span className="font-bold text-gray-900">Total Allocated</span>
+              <span className="text-sm text-gray-600">100%</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <p className="text-xs text-gray-500">⚡ Electricity</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  €{unitAllocations.reduce((sum, a) => sum + a.costs.electricity, 0).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">🔥 Gas</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  €{unitAllocations.reduce((sum, a) => sum + a.costs.gas, 0).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">💧 Water</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  €{unitAllocations.reduce((sum, a) => sum + a.costs.water, 0).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">🌡️ Heat</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  €{unitAllocations.reduce((sum, a) => sum + a.costs.heat, 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-gray-300 mt-3">
+              <p className="text-xs text-gray-500">Grand Total</p>
+              <p className="text-2xl font-bold text-gray-900">€{grandTotal.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Desktop Table View */
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -139,9 +230,10 @@ export default function CostAllocationTable({
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
         <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
           <h4 className="text-sm font-medium text-yellow-900 mb-1">⚡ Electricity</h4>
           <p className="text-2xl font-bold text-yellow-700">€{totalCosts.electricity.toFixed(2)}</p>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import useMediaQuery from '@/hooks/useMediaQuery';
 import TimeRangeSelector, { TimeRange } from '@/components/TimeRangeSelector';
 import MeterReadingsChart from '@/components/MeterReadingsChart';
 import ConsumptionChart from '@/components/ConsumptionChart';
@@ -58,6 +59,8 @@ const METERS_CONFIG: MeterConfig[] = [
 ];
 
 export default function Home() {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
   const [timeRange, setTimeRange] = useState<TimeRange>({
     start: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
     end: new Date(),
@@ -246,9 +249,9 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                 Utility Meter Dashboard
               </h1>
               <p className="mt-1 text-sm text-gray-600">
@@ -258,15 +261,17 @@ export default function Home() {
             <div className="flex gap-2">
               <Link
                 href="/costs"
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-center"
+                title="Costs & Billing"
               >
-                💰 Costs & Billing
+                {isMobile ? '💰' : '💰 Costs & Billing'}
               </Link>
               <Link
                 href="/settings"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center"
+                title="Settings"
               >
-                ⚙️ Settings
+                {isMobile ? '⚙️' : '⚙️ Settings'}
               </Link>
             </div>
           </div>
@@ -421,17 +426,17 @@ export default function Home() {
                   {category === 'solar' && '☀️ Solar'}
                   {category === 'virtual' && '🔮 Virtual Meters'}
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {meters.map((meter) => (
                     <label
                       key={meter.id}
-                      className="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-gray-50"
+                      className="flex items-center space-x-2 cursor-pointer p-3 rounded hover:bg-gray-50 min-h-[44px]"
                     >
                       <input
                         type="checkbox"
                         checked={selectedMeters.includes(meter.id)}
                         onChange={() => handleMeterToggle(meter.id)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                       />
                       <div className="flex flex-col">
                         <span className="text-sm text-gray-700">{meter.name}</span>

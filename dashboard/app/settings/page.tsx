@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import useMediaQuery from '@/hooks/useMediaQuery';
 import {
   Household,
   HouseholdConfig,
@@ -13,6 +14,8 @@ import {
 const STORAGE_KEY = 'household_config';
 
 export default function SettingsPage() {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
   const [config, setConfig] = useState<HouseholdConfig>(DEFAULT_HOUSEHOLD_CONFIG);
   const [selectedHousehold, setSelectedHousehold] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -149,16 +152,16 @@ export default function SettingsPage() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Household Settings</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Household Settings</h1>
               <p className="mt-1 text-sm text-gray-600">
                 Configure households and cost allocation for multi-unit building management
               </p>
             </div>
             <Link
               href="/"
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-center"
             >
               ← Back to Dashboard
             </Link>
@@ -215,7 +218,7 @@ export default function SettingsPage() {
         {/* Cost Allocation Summary */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Cost Allocation Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {Object.entries(allocationTotals).map(([key, total]) => {
               const isValid = Math.abs(total - 100) < 0.01 || total === 0;
               return (
