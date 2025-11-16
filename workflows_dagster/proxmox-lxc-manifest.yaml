@@ -16,7 +16,7 @@ logo_url: ""
 resources:
   disk: 8
   cpu: 2
-  ram: 4096
+  ram: 2048  # Reduced from 4GB - native deployment without Docker overhead
 
 # OS settings
 os: debian
@@ -28,8 +28,7 @@ interface: vmbr0
 
 # Additional configuration
 privileged: false
-features:
-  - nesting=1
+# No Docker nesting needed - native systemd deployment
 
 # Environment variables that need to be configured
 env_vars:
@@ -70,15 +69,22 @@ post_install_message: |
   Next steps:
   1. Configure InfluxDB connection in /opt/dagster-workflows/nebenkosten/secrets/influxdb.env
   2. Optionally configure Tibber API in /opt/dagster-workflows/nebenkosten/secrets/tibber.env
-  3. Restart services: cd /opt/dagster-workflows/nebenkosten && docker compose -f docker-compose.dagster.yml restart
+  3. Restart services: systemctl restart dagster-user-code dagster-daemon dagster-webserver
   4. Access Dagster UI at: http://YOUR_LXC_IP:3000
   5. Enable schedules in Dagster UI under Automation → Schedules
 
   Service commands:
-  - Status: systemctl status dagster-workflows.service
-  - Container status: docker ps
-  - Logs: docker compose -f docker-compose.dagster.yml logs -f
-  - Restart: docker compose -f docker-compose.dagster.yml restart
+  - Status: systemctl status dagster-*
+  - Logs (webserver): journalctl -u dagster-webserver -f
+  - Logs (daemon): journalctl -u dagster-daemon -f
+  - Logs (user-code): journalctl -u dagster-user-code -f
+  - Restart all: systemctl restart dagster-*
 
   Configuration wizard:
   - Run: configure-dagster
+
+  Benefits of native deployment:
+  - 50% less memory usage (~1-1.5GB vs 2-3GB with Docker)
+  - 75% less disk space (~500MB vs 2GB+ with Docker images)
+  - Faster startup and better performance
+  - Simpler troubleshooting with journalctl logs

@@ -1,0 +1,35 @@
+[Unit]
+Description=Dagster User Code Server
+Documentation=https://docs.dagster.io/
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=dagster
+Group=dagster
+WorkingDirectory=/opt/dagster-workflows/nebenkosten
+Environment="DAGSTER_HOME=/opt/dagster-workflows/nebenkosten/workflows_dagster"
+Environment="PYTHONPATH=/opt/dagster-workflows/nebenkosten:/opt/dagster-workflows/nebenkosten/Nebenkosten/src"
+Environment="DAGSTER_CURRENT_IMAGE=dagster-user-code"
+EnvironmentFile=/opt/dagster-workflows/nebenkosten/secrets/influxdb.env
+EnvironmentFile=-/opt/dagster-workflows/nebenkosten/secrets/tibber.env
+
+# Use virtual environment Python
+ExecStart=/opt/dagster-workflows/venv/bin/dagster code-server start -h 0.0.0.0 -p 4000 -m workflows_dagster.dagster_project
+
+# Restart on failure
+Restart=on-failure
+RestartSec=10s
+
+# Resource limits
+MemoryMax=2G
+CPUQuota=150%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dagster-user-code
+
+[Install]
+WantedBy=multi-user.target

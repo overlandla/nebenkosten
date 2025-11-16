@@ -6,7 +6,7 @@
 # https://github.com/overlandla/nebenkosten
 #
 # This script installs the Dagster Utility Analysis Workflows inside an LXC container
-# It is called automatically by the proxmox-lxc-install.sh wrapper script
+# Native systemd deployment (no Docker) for better performance and simplicity
 
 # Detect if running in Proxmox helper script environment or standalone
 if [ -n "$FUNCTIONS_FILE_PATH" ]; then
@@ -38,9 +38,9 @@ else
       msg_info "Existing installation detected - running update"
 
       msg_info "Stopping services"
-      systemctl stop dagster-workflows.service 2>/dev/null || true
-      cd /opt/dagster-workflows/nebenkosten
-      docker compose -f docker-compose.dagster.yml down 2>/dev/null || true
+      systemctl stop dagster-webserver.service 2>/dev/null || true
+      systemctl stop dagster-daemon.service 2>/dev/null || true
+      systemctl stop dagster-user-code.service 2>/dev/null || true
       msg_ok "Stopped services"
 
       if [ -d /opt/dagster-workflows/nebenkosten/secrets ]; then
@@ -60,12 +60,14 @@ else
       git reset --hard origin/main
       msg_ok "Updated code"
 
-      msg_info "Rebuilding Docker images"
-      docker compose -f docker-compose.dagster.yml build
-      msg_ok "Rebuilt Docker images"
+      msg_info "Updating Python dependencies"
+      /opt/dagster-workflows/venv/bin/pip install -q --upgrade -r requirements-dagster.txt
+      msg_ok "Updated dependencies"
 
       msg_info "Starting services"
-      docker compose -f docker-compose.dagster.yml up -d
+      systemctl start dagster-user-code.service
+      systemctl start dagster-daemon.service
+      systemctl start dagster-webserver.service
       msg_ok "Started services"
 
       echo -e "\n${GN}╔════════════════════════════════════════════════════════════╗${CL}"
@@ -94,26 +96,25 @@ apt-get install -y gnupg >/dev/null 2>&1
 apt-get install -y lsb-release >/dev/null 2>&1
 msg_ok "Installed Dependencies"
 
-msg_info "Installing Docker"
-# Add Docker's official GPG key
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-chmod a+r /etc/apt/keyrings/docker.gpg
+msg_info "Installing Python 3.11 and development tools"
+apt-get install -y python3 python3-pip python3-venv python3-dev build-essential libpq-dev >/dev/null 2>&1
+msg_ok "Installed Python 3.11"
 
-# Add Docker repository
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
-  $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+msg_info "Installing PostgreSQL"
+# Download and run PostgreSQL setup script
+curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflows_dagster/install/setup-postgresql.sh -o /tmp/setup-postgresql.sh
+chmod +x /tmp/setup-postgresql.sh
+bash /tmp/setup-postgresql.sh
+rm /tmp/setup-postgresql.sh
+msg_ok "PostgreSQL installed and configured"
 
-# Install Docker Engine
-apt-get update >/dev/null 2>&1
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null 2>&1
-msg_ok "Installed Docker"
-
-msg_info "Starting Docker service"
-systemctl enable docker
-systemctl start docker
-msg_ok "Docker service started"
+msg_info "Creating dagster user and group"
+if ! id -u dagster >/dev/null 2>&1; then
+    useradd -r -s /bin/bash -d /opt/dagster-workflows -m dagster
+    msg_ok "Created dagster user"
+else
+    msg_ok "Dagster user already exists"
+fi
 
 msg_info "Setting up Dagster Workflows"
 INSTALL_DIR="/opt/dagster-workflows"
@@ -126,6 +127,15 @@ msg_info "Cloning repository"
 $STD git clone https://github.com/overlandla/nebenkosten.git
 cd nebenkosten
 msg_ok "Cloned repository"
+
+msg_info "Creating Python virtual environment"
+python3 -m venv $INSTALL_DIR/venv
+msg_ok "Created virtual environment"
+
+msg_info "Installing Python dependencies (this may take a few minutes)"
+$INSTALL_DIR/venv/bin/pip install -q --upgrade pip
+$INSTALL_DIR/venv/bin/pip install -q -r requirements-dagster.txt
+msg_ok "Installed Python dependencies"
 
 msg_info "Creating secrets directory"
 mkdir -p secrets
@@ -177,48 +187,44 @@ influx:
 EOF
 msg_ok "Created config directory"
 
-msg_info "Building Docker images (this may take a few minutes)"
-$STD docker compose -f docker-compose.dagster.yml build
-msg_ok "Built Docker images"
+msg_info "Creating logs and storage directories"
+mkdir -p logs storage
+msg_ok "Created directories"
 
-msg_info "Creating systemd service"
-cat <<EOF >/etc/systemd/system/dagster-workflows.service
-[Unit]
-Description=Dagster Utility Analysis Workflows
-After=docker.service
-Requires=docker.service
+msg_info "Setting ownership to dagster user"
+chown -R dagster:dagster $INSTALL_DIR
+msg_ok "Set ownership"
 
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-WorkingDirectory=$INSTALL_DIR/nebenkosten
-ExecStart=/usr/bin/docker compose -f docker-compose.dagster.yml up -d
-ExecStop=/usr/bin/docker compose -f docker-compose.dagster.yml down
-Restart=on-failure
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
+msg_info "Installing systemd service files"
+cp $REPO_DIR/workflows_dagster/systemd/dagster-webserver.service /etc/systemd/system/
+cp $REPO_DIR/workflows_dagster/systemd/dagster-daemon.service /etc/systemd/system/
+cp $REPO_DIR/workflows_dagster/systemd/dagster-user-code.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable dagster-workflows.service
-msg_info "Starting Dagster services"
-cd "$REPO_DIR"
-docker compose -f docker-compose.dagster.yml up -d
+msg_ok "Installed systemd services"
+
+msg_info "Enabling and starting Dagster services"
+systemctl enable dagster-user-code.service
+systemctl enable dagster-daemon.service
+systemctl enable dagster-webserver.service
+
+systemctl start dagster-user-code.service
+sleep 3
+systemctl start dagster-daemon.service
+sleep 2
+systemctl start dagster-webserver.service
 msg_ok "Dagster services started"
 
-msg_info "Waiting for services to be healthy"
-sleep 15
+msg_info "Waiting for services to be ready"
+sleep 10
 
 # Check if services are running
-if docker ps | grep -q dagster-webserver; then
-    msg_ok "Dagster services are running"
+if systemctl is-active --quiet dagster-webserver.service; then
+    msg_ok "Dagster webserver is running"
 else
-    msg_info "Services may still be starting, check status with: docker ps"
+    msg_error "Dagster webserver failed to start - check logs with: journalctl -u dagster-webserver -n 50"
 fi
 
-msg_info "Downloading configuration wizard"
+msg_info "Installing management scripts"
 curl -fsSL https://raw.githubusercontent.com/overlandla/nebenkosten/main/workflows_dagster/configure-dagster.sh -o /usr/local/bin/configure-dagster
 chmod +x /usr/local/bin/configure-dagster
 msg_ok "Configuration wizard installed"
@@ -251,23 +257,28 @@ echo -e "   Run: ${GN}configure-dagster${CL}"
 echo -e "   Or edit manually: ${BL}$INSTALL_DIR/nebenkosten/secrets/influxdb.env${CL}\n"
 
 echo -e "${BL}2.${CL} After configuration, restart the services:"
-echo -e "   ${GN}cd $INSTALL_DIR/nebenkosten && docker compose -f docker-compose.dagster.yml restart${CL}\n"
+echo -e "   ${GN}systemctl restart dagster-user-code dagster-daemon dagster-webserver${CL}\n"
 
 echo -e "${BL}3.${CL} Enable schedules in Dagster UI:"
 echo -e "   - Navigate to Automation → Schedules"
 echo -e "   - Enable 'analytics_daily' and optionally 'tibber_sync_hourly'\n"
 
 echo -e "${YW}📋 Useful Commands:${CL}"
-echo -e "  ${BL}configure-dagster${CL}                                    - Run configuration wizard"
-echo -e "  ${BL}systemctl status dagster-workflows.service${CL}          - Check service status"
-echo -e "  ${BL}docker ps${CL}                                            - View running containers"
-echo -e "  ${BL}docker compose -f docker-compose.dagster.yml logs -f${CL} - View live logs"
-echo -e "  ${BL}docker compose -f docker-compose.dagster.yml restart${CL} - Restart services\n"
+echo -e "  ${BL}configure-dagster${CL}                         - Run configuration wizard"
+echo -e "  ${BL}systemctl status dagster-*${CL}                - Check all Dagster services"
+echo -e "  ${BL}journalctl -u dagster-webserver -f${CL}        - View webserver logs"
+echo -e "  ${BL}journalctl -u dagster-daemon -f${CL}           - View daemon logs"
+echo -e "  ${BL}journalctl -u dagster-user-code -f${CL}        - View user code logs"
+echo -e "  ${BL}systemctl restart dagster-*${CL}               - Restart all services\n"
 
-echo -e "${YW}🐳 Container Management:${CL}"
-echo -e "  ${BL}cd $INSTALL_DIR/nebenkosten${CL}"
-echo -e "  ${BL}docker compose -f docker-compose.dagster.yml ps${CL}     - List services"
-echo -e "  ${BL}docker compose -f docker-compose.dagster.yml logs [service]${CL} - View logs\n"
+echo -e "${YW}🔧 Service Management:${CL}"
+echo -e "  ${BL}systemctl start dagster-webserver${CL}         - Start webserver"
+echo -e "  ${BL}systemctl stop dagster-webserver${CL}          - Stop webserver"
+echo -e "  ${BL}systemctl restart dagster-*${CL}               - Restart all Dagster services\n"
+
+echo -e "${YW}💾 Resource Usage:${CL}"
+echo -e "  ${BL}Memory:${CL} ~1-1.5GB (vs 2-3GB with Docker)"
+echo -e "  ${BL}Disk:${CL} ~500MB (vs 2GB+ with Docker images)\n"
 
 echo -e "${YW}📚 Documentation:${CL}"
 echo -e "  ${BL}https://github.com/overlandla/nebenkosten/blob/main/workflows_dagster/README.md${CL}\n"

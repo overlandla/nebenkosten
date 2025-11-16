@@ -74,50 +74,9 @@ update-dashboard:
 	@echo ""
 
 install-dagster:
-	@echo "[INFO] Installing Dagster Workflows..."
-	@echo "[INFO] Installing system dependencies..."
-	@apt-get update -qq
-	@apt-get install -y -qq curl sudo mc git ca-certificates gnupg lsb-release
-	@echo "[INFO] Installing Docker..."
-	@install -m 0755 -d /etc/apt/keyrings
-	@curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-	@chmod a+r /etc/apt/keyrings/docker.gpg
-	@echo "deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $$(lsb_release -cs) stable" \
-		| tee /etc/apt/sources.list.d/docker.list > /dev/null
-	@apt-get update -qq
-	@apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-	@systemctl enable docker >/dev/null 2>&1
-	@systemctl start docker
-	@echo "[INFO] Setting up Dagster..."
-	@mkdir -p /opt/dagster-workflows
-	@rsync -a --exclude='.git' \
-		$(CURDIR)/workflows_dagster/ /opt/dagster-workflows/nebenkosten/
-	@cd /opt/dagster-workflows/nebenkosten && docker compose up -d
-	@sleep 5
-	@echo ""
-	@echo "✓ Dagster installed successfully!"
-	@echo "  Dagster UI: http://$$(hostname -I | awk '{print $$1}'):3000"
-	@echo ""
-	@echo "Useful commands:"
-	@echo "  cd /opt/dagster-workflows/nebenkosten"
-	@echo "  docker compose logs -f      # View logs"
-	@echo "  docker compose restart      # Restart services"
-	@echo "  docker compose down         # Stop services"
-	@echo ""
+	@echo "[INFO] Installing Dagster Workflows (systemd native deployment)..."
+	@bash workflows_dagster/install/dagster-workflows-install.sh
 
 update-dagster:
 	@echo "[INFO] Updating Dagster Workflows..."
-	@echo "[INFO] Pulling latest code..."
-	@git pull origin main
-	@echo "[INFO] Stopping services..."
-	@cd /opt/dagster-workflows/nebenkosten && docker compose down
-	@echo "[INFO] Updating files..."
-	@rsync -a --exclude='.git' \
-		$(CURDIR)/workflows_dagster/ /opt/dagster-workflows/nebenkosten/
-	@echo "[INFO] Rebuilding and starting services..."
-	@cd /opt/dagster-workflows/nebenkosten && docker compose up -d --build
-	@sleep 5
-	@echo ""
-	@echo "✓ Dagster updated successfully!"
-	@echo "  Dagster UI: http://$$(hostname -I | awk '{print $$1}'):3000"
-	@echo ""
+	@bash workflows_dagster/install/dagster-workflows-install.sh
