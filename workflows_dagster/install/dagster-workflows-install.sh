@@ -84,17 +84,14 @@ else
     msg_ok "System packages updated"
 fi
 
-# Set $STD for quiet operation if not already set
-STD="${STD:- >/dev/null 2>&1}"
-
 msg_info "Installing Dependencies"
-eval apt-get install -y curl $STD
-eval apt-get install -y sudo $STD
-eval apt-get install -y mc $STD
-eval apt-get install -y git $STD
-eval apt-get install -y ca-certificates $STD
-eval apt-get install -y gnupg $STD
-eval apt-get install -y lsb-release $STD
+apt-get install -y curl >/dev/null 2>&1
+apt-get install -y sudo >/dev/null 2>&1
+apt-get install -y mc >/dev/null 2>&1
+apt-get install -y git >/dev/null 2>&1
+apt-get install -y ca-certificates >/dev/null 2>&1
+apt-get install -y gnupg >/dev/null 2>&1
+apt-get install -y lsb-release >/dev/null 2>&1
 msg_ok "Installed Dependencies"
 
 msg_info "Installing Docker"
@@ -109,8 +106,8 @@ echo \
   $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 # Install Docker Engine
-eval apt-get update $STD
-eval apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin $STD
+apt-get update >/dev/null 2>&1
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null 2>&1
 msg_ok "Installed Docker"
 
 msg_info "Starting Docker service"
@@ -235,8 +232,8 @@ if command -v customize &> /dev/null; then
 fi
 
 msg_info "Cleaning up"
-eval apt-get -y autoremove $STD
-eval apt-get -y autoclean $STD
+apt-get -y autoremove >/dev/null 2>&1
+apt-get -y autoclean >/dev/null 2>&1
 msg_ok "Cleaned"
 
 # Get the IP address
