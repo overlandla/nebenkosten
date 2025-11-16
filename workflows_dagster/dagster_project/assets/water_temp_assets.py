@@ -2,23 +2,19 @@
 Water Temperature Data Ingestion Assets
 Fetches water temperature from Bavarian lakes and writes to InfluxDB
 """
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict
+
 import re
+from datetime import datetime, timedelta, timezone
+from typing import Dict, Optional
+
 import requests
 from bs4 import BeautifulSoup
-from dagster import (
-    asset,
-    AssetExecutionContext,
-    MaterializeResult,
-    MetadataValue,
-    StaticPartitionsDefinition
-)
+from dagster import (AssetExecutionContext, MaterializeResult, MetadataValue,
+                     StaticPartitionsDefinition, asset)
 from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
 from ..resources.influxdb_resource import InfluxDBResource
-
 
 # Lake configuration
 LAKE_CONFIGS = {
@@ -26,19 +22,19 @@ LAKE_CONFIGS = {
         "url": "https://www.nid.bayern.de/wassertemperatur/inn/schliersee-18222008",
         "entity_id": "temp_schliersee_water",
         "friendly_name": "Temp Schliersee Water",
-        "lake_name": "Schliersee"
+        "lake_name": "Schliersee",
     },
     "tegernsee": {
         "url": "https://www.nid.bayern.de/wassertemperatur/inn/gmund_tegernsee-18201303",
         "entity_id": "temp_tegernsee_water",
         "friendly_name": "Temp Tegernsee Water",
-        "lake_name": "Tegernsee"
+        "lake_name": "Tegernsee",
     },
     "isar": {
         "url": "https://www.nid.bayern.de/wassertemperatur/isar/muenchen-16005701",
         "entity_id": "temp_isar_water",
         "friendly_name": "Temp Isar Munchen",
-        "lake_name": "Isar"
+        "lake_name": "Isar",
     },
 }
 
@@ -53,11 +49,10 @@ lakes_partitions_def = StaticPartitionsDefinition(
     partitions_def=lakes_partitions_def,
     group_name="ingestion",
     compute_kind="web_scraping",
-    description="Fetch and store water temperature data from Bavarian lakes (partitioned by lake)"
+    description="Fetch and store water temperature data from Bavarian lakes (partitioned by lake)",
 )
 def water_temperature_raw(
-    context: AssetExecutionContext,
-    influxdb: InfluxDBResource
+    context: AssetExecutionContext, influxdb: InfluxDBResource
 ) -> MaterializeResult:
     """
     Fetch water temperature data from a specific Bavarian lake and write to InfluxDB
@@ -88,9 +83,7 @@ def water_temperature_raw(
     try:
         # Check last timestamp in InfluxDB
         last_timestamp = _get_last_influxdb_timestamp(
-            influxdb,
-            lake_config['entity_id'],
-            logger
+            influxdb, lake_config["entity_id"], logger
         )
 
         if last_timestamp:
@@ -105,24 +98,24 @@ def water_temperature_raw(
             logger.error("Failed to scrape temperature data")
             return MaterializeResult(
                 metadata={
-                    "lake": lake_config['lake_name'],
+                    "lake": lake_config["lake_name"],
                     "status": "error",
-                    "error": "scraping_failed"
+                    "error": "scraping_failed",
                 }
             )
 
         # Check if this is new data
-        if last_timestamp and temp_data['timestamp'] <= last_timestamp:
+        if last_timestamp and temp_data["timestamp"] <= last_timestamp:
             logger.info(
                 f"Data already exists (scraped: {temp_data['timestamp']}, "
                 f"last: {last_timestamp})"
             )
             return MaterializeResult(
                 metadata={
-                    "lake": lake_config['lake_name'],
+                    "lake": lake_config["lake_name"],
                     "status": "up_to_date",
-                    "temperature_celsius": temp_data['temperature'],
-                    "timestamp": temp_data['timestamp'].isoformat()
+                    "temperature_celsius": temp_data["temperature"],
+                    "timestamp": temp_data["timestamp"].isoformat(),
                 }
             )
 
@@ -134,11 +127,11 @@ def water_temperature_raw(
 
         return MaterializeResult(
             metadata={
-                "lake": lake_config['lake_name'],
+                "lake": lake_config["lake_name"],
                 "status": "written",
-                "temperature_celsius": temp_data['temperature'],
-                "timestamp": temp_data['timestamp'].isoformat(),
-                "entity_id": lake_config['entity_id']
+                "temperature_celsius": temp_data["temperature"],
+                "timestamp": temp_data["timestamp"].isoformat(),
+                "entity_id": lake_config["entity_id"],
             }
         )
 
@@ -146,9 +139,9 @@ def water_temperature_raw(
         logger.error(f"Error processing {lake_config['lake_name']}: {str(e)}")
         return MaterializeResult(
             metadata={
-                "lake": lake_config['lake_name'],
+                "lake": lake_config["lake_name"],
                 "status": "error",
-                "error": str(e)
+                "error": str(e),
             }
         )
 
@@ -205,7 +198,7 @@ def _scrape_lake_temperature(lake_config: Dict, logger) -> Optional[Dict]:
         temperature_str = cells[1].text.strip()
 
         # Parse temperature (format: "15.2°C" or "15.2 °C")
-        temp_match = re.search(r'(\d+(?:\.\d+)?)', temperature_str)
+        temp_match = re.search(r"(\d+(?:\.\d+)?)", temperature_str)
         if not temp_match:
             logger.warning(
                 f"{lake_name}: Could not extract numeric temperature from '{temperature_str}'"
@@ -227,13 +220,12 @@ def _scrape_lake_temperature(lake_config: Dict, logger) -> Optional[Dict]:
             timestamp_cest = naive_timestamp.replace(tzinfo=cest_timezone)
             timestamp_utc = timestamp_cest.astimezone(timezone.utc)
 
-            return {
-                'temperature': temperature_value,
-                'timestamp': timestamp_utc
-            }
+            return {"temperature": temperature_value, "timestamp": timestamp_utc}
 
         except ValueError as e:
-            logger.warning(f"{lake_name}: Error parsing timestamp '{timestamp_str}': {e}")
+            logger.warning(
+                f"{lake_name}: Error parsing timestamp '{timestamp_str}': {e}"
+            )
             return None
 
     except requests.exceptions.RequestException as e:
@@ -245,9 +237,7 @@ def _scrape_lake_temperature(lake_config: Dict, logger) -> Optional[Dict]:
 
 
 def _get_last_influxdb_timestamp(
-    influxdb: InfluxDBResource,
-    entity_id: str,
-    logger
+    influxdb: InfluxDBResource, entity_id: str, logger
 ) -> Optional[datetime]:
     """
     Get the most recent timestamp from InfluxDB for a specific water temp sensor
@@ -263,14 +253,14 @@ def _get_last_influxdb_timestamp(
     with influxdb.get_client() as client:
         query_api = client.query_api()
 
-        query = f'''
+        query = f"""
         from(bucket: "{influxdb.bucket_raw}")
           |> range(start: -30d)
           |> filter(fn: (r) => r["entity_id"] == "{entity_id}")
           |> filter(fn: (r) => r["_field"] == "value")
           |> filter(fn: (r) => r["_measurement"] == "°C")
           |> last()
-        '''
+        """
 
         try:
             tables = query_api.query(query, org=influxdb.org)
@@ -286,10 +276,7 @@ def _get_last_influxdb_timestamp(
 
 
 def _write_to_influxdb(
-    influxdb: InfluxDBResource,
-    lake_config: Dict,
-    temp_data: Dict,
-    logger
+    influxdb: InfluxDBResource, lake_config: Dict, temp_data: Dict, logger
 ) -> None:
     """
     Write temperature data point to InfluxDB
@@ -314,16 +301,12 @@ def _write_to_influxdb(
             .tag("unit_of_measurement", "°C")
             .tag("device_class", "temperature")
             .tag("state_class", "measurement")
-            .field("value", float(temp_data['temperature']))
-            .time(temp_data['timestamp'], WritePrecision.NS)
+            .field("value", float(temp_data["temperature"]))
+            .time(temp_data["timestamp"], WritePrecision.NS)
         )
 
         # Write to InfluxDB
-        write_api.write(
-            bucket=influxdb.bucket_raw,
-            org=influxdb.org,
-            record=point
-        )
+        write_api.write(bucket=influxdb.bucket_raw, org=influxdb.org, record=point)
 
         logger.debug(
             f"Wrote point: {lake_config['lake_name']} = "

@@ -1,18 +1,16 @@
 """
 Unit tests for Water Temperature ingestion assets
 """
-import pytest
+
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
-from datetime import datetime, timezone, timedelta
+
+import pytest
 from dagster import build_asset_context
 
 from workflows_dagster.dagster_project.assets.water_temp_assets import (
-    water_temperature_raw,
-    _scrape_lake_temperature,
-    _get_last_influxdb_timestamp,
-    _write_to_influxdb,
-    LAKE_CONFIGS
-)
+    LAKE_CONFIGS, _get_last_influxdb_timestamp, _scrape_lake_temperature,
+    _write_to_influxdb, water_temperature_raw)
 
 
 class TestWaterTemperatureRawAsset:
@@ -20,14 +18,17 @@ class TestWaterTemperatureRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature')
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb')
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature"
+    )
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp"
+    )
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb"
+    )
     def test_asset_partition_with_new_data(
-        self,
-        mock_write,
-        mock_get_timestamp,
-        mock_scrape
+        self, mock_write, mock_get_timestamp, mock_scrape
     ):
         """Test asset partition processes new data correctly"""
         # Test with schliersee partition
@@ -36,10 +37,7 @@ class TestWaterTemperatureRawAsset:
 
         # Mock scraping to return temperature data
         test_time = datetime(2024, 11, 15, 10, 0, 0, tzinfo=timezone.utc)
-        mock_scrape.return_value = {
-            'temperature': 12.5,
-            'timestamp': test_time
-        }
+        mock_scrape.return_value = {"temperature": 12.5, "timestamp": test_time}
 
         # Create mock resource
         mock_influxdb = MagicMock()
@@ -57,14 +55,17 @@ class TestWaterTemperatureRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature')
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb')
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature"
+    )
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp"
+    )
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb"
+    )
     def test_asset_partition_with_existing_data(
-        self,
-        mock_write,
-        mock_get_timestamp,
-        mock_scrape
+        self, mock_write, mock_get_timestamp, mock_scrape
     ):
         """Test asset partition handles case with existing data (no write)"""
         context = build_asset_context(partition_key="tegernsee")
@@ -74,10 +75,7 @@ class TestWaterTemperatureRawAsset:
         mock_get_timestamp.return_value = test_time
 
         # Mock scraping returns same timestamp
-        mock_scrape.return_value = {
-            'temperature': 12.5,
-            'timestamp': test_time
-        }
+        mock_scrape.return_value = {"temperature": 12.5, "timestamp": test_time}
 
         # Create mock resource
         mock_influxdb = MagicMock()
@@ -94,14 +92,17 @@ class TestWaterTemperatureRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature')
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb')
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature"
+    )
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp"
+    )
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb"
+    )
     def test_asset_partition_with_scraping_failure(
-        self,
-        mock_write,
-        mock_get_timestamp,
-        mock_scrape
+        self, mock_write, mock_get_timestamp, mock_scrape
     ):
         """Test asset partition handles scraping failures gracefully"""
         context = build_asset_context(partition_key="isar")
@@ -126,22 +127,20 @@ class TestWaterTemperatureRawAsset:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature')
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp')
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb')
-    def test_all_lake_partitions(
-        self,
-        mock_write,
-        mock_get_timestamp,
-        mock_scrape
-    ):
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._scrape_lake_temperature"
+    )
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._get_last_influxdb_timestamp"
+    )
+    @patch(
+        "workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb"
+    )
+    def test_all_lake_partitions(self, mock_write, mock_get_timestamp, mock_scrape):
         """Test that all lake partitions can be processed"""
         test_time = datetime(2024, 11, 15, 10, 0, 0, tzinfo=timezone.utc)
         mock_get_timestamp.return_value = None
-        mock_scrape.return_value = {
-            'temperature': 12.5,
-            'timestamp': test_time
-        }
+        mock_scrape.return_value = {"temperature": 12.5, "timestamp": test_time}
 
         mock_influxdb = MagicMock()
         mock_influxdb.url = "http://localhost:8086"
@@ -162,7 +161,7 @@ class TestScrapeLakeTemperature:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets.requests.get')
+    @patch("workflows_dagster.dagster_project.assets.water_temp_assets.requests.get")
     def test_scrape_success(self, mock_get):
         """Test successful temperature scraping"""
         # Mock HTML response
@@ -187,14 +186,14 @@ class TestScrapeLakeTemperature:
         result = _scrape_lake_temperature(lake_config, logger)
 
         assert result is not None
-        assert result['temperature'] == 12.5
-        assert isinstance(result['timestamp'], datetime)
+        assert result["temperature"] == 12.5
+        assert isinstance(result["timestamp"], datetime)
         # Should be in UTC
-        assert result['timestamp'].tzinfo == timezone.utc
+        assert result["timestamp"].tzinfo == timezone.utc
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets.requests.get')
+    @patch("workflows_dagster.dagster_project.assets.water_temp_assets.requests.get")
     def test_scrape_http_error(self, mock_get):
         """Test scraping with HTTP error"""
         mock_get.side_effect = Exception("Connection error")
@@ -209,7 +208,7 @@ class TestScrapeLakeTemperature:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets.requests.get')
+    @patch("workflows_dagster.dagster_project.assets.water_temp_assets.requests.get")
     def test_scrape_invalid_html(self, mock_get):
         """Test scraping with invalid HTML structure"""
         # Mock HTML without proper table structure
@@ -229,7 +228,7 @@ class TestScrapeLakeTemperature:
 
     @pytest.mark.unit
     @pytest.mark.water_temp
-    @patch('workflows_dagster.dagster_project.assets.water_temp_assets.requests.get')
+    @patch("workflows_dagster.dagster_project.assets.water_temp_assets.requests.get")
     def test_scrape_invalid_temperature_format(self, mock_get):
         """Test scraping with invalid temperature format"""
         html = """
@@ -288,9 +287,7 @@ class TestGetLastInfluxDBTimestamp:
         logger = MagicMock()
 
         timestamp = _get_last_influxdb_timestamp(
-            mock_influxdb,
-            "temp_schliersee_water",
-            logger
+            mock_influxdb, "temp_schliersee_water", logger
         )
 
         assert timestamp == test_time
@@ -315,9 +312,7 @@ class TestGetLastInfluxDBTimestamp:
         logger = MagicMock()
 
         timestamp = _get_last_influxdb_timestamp(
-            mock_influxdb,
-            "temp_tegernsee_water",
-            logger
+            mock_influxdb, "temp_tegernsee_water", logger
         )
 
         assert timestamp is None
@@ -344,8 +339,8 @@ class TestWriteToInfluxDB:
 
         lake_config = LAKE_CONFIGS["schliersee"]
         temp_data = {
-            'temperature': 12.5,
-            'timestamp': datetime(2024, 11, 15, 10, 0, 0, tzinfo=timezone.utc)
+            "temperature": 12.5,
+            "timestamp": datetime(2024, 11, 15, 10, 0, 0, tzinfo=timezone.utc),
         }
 
         logger = MagicMock()
@@ -378,8 +373,8 @@ class TestWriteToInfluxDB:
 
         lake_config = LAKE_CONFIGS["tegernsee"]
         temp_data = {
-            'temperature': 10.0,
-            'timestamp': datetime(2024, 11, 15, 10, 0, 0, tzinfo=timezone.utc)
+            "temperature": 10.0,
+            "timestamp": datetime(2024, 11, 15, 10, 0, 0, tzinfo=timezone.utc),
         }
 
         logger = MagicMock()

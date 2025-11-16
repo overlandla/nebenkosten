@@ -2,9 +2,11 @@
 Consumption Calculator for Utility Meter Data
 Calculates consumption from meter readings
 """
-import pandas as pd
+
 import logging
 from typing import Optional
+
+import pandas as pd
 
 
 class ConsumptionCalculator:
@@ -18,8 +20,7 @@ class ConsumptionCalculator:
     """
 
     def calculate_consumption_from_readings(
-        self,
-        readings: pd.DataFrame
+        self, readings: pd.DataFrame
     ) -> pd.DataFrame:
         """
         Calculate daily consumption from cumulative meter readings
@@ -50,27 +51,23 @@ class ConsumptionCalculator:
             return pd.DataFrame()
 
         # Ensure we have a DatetimeIndex
-        if 'timestamp' in readings.columns:
-            consumption = readings.set_index('timestamp').copy()
+        if "timestamp" in readings.columns:
+            consumption = readings.set_index("timestamp").copy()
         else:
             consumption = readings.copy()
 
         # Calculate difference between consecutive readings
-        consumption['value'] = consumption['value'].diff()
+        consumption["value"] = consumption["value"].diff()
 
         # Fill first NaN with 0 (no consumption on first day)
-        consumption['value'] = consumption['value'].fillna(0)
+        consumption["value"] = consumption["value"].fillna(0)
 
         # Clip negative values to 0 (meter resets or errors)
-        consumption['value'] = consumption['value'].clip(lower=0)
+        consumption["value"] = consumption["value"].clip(lower=0)
 
         return consumption.reset_index()
 
-    def calculate_annual_consumption(
-        self,
-        readings: pd.DataFrame,
-        year: int
-    ) -> float:
+    def calculate_annual_consumption(self, readings: pd.DataFrame, year: int) -> float:
         """
         Calculate total consumption for a specific year
 
@@ -96,7 +93,7 @@ class ConsumptionCalculator:
             return 0.0
 
         # Ensure we have timestamp column
-        if 'timestamp' not in readings.columns:
+        if "timestamp" not in readings.columns:
             if isinstance(readings.index, pd.DatetimeIndex):
                 df = readings.reset_index()
             else:
@@ -106,20 +103,20 @@ class ConsumptionCalculator:
             df = readings.copy()
 
         # Define year boundaries
-        year_start = pd.Timestamp(f'{year}-01-01', tz='UTC')
-        year_end = pd.Timestamp(f'{year}-12-31 23:59:59', tz='UTC')
+        year_start = pd.Timestamp(f"{year}-01-01", tz="UTC")
+        year_end = pd.Timestamp(f"{year}-12-31 23:59:59", tz="UTC")
 
         try:
             # Set timestamp as index for nearest lookup
-            series = df.set_index('timestamp')
+            series = df.set_index("timestamp")
 
             # Get value at start of year (or closest)
-            start_idx = series.index.get_indexer([year_start], method='nearest')[0]
-            start_value = series.iloc[start_idx]['value']
+            start_idx = series.index.get_indexer([year_start], method="nearest")[0]
+            start_value = series.iloc[start_idx]["value"]
 
             # Get value at end of year (or closest)
-            end_idx = series.index.get_indexer([year_end], method='nearest')[0]
-            end_value = series.iloc[end_idx]['value']
+            end_idx = series.index.get_indexer([year_end], method="nearest")[0]
+            end_value = series.iloc[end_idx]["value"]
 
             # Calculate consumption
             consumption = end_value - start_value
@@ -135,7 +132,7 @@ class ConsumptionCalculator:
         self,
         old_readings: pd.DataFrame,
         new_readings: pd.DataFrame,
-        replacement_date: str
+        replacement_date: str,
     ) -> tuple[Optional[pd.DataFrame], float]:
         """
         Combine readings from an old and new meter at a replacement date
@@ -178,42 +175,40 @@ class ConsumptionCalculator:
             logging.warning("New meter readings not found or empty")
             return None, 0.0
 
-        replacement_ts = pd.Timestamp(replacement_date, tz='UTC')
+        replacement_ts = pd.Timestamp(replacement_date, tz="UTC")
 
         # Ensure timestamp column exists
-        for df_name, df in [('old', old_readings), ('new', new_readings)]:
-            if 'timestamp' not in df.columns:
+        for df_name, df in [("old", old_readings), ("new", new_readings)]:
+            if "timestamp" not in df.columns:
                 logging.error(f"{df_name} readings missing timestamp column")
                 return None, 0.0
 
         # Filter old series up to replacement date
-        old_filtered = old_readings[
-            old_readings['timestamp'] <= replacement_ts
-        ].copy()
+        old_filtered = old_readings[old_readings["timestamp"] <= replacement_ts].copy()
 
         # Get last value from old meter
-        last_old_value = old_filtered['value'].iloc[-1] if not old_filtered.empty else 0.0
+        last_old_value = (
+            old_filtered["value"].iloc[-1] if not old_filtered.empty else 0.0
+        )
 
         # Filter new series from replacement date onwards
-        new_filtered = new_readings[
-            new_readings['timestamp'] >= replacement_ts
-        ].copy()
+        new_filtered = new_readings[new_readings["timestamp"] >= replacement_ts].copy()
 
         if new_filtered.empty:
             logging.warning("New meter has no data after replacement date")
             return old_filtered, 0.0
 
         # Calculate offset to align new meter with old meter's last value
-        first_new_value = new_filtered['value'].iloc[0]
+        first_new_value = new_filtered["value"].iloc[0]
         offset = last_old_value - first_new_value
 
         # Apply offset to new meter values
-        new_filtered['value'] = new_filtered['value'] + offset
+        new_filtered["value"] = new_filtered["value"] + offset
 
         # Combine series
         combined = pd.concat([old_filtered, new_filtered])
-        combined = combined.drop_duplicates(subset=['timestamp'])
-        combined = combined.sort_values('timestamp').reset_index(drop=True)
+        combined = combined.drop_duplicates(subset=["timestamp"])
+        combined = combined.sort_values("timestamp").reset_index(drop=True)
 
         logging.info(
             f"Combined meter series: {len(combined)} points total, "

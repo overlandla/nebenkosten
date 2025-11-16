@@ -2,25 +2,27 @@
 Live Integration Tests for Dagster
 Tests that interact with actual running Dagster instance via GraphQL API
 """
-import pytest
-import requests
+
 import os
 import time
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
+import pytest
+import requests
 
 # Get Dagster URL from environment or use default
 DAGSTER_URL = os.getenv("DAGSTER_TEST_URL", "http://localhost:3000")
 DAGSTER_GRAPHQL_URL = f"{DAGSTER_URL}/graphql"
 
 
-def execute_graphql(query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def execute_graphql(
+    query: str, variables: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
     Execute a GraphQL query against Dagster
     """
     response = requests.post(
-        DAGSTER_GRAPHQL_URL,
-        json={"query": query, "variables": variables or {}}
+        DAGSTER_GRAPHQL_URL, json={"query": query, "variables": variables or {}}
     )
     response.raise_for_status()
     return response.json()
@@ -141,11 +143,13 @@ class TestAssetMaterialization:
             ["monthly_interpolated_series"],  # Output from interpolated_meter_series
             ["consumption_data"],
             ["virtual_meter_data"],
-            ["anomaly_detection"]
+            ["anomaly_detection"],
         ]
 
         for expected in expected_assets:
-            assert expected in asset_keys, f"Asset {expected} not found. Available: {asset_keys}"
+            assert (
+                expected in asset_keys
+            ), f"Asset {expected} not found. Available: {asset_keys}"
 
     @pytest.mark.skip(reason="Requires real InfluxDB and Tibber credentials")
     def test_materialize_tibber_asset(self):
@@ -173,9 +177,7 @@ class TestAssetMaterialization:
         }
         """
 
-        variables = {
-            "assetKeys": [{"path": ["tibber_consumption_raw"]}]
-        }
+        variables = {"assetKeys": [{"path": ["tibber_consumption_raw"]}]}
 
         result = execute_graphql(query, variables)
         launch_result = result["data"]["launchPipelineExecution"]
@@ -221,8 +223,12 @@ class TestJobExecution:
             all_jobs.extend(jobs)
 
         # Verify our expected jobs exist (actual job names from repository)
-        assert "tibber_sync" in all_jobs, f"tibber_sync job not found. Available: {all_jobs}"
-        assert "analytics_processing" in all_jobs, f"analytics_processing job not found. Available: {all_jobs}"
+        assert (
+            "tibber_sync" in all_jobs
+        ), f"tibber_sync job not found. Available: {all_jobs}"
+        assert (
+            "analytics_processing" in all_jobs
+        ), f"analytics_processing job not found. Available: {all_jobs}"
 
     @pytest.mark.skip(reason="Requires real data sources")
     def test_execute_analytics_job(self):
@@ -297,17 +303,25 @@ class TestSchedules:
 
         # Verify our expected schedules exist (actual schedule names from repository)
         schedule_names = [s["name"] for s in all_schedules]
-        assert "tibber_sync_hourly" in schedule_names, f"tibber_sync_hourly schedule not found. Available: {schedule_names}"
-        assert "analytics_daily" in schedule_names, f"analytics_daily schedule not found. Available: {schedule_names}"
+        assert (
+            "tibber_sync_hourly" in schedule_names
+        ), f"tibber_sync_hourly schedule not found. Available: {schedule_names}"
+        assert (
+            "analytics_daily" in schedule_names
+        ), f"analytics_daily schedule not found. Available: {schedule_names}"
 
         # Verify cron expressions
         for schedule in all_schedules:
             if "hourly" in schedule["name"].lower():
                 # Hourly schedules run every hour (e.g., "5 * * * *" or "0 * * * *")
-                assert "* * * *" in schedule["cronSchedule"], f"Hourly schedule has wrong cron: {schedule['cronSchedule']}"
+                assert (
+                    "* * * *" in schedule["cronSchedule"]
+                ), f"Hourly schedule has wrong cron: {schedule['cronSchedule']}"
             elif "daily" in schedule["name"].lower():
                 # Daily schedules should run once per day at 2 AM
-                assert "0 2 * * *" in schedule["cronSchedule"], f"Daily schedule has wrong cron: {schedule['cronSchedule']}"
+                assert (
+                    "0 2 * * *" in schedule["cronSchedule"]
+                ), f"Daily schedule has wrong cron: {schedule['cronSchedule']}"
 
 
 @pytest.mark.integration
@@ -369,12 +383,16 @@ class TestHealthChecks:
         }
         """
         result = execute_graphql(query)
-        daemon_statuses = result["data"]["instance"]["daemonHealth"]["allDaemonStatuses"]
+        daemon_statuses = result["data"]["instance"]["daemonHealth"][
+            "allDaemonStatuses"
+        ]
 
         # Check that required daemons are healthy
         for daemon in daemon_statuses:
             if daemon["required"]:
-                assert daemon["healthy"], f"Required daemon {daemon['daemonType']} is not healthy"
+                assert daemon[
+                    "healthy"
+                ], f"Required daemon {daemon['daemonType']} is not healthy"
 
     def test_code_location_health(self):
         """Test that code location is loaded and healthy"""
@@ -409,4 +427,6 @@ class TestHealthChecks:
         # Verify locations are loaded without errors
         for location in locations:
             location_data = location["locationOrLoadError"]
-            assert "repositories" in location_data, f"Location {location['name']} failed to load"
+            assert (
+                "repositories" in location_data
+            ), f"Location {location['name']} failed to load"

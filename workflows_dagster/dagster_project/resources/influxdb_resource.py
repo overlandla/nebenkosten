@@ -2,8 +2,10 @@
 InfluxDB Resource for Dagster
 Provides InfluxDB client access with configuration
 """
+
 import os
 from typing import Optional
+
 from dagster import ConfigurableResource
 from influxdb_client import InfluxDBClient
 from pydantic import Field
@@ -16,29 +18,20 @@ class InfluxDBResource(ConfigurableResource):
     Provides access to InfluxDB for reading and writing time-series data
     """
 
-    url: str = Field(
-        default="http://localhost:8086",
-        description="InfluxDB server URL"
-    )
+    url: str = Field(default="http://localhost:8086", description="InfluxDB server URL")
 
     bucket_raw: str = Field(
-        default="lampfi",
-        description="Bucket name for raw meter data"
+        default="lampfi", description="Bucket name for raw meter data"
     )
 
     bucket_processed: str = Field(
-        default="lampfi_processed",
-        description="Bucket name for processed data"
+        default="lampfi_processed", description="Bucket name for processed data"
     )
 
-    timeout: int = Field(
-        default=30000,
-        description="Request timeout in milliseconds"
-    )
+    timeout: int = Field(default=30000, description="Request timeout in milliseconds")
 
     retry_attempts: int = Field(
-        default=3,
-        description="Number of retry attempts for failed requests"
+        default=3, description="Number of retry attempts for failed requests"
     )
 
     def get_client(self) -> InfluxDBClient:
@@ -56,12 +49,7 @@ class InfluxDBResource(ConfigurableResource):
         if not org:
             raise ValueError("INFLUX_ORG environment variable not set")
 
-        return InfluxDBClient(
-            url=self.url,
-            token=token,
-            org=org,
-            timeout=self.timeout
-        )
+        return InfluxDBClient(url=self.url, token=token, org=org, timeout=self.timeout)
 
     @property
     def org(self) -> str:

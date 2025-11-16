@@ -1,0 +1,55 @@
+[flake8]
+# Sensible flake8 configuration for Dagster workflows
+
+# Set maximum line length to 100 (black's default is 88)
+max-line-length = 100
+
+# Ignore certain error codes:
+# E203: whitespace before ':' (conflicts with black)
+# E501: line too long (handled by black at 88 chars)
+# W503: line break before binary operator (conflicts with black)
+# E402: module level import not at top of file (needed for env setup in some files)
+ignore = E203,W503
+
+# Extend ignore to allow longer lines (black handles this)
+extend-ignore = E501
+
+# Per-file ignores
+per-file-ignores =
+    # __init__.py files often have unused imports (F401) for re-exporting
+    __init__.py:F401,E402
+    # Test files may have unused imports, variables, and delayed imports
+    tests/**/*.py:F841,F401,E402,F811
+    # conftest.py often has fixtures that appear unused
+    conftest.py:F401,F811
+    # Asset files may have conditional imports and unused imports for future use
+    **/assets/*.py:E402,F401,F841
+    # Sensor files may have conditional imports and unused imports
+    **/sensors/*.py:E402,F401,F841
+    # Resource files may have conditional imports and unused imports
+    **/resources/*.py:E402,F401
+    # Source files may have setup code before imports and unused imports
+    src/*.py:E402,F401
+    # Utils may have conditional logic before imports
+    **/utils/*.py:E402
+
+# Exclude patterns
+exclude =
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .venv,
+    venv,
+    *.egg-info,
+    build,
+    dist,
+    htmlcov
+
+# Count errors
+count = True
+
+# Show source code for each error
+show-source = True
+
+# Show statistics at the end
+statistics = True

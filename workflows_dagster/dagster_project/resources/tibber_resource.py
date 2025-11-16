@@ -2,8 +2,10 @@
 Tibber API Resource for Dagster
 Provides access to Tibber electricity consumption data
 """
+
 import os
-from typing import List, Dict
+from typing import Dict, List
+
 import requests
 from dagster import ConfigurableResource, get_dagster_logger
 from pydantic import Field
@@ -18,13 +20,10 @@ class TibberResource(ConfigurableResource):
 
     api_url: str = Field(
         default="https://api.tibber.com/v1-beta/gql",
-        description="Tibber GraphQL API URL"
+        description="Tibber GraphQL API URL",
     )
 
-    timeout: int = Field(
-        default=30,
-        description="Request timeout in seconds"
-    )
+    timeout: int = Field(default=30, description="Request timeout in seconds")
 
     def fetch_consumption(self, lookback_hours: int = 48) -> List[Dict]:
         """
@@ -50,7 +49,8 @@ class TibberResource(ConfigurableResource):
 
         logger.info(f"Fetching Tibber data for last {lookback_hours} hours")
 
-        query = """
+        query = (
+            """
         {
           viewer {
             homes {
@@ -67,14 +67,16 @@ class TibberResource(ConfigurableResource):
             }
           }
         }
-        """ % lookback_hours
+        """
+            % lookback_hours
+        )
 
         try:
             response = requests.post(
                 self.api_url,
                 json={"query": query},
                 headers={"Authorization": f"Bearer {api_token}"},
-                timeout=self.timeout
+                timeout=self.timeout,
             )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:

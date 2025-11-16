@@ -2,10 +2,12 @@
 InfluxDB Writer Assets
 Write processed data back to InfluxDB
 """
-from typing import Dict
-import pandas as pd
+
 from datetime import timezone
-from dagster import asset, AssetExecutionContext, MaterializeResult
+from typing import Dict
+
+import pandas as pd
+from dagster import AssetExecutionContext, MaterializeResult, asset
 from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
@@ -15,7 +17,7 @@ from ..resources.influxdb_resource import InfluxDBResource
 @asset(
     group_name="storage",
     compute_kind="influxdb",
-    description="Write all processed data to InfluxDB"
+    description="Write all processed data to InfluxDB",
 )
 def write_processed_data_to_influxdb(
     context: AssetExecutionContext,
@@ -25,7 +27,7 @@ def write_processed_data_to_influxdb(
     consumption_data: Dict[str, pd.DataFrame],
     virtual_meter_data: Dict[str, pd.DataFrame],
     anomaly_detection: Dict[str, pd.DataFrame],
-    influxdb: InfluxDBResource
+    influxdb: InfluxDBResource,
 ) -> MaterializeResult:
     """
     Write all processed data to InfluxDB processed bucket
@@ -55,9 +57,7 @@ def write_processed_data_to_influxdb(
                 data, meter_id, "meter_interpolated_daily"
             )
             write_api.write(
-                bucket=influxdb.bucket_processed,
-                org=influxdb.org,
-                record=points
+                bucket=influxdb.bucket_processed, org=influxdb.org, record=points
             )
             total_points += len(points)
         logger.info(f"Wrote {total_points} daily interpolated points")
@@ -70,9 +70,7 @@ def write_processed_data_to_influxdb(
                 data, meter_id, "meter_interpolated_monthly"
             )
             write_api.write(
-                bucket=influxdb.bucket_processed,
-                org=influxdb.org,
-                record=points
+                bucket=influxdb.bucket_processed, org=influxdb.org, record=points
             )
             monthly_count += len(points)
         logger.info(f"Wrote {monthly_count} monthly interpolated points")
@@ -88,9 +86,7 @@ def write_processed_data_to_influxdb(
                     series_dict["daily"], master_id, "meter_interpolated_daily"
                 )
                 write_api.write(
-                    bucket=influxdb.bucket_processed,
-                    org=influxdb.org,
-                    record=points
+                    bucket=influxdb.bucket_processed, org=influxdb.org, record=points
                 )
                 master_count += len(points)
 
@@ -100,9 +96,7 @@ def write_processed_data_to_influxdb(
                     series_dict["monthly"], master_id, "meter_interpolated_monthly"
                 )
                 write_api.write(
-                    bucket=influxdb.bucket_processed,
-                    org=influxdb.org,
-                    record=points
+                    bucket=influxdb.bucket_processed, org=influxdb.org, record=points
                 )
                 master_count += len(points)
         logger.info(f"Wrote {master_count} master meter points")
@@ -112,13 +106,9 @@ def write_processed_data_to_influxdb(
         consumption_count = 0
         logger.info("Writing consumption data...")
         for meter_id, data in consumption_data.items():
-            points = _create_points_from_dataframe(
-                data, meter_id, "meter_consumption"
-            )
+            points = _create_points_from_dataframe(data, meter_id, "meter_consumption")
             write_api.write(
-                bucket=influxdb.bucket_processed,
-                org=influxdb.org,
-                record=points
+                bucket=influxdb.bucket_processed, org=influxdb.org, record=points
             )
             consumption_count += len(points)
         logger.info(f"Wrote {consumption_count} consumption points")
@@ -128,13 +118,9 @@ def write_processed_data_to_influxdb(
         virtual_count = 0
         logger.info("Writing virtual meter consumption...")
         for meter_id, data in virtual_meter_data.items():
-            points = _create_points_from_dataframe(
-                data, meter_id, "meter_consumption"
-            )
+            points = _create_points_from_dataframe(data, meter_id, "meter_consumption")
             write_api.write(
-                bucket=influxdb.bucket_processed,
-                org=influxdb.org,
-                record=points
+                bucket=influxdb.bucket_processed, org=influxdb.org, record=points
             )
             virtual_count += len(points)
         logger.info(f"Wrote {virtual_count} virtual meter consumption points")
@@ -146,9 +132,7 @@ def write_processed_data_to_influxdb(
         for meter_id, data in anomaly_detection.items():
             points = _create_anomaly_points(data, meter_id)
             write_api.write(
-                bucket=influxdb.bucket_processed,
-                org=influxdb.org,
-                record=points
+                bucket=influxdb.bucket_processed, org=influxdb.org, record=points
             )
             anomaly_count += len(points)
         logger.info(f"Wrote {anomaly_count} anomaly points")
@@ -164,15 +148,13 @@ def write_processed_data_to_influxdb(
                 "master_points": master_count,
                 "consumption_points": consumption_count,
                 "virtual_points": virtual_count,
-                "anomaly_points": anomaly_count
+                "anomaly_points": anomaly_count,
             }
         )
 
 
 def _create_points_from_dataframe(
-    df: pd.DataFrame,
-    meter_id: str,
-    measurement: str
+    df: pd.DataFrame, meter_id: str, measurement: str
 ) -> list:
     """
     Create InfluxDB points from a DataFrame
@@ -193,8 +175,8 @@ def _create_points_from_dataframe(
     points = []
 
     # Ensure we have timestamp as index
-    if 'timestamp' in df.columns:
-        df_indexed = df.set_index('timestamp')
+    if "timestamp" in df.columns:
+        df_indexed = df.set_index("timestamp")
     else:
         df_indexed = df
 
@@ -209,7 +191,7 @@ def _create_points_from_dataframe(
             timestamp = timestamp.tz_convert(timezone.utc)
 
         # Access value attribute (itertuples uses named tuples)
-        value = row.value if hasattr(row, 'value') else row[1]
+        value = row.value if hasattr(row, "value") else row[1]
 
         point = (
             Point(measurement)
@@ -245,8 +227,8 @@ def _create_anomaly_points(df: pd.DataFrame, meter_id: str) -> list:
     points = []
 
     # Ensure we have timestamp as index
-    if 'timestamp' in df.columns:
-        df_indexed = df.set_index('timestamp')
+    if "timestamp" in df.columns:
+        df_indexed = df.set_index("timestamp")
     else:
         df_indexed = df
 
@@ -261,11 +243,11 @@ def _create_anomaly_points(df: pd.DataFrame, meter_id: str) -> list:
             timestamp = timestamp.tz_convert(timezone.utc)
 
         # Extract fields with safe defaults
-        value = row.value if hasattr(row, 'value') else 0.0
-        z_score = row.z_score if hasattr(row, 'z_score') else 0.0
-        iqr_lower = row.iqr_lower if hasattr(row, 'iqr_lower') else 0.0
-        iqr_upper = row.iqr_upper if hasattr(row, 'iqr_upper') else 0.0
-        anomaly_count = row.anomaly_count if hasattr(row, 'anomaly_count') else 0
+        value = row.value if hasattr(row, "value") else 0.0
+        z_score = row.z_score if hasattr(row, "z_score") else 0.0
+        iqr_lower = row.iqr_lower if hasattr(row, "iqr_lower") else 0.0
+        iqr_upper = row.iqr_upper if hasattr(row, "iqr_upper") else 0.0
+        anomaly_count = row.anomaly_count if hasattr(row, "anomaly_count") else 0
 
         point = (
             Point("meter_anomaly")

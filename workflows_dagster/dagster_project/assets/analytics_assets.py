@@ -11,51 +11,43 @@ IMPROVEMENTS:
 - Better error handling and logging
 - Comprehensive documentation
 """
-import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Tuple
-import pandas as pd
-import numpy as np
-from dagster import (
-    asset,
-    multi_asset,
-    AssetOut,
-    AssetExecutionContext,
-    MaterializeResult,
-    MetadataValue,
-    Output
-)
 
+import os
 # Import utility analysis modules from src
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
+import numpy as np
+import pandas as pd
+from dagster import (AssetExecutionContext, AssetOut, MaterializeResult,
+                     MetadataValue, Output, asset, multi_asset)
 
 # Add workflows_dagster to path to access src modules
 workflows_dagster_path = Path(__file__).parent.parent.parent
 if str(workflows_dagster_path) not in sys.path:
     sys.path.insert(0, str(workflows_dagster_path))
 
-from src.influx_client import InfluxClient
-from src.data_processor import DataProcessor
 from src.calculator import ConsumptionCalculator
+from src.data_processor import DataProcessor
+from src.influx_client import InfluxClient
 
-from ..resources.influxdb_resource import InfluxDBResource
 from ..resources.config_resource import ConfigResource
-
+from ..resources.influxdb_resource import InfluxDBResource
 
 # =============================================================================
 # DISCOVERY ASSETS
 # =============================================================================
 
+
 @asset(
     group_name="discovery",
     compute_kind="influxdb",
-    description="Discover all available physical meters in InfluxDB"
+    description="Discover all available physical meters in InfluxDB",
 )
 def meter_discovery(
-    context: AssetExecutionContext,
-    influxdb: InfluxDBResource,
-    config: ConfigResource
+    context: AssetExecutionContext, influxdb: InfluxDBResource, config: ConfigResource
 ) -> List[str]:
     """
     Discover all available meters in InfluxDB
@@ -79,7 +71,7 @@ def meter_discovery(
             url=influxdb.url,
             token=os.environ.get("INFLUX_TOKEN"),
             org=influxdb.org,
-            bucket=influxdb.bucket_raw
+            bucket=influxdb.bucket_raw,
         )
 
         meters = influx_client.discover_available_meters()
@@ -100,16 +92,17 @@ def meter_discovery(
 # RAW DATA FETCHING
 # =============================================================================
 
+
 @asset(
     group_name="processing",
     compute_kind="influxdb",
-    description="Fetch raw meter data for all discovered meters"
+    description="Fetch raw meter data for all discovered meters",
 )
 def raw_meter_data(
     context: AssetExecutionContext,
     meter_discovery: List[str],
     influxdb: InfluxDBResource,
-    config: ConfigResource
+    config: ConfigResource,
 ) -> Dict[str, pd.DataFrame]:
     """
     Fetch raw data for all discovered meters
@@ -146,15 +139,14 @@ def raw_meter_data(
         start_date = datetime(start_year, 1, 1)
 
         logger.info(
-            f"Fetching raw data for {len(meter_discovery)} meters "
-            f"from {start_date}"
+            f"Fetching raw data for {len(meter_discovery)} meters " f"from {start_date}"
         )
 
         influx_client = InfluxClient(
             url=influxdb.url,
             token=os.environ.get("INFLUX_TOKEN"),
             org=influxdb.org,
-            bucket=influxdb.bucket_raw
+            bucket=influxdb.bucket_raw,
         )
 
         raw_data = {}
@@ -177,12 +169,10 @@ def raw_meter_data(
             except Exception as e:
                 logger.error(f"Failed to fetch data for {meter_id}: {str(e)}")
                 # Add empty DataFrame to avoid breaking downstream assets
-                raw_data[meter_id] = pd.DataFrame(columns=['timestamp', 'value'])
+                raw_data[meter_id] = pd.DataFrame(columns=["timestamp", "value"])
 
         if meters_with_no_data:
-            logger.warning(
-                f"Meters with no data: {', '.join(meters_with_no_data)}"
-            )
+            logger.warning(f"Meters with no data: {', '.join(meters_with_no_data)}")
 
         logger.info(f"Total raw data points fetched: {total_points}")
         return raw_data
@@ -196,6 +186,7 @@ def raw_meter_data(
 # INTERPOLATION & AGGREGATION
 # =============================================================================
 
+
 @multi_asset(
     outs={
         "daily_interpolated_series": AssetOut(
@@ -207,13 +198,13 @@ def raw_meter_data(
     },
     group_name="processing",
     compute_kind="python",
-    description="Create interpolated daily and monthly series for all meters"
+    description="Create interpolated daily and monthly series for all meters",
 )
 def interpolated_meter_series(
     context: AssetExecutionContext,
     raw_meter_data: Dict[str, pd.DataFrame],
     influxdb: InfluxDBResource,
-    config: ConfigResource
+    config: ConfigResource,
 ) -> Tuple[Output, Output]:
     """
     Create interpolated daily and monthly series for all meters
@@ -248,15 +239,13 @@ def interpolated_meter_series(
     start_date_str = f"{start_year}-01-01"
     end_date_str = datetime.now().strftime("%Y-%m-%d")
 
-    logger.info(
-        f"Creating interpolated series from {start_date_str} to {end_date_str}"
-    )
+    logger.info(f"Creating interpolated series from {start_date_str} to {end_date_str}")
 
     influx_client = InfluxClient(
         url=influxdb.url,
         token=os.environ.get("INFLUX_TOKEN"),
         org=influxdb.org,
-        bucket=influxdb.bucket_raw
+        bucket=influxdb.bucket_raw,
     )
 
     # Pre-populate cache with raw data
@@ -279,8 +268,10 @@ def interpolated_meter_series(
 
             if raw_data.empty:
                 logger.warning(f"Skipping {meter_id}: no raw data")
-                daily_readings[meter_id] = pd.DataFrame(columns=['timestamp', 'value'])
-                monthly_readings[meter_id] = pd.DataFrame(columns=['timestamp', 'value'])
+                daily_readings[meter_id] = pd.DataFrame(columns=["timestamp", "value"])
+                monthly_readings[meter_id] = pd.DataFrame(
+                    columns=["timestamp", "value"]
+                )
                 continue
 
             # Get installation/deinstallation dates from config
@@ -294,14 +285,14 @@ def interpolated_meter_series(
                 start_date_str,
                 end_date_str,
                 installation_date=installation_date,
-                deinstallation_date=deinstallation_date
+                deinstallation_date=deinstallation_date,
             )
             daily_readings[meter_id] = daily_series
             total_daily_points += len(daily_series)
 
             # Aggregate to monthly
             monthly_series = data_processor.aggregate_daily_to_frequency(
-                daily_series, 'M'
+                daily_series, "M"
             )
             monthly_readings[meter_id] = monthly_series
             total_monthly_points += len(monthly_series)
@@ -314,8 +305,8 @@ def interpolated_meter_series(
         except Exception as e:
             logger.error(f"Failed to process {meter_id}: {str(e)}")
             # Add empty DataFrames to avoid breaking downstream
-            daily_readings[meter_id] = pd.DataFrame(columns=['timestamp', 'value'])
-            monthly_readings[meter_id] = pd.DataFrame(columns=['timestamp', 'value'])
+            daily_readings[meter_id] = pd.DataFrame(columns=["timestamp", "value"])
+            monthly_readings[meter_id] = pd.DataFrame(columns=["timestamp", "value"])
 
     logger.info(
         f"Total daily points: {total_daily_points}, "
@@ -328,17 +319,17 @@ def interpolated_meter_series(
             metadata={
                 "meter_count": len(daily_readings),
                 "total_points": total_daily_points,
-                "date_range": f"{start_date_str} to {end_date_str}"
-            }
+                "date_range": f"{start_date_str} to {end_date_str}",
+            },
         ),
         Output(
             value=monthly_readings,
             metadata={
                 "meter_count": len(monthly_readings),
                 "total_points": total_monthly_points,
-                "date_range": f"{start_date_str} to {end_date_str}"
-            }
-        )
+                "date_range": f"{start_date_str} to {end_date_str}",
+            },
+        ),
     )
 
 
@@ -346,11 +337,8 @@ def interpolated_meter_series(
 # MASTER METER PROCESSING
 # =============================================================================
 
-def _validate_unit_conversion(
-    from_unit: str,
-    to_unit: str,
-    logger
-) -> bool:
+
+def _validate_unit_conversion(from_unit: str, to_unit: str, logger) -> bool:
     """
     Validate that unit conversion is supported
 
@@ -372,8 +360,8 @@ def _validate_unit_conversion(
 
     # Valid conversion pairs
     valid_conversions = [
-        {'m³', 'kwh'},  # Gas volume to energy
-        {'kwh', 'm³'},  # Gas energy to volume
+        {"m³", "kwh"},  # Gas volume to energy
+        {"kwh", "m³"},  # Gas energy to volume
     ]
 
     conversion_pair = {from_unit_lower, to_unit_lower}
@@ -394,7 +382,7 @@ def _convert_series(
     from_unit: str,
     to_unit: str,
     gas_conversion_factor: float,
-    logger
+    logger,
 ) -> pd.DataFrame:
     """
     Convert meter reading series between units
@@ -428,15 +416,15 @@ def _convert_series(
 
     converted = series.copy()
 
-    if from_unit.lower() == 'm³' and to_unit.lower() == 'kwh':
-        converted['value'] = converted['value'] * gas_conversion_factor
+    if from_unit.lower() == "m³" and to_unit.lower() == "kwh":
+        converted["value"] = converted["value"] * gas_conversion_factor
         logger.debug(
             f"Converted {from_unit} → {to_unit} "
             f"using factor {gas_conversion_factor:.4f}"
         )
-    elif from_unit.lower() == 'kwh' and to_unit.lower() == 'm³':
+    elif from_unit.lower() == "kwh" and to_unit.lower() == "m³":
         if gas_conversion_factor > 0:
-            converted['value'] = converted['value'] / gas_conversion_factor
+            converted["value"] = converted["value"] / gas_conversion_factor
             logger.debug(
                 f"Converted {from_unit} → {to_unit} "
                 f"using factor 1/{gas_conversion_factor:.4f}"
@@ -453,13 +441,13 @@ def _convert_series(
 @asset(
     group_name="processing",
     compute_kind="python",
-    description="Process master meters by combining physical meters across time periods"
+    description="Process master meters by combining physical meters across time periods",
 )
 def master_meter_series(
     context: AssetExecutionContext,
     daily_interpolated_series: Dict[str, pd.DataFrame],
     monthly_interpolated_series: Dict[str, pd.DataFrame],
-    config: ConfigResource
+    config: ConfigResource,
 ) -> Dict[str, Dict[str, pd.DataFrame]]:
     """
     Process master meters by combining source meters across periods
@@ -528,8 +516,7 @@ def master_meter_series(
 
     gas_conversion_params = config.get_gas_conversion_params(cfg)
     gas_conversion_factor = (
-        gas_conversion_params["energy_content"] *
-        gas_conversion_params["z_factor"]
+        gas_conversion_params["energy_content"] * gas_conversion_params["z_factor"]
     )
 
     master_results = {}
@@ -539,15 +526,13 @@ def master_meter_series(
         output_unit = master_config.get("output_unit", "kWh")
         periods = master_config.get("periods", [])
 
-        logger.info(
-            f"Processing master meter: {master_id} with {len(periods)} periods"
-        )
+        logger.info(f"Processing master meter: {master_id} with {len(periods)} periods")
 
         result = {"daily": pd.DataFrame(), "monthly": pd.DataFrame()}
 
         for freq, readings_dict in [
             ("daily", daily_interpolated_series),
-            ("monthly", monthly_interpolated_series)
+            ("monthly", monthly_interpolated_series),
         ]:
             combined_parts = []
             previous_period_last_value = 0.0
@@ -572,17 +557,17 @@ def master_meter_series(
                         source_df = readings_dict[source_id].copy()
 
                         # Ensure timestamp column exists
-                        if 'timestamp' not in source_df.columns:
+                        if "timestamp" not in source_df.columns:
                             if isinstance(source_df.index, pd.DatetimeIndex):
                                 source_df = source_df.reset_index()
                                 source_df = source_df.rename(
-                                    columns={source_df.columns[0]: 'timestamp'}
+                                    columns={source_df.columns[0]: "timestamp"}
                                 )
 
                         # Filter to period date range
                         source_df = source_df[
-                            (source_df['timestamp'] >= start_date) &
-                            (source_df['timestamp'] <= end_date)
+                            (source_df["timestamp"] >= start_date)
+                            & (source_df["timestamp"] <= end_date)
                         ]
 
                         # Convert units if needed
@@ -591,7 +576,7 @@ def master_meter_series(
                             source_unit,
                             output_unit,
                             gas_conversion_factor,
-                            logger
+                            logger,
                         )
 
                         source_data_list.append(source_df)
@@ -616,20 +601,21 @@ def master_meter_series(
                         # Align on timestamp and sum values
                         merged = period_data.merge(
                             other_df,
-                            on='timestamp',
-                            how='outer',
-                            suffixes=('', '_other')
+                            on="timestamp",
+                            how="outer",
+                            suffixes=("", "_other"),
                         )
-                        merged['value'] = merged['value'].fillna(0) + \
-                                         merged['value_other'].fillna(0)
-                        period_data = merged[['timestamp', 'value']]
+                        merged["value"] = merged["value"].fillna(0) + merged[
+                            "value_other"
+                        ].fillna(0)
+                        period_data = merged[["timestamp", "value"]]
                 else:  # single
                     period_data = source_data_list[0].copy()
 
                 # Apply offset if requested (for meter continuity)
                 if apply_offset and previous_period_last_value > 0:
                     if not period_data.empty:
-                        period_first_value = period_data.iloc[0]['value']
+                        period_first_value = period_data.iloc[0]["value"]
                         offset = previous_period_last_value - period_first_value
 
                         # IMPROVEMENT: Validate offset reasonability
@@ -640,7 +626,7 @@ def master_meter_series(
                                 f"of previous value). This may indicate a configuration error."
                             )
 
-                        period_data['value'] = period_data['value'] + offset
+                        period_data["value"] = period_data["value"] + offset
                         logger.debug(
                             f"Applied offset {offset:.2f} to period {period_idx + 1}"
                         )
@@ -649,16 +635,14 @@ def master_meter_series(
 
                 # Track last value for next period
                 if not period_data.empty:
-                    previous_period_last_value = period_data.iloc[-1]['value']
+                    previous_period_last_value = period_data.iloc[-1]["value"]
 
             # Concatenate all periods
             if combined_parts:
-                result[freq] = pd.concat(combined_parts).sort_values('timestamp')
-                result[freq] = result[freq].drop_duplicates(subset=['timestamp'])
+                result[freq] = pd.concat(combined_parts).sort_values("timestamp")
+                result[freq] = result[freq].drop_duplicates(subset=["timestamp"])
                 result[freq] = result[freq].reset_index(drop=True)
-                logger.info(
-                    f"Master {master_id} {freq}: {len(result[freq])} points"
-                )
+                logger.info(f"Master {master_id} {freq}: {len(result[freq])} points")
 
         master_results[master_id] = result
 
@@ -671,16 +655,17 @@ def master_meter_series(
 # CONSUMPTION CALCULATION
 # =============================================================================
 
+
 @asset(
     group_name="processing",
     compute_kind="python",
-    description="Calculate consumption values from meter readings"
+    description="Calculate consumption values from meter readings",
 )
 def consumption_data(
     context: AssetExecutionContext,
     daily_interpolated_series: Dict[str, pd.DataFrame],
     master_meter_series: Dict[str, Dict[str, pd.DataFrame]],
-    config: ConfigResource
+    config: ConfigResource,
 ) -> Dict[str, pd.DataFrame]:
     """
     Calculate daily consumption values from cumulative meter readings
@@ -731,7 +716,7 @@ def consumption_data(
                 logger.warning(f"Skipping {meter_id}: no readings data")
                 skipped_meters.append(meter_id)
                 consumption_results[meter_id] = pd.DataFrame(
-                    columns=['timestamp', 'value']
+                    columns=["timestamp", "value"]
                 )
                 continue
 
@@ -741,9 +726,9 @@ def consumption_data(
 
             # Log summary statistics
             if len(consumption) > 0:
-                total_consumption = consumption['value'].sum()
-                avg_daily = consumption['value'].mean()
-                max_daily = consumption['value'].max()
+                total_consumption = consumption["value"].sum()
+                avg_daily = consumption["value"].mean()
+                max_daily = consumption["value"].max()
                 logger.debug(
                     f"{meter_id}: {len(consumption)} days, "
                     f"total={total_consumption:.2f}, "
@@ -754,7 +739,7 @@ def consumption_data(
         except Exception as e:
             logger.error(f"Failed to calculate consumption for {meter_id}: {str(e)}")
             skipped_meters.append(meter_id)
-            consumption_results[meter_id] = pd.DataFrame(columns=['timestamp', 'value'])
+            consumption_results[meter_id] = pd.DataFrame(columns=["timestamp", "value"])
 
     if skipped_meters:
         logger.warning(
@@ -770,15 +755,16 @@ def consumption_data(
 # VIRTUAL METER PROCESSING
 # =============================================================================
 
+
 @asset(
     group_name="processing",
     compute_kind="python",
-    description="Calculate virtual meters using subtraction logic"
+    description="Calculate virtual meters using subtraction logic",
 )
 def virtual_meter_data(
     context: AssetExecutionContext,
     consumption_data: Dict[str, pd.DataFrame],
-    config: ConfigResource
+    config: ConfigResource,
 ) -> Dict[str, pd.DataFrame]:
     """
     Calculate virtual meters from consumption data
@@ -838,8 +824,7 @@ def virtual_meter_data(
 
     gas_conversion_params = config.get_gas_conversion_params(cfg)
     gas_conversion_factor = (
-        gas_conversion_params["energy_content"] *
-        gas_conversion_params["z_factor"]
+        gas_conversion_params["energy_content"] * gas_conversion_params["z_factor"]
     )
 
     virtual_results = {}
@@ -864,11 +849,11 @@ def virtual_meter_data(
         base_consumption = consumption_data[base_meter].copy()
 
         # Ensure timestamp column
-        if 'timestamp' not in base_consumption.columns:
+        if "timestamp" not in base_consumption.columns:
             if isinstance(base_consumption.index, pd.DatetimeIndex):
                 base_consumption = base_consumption.reset_index()
                 base_consumption = base_consumption.rename(
-                    columns={base_consumption.columns[0]: 'timestamp'}
+                    columns={base_consumption.columns[0]: "timestamp"}
                 )
 
         for subtract_meter in subtract_meters:
@@ -882,11 +867,11 @@ def virtual_meter_data(
             subtract_consumption = consumption_data[subtract_meter].copy()
 
             # Ensure timestamp column
-            if 'timestamp' not in subtract_consumption.columns:
+            if "timestamp" not in subtract_consumption.columns:
                 if isinstance(subtract_consumption.index, pd.DatetimeIndex):
                     subtract_consumption = subtract_consumption.reset_index()
                     subtract_consumption = subtract_consumption.rename(
-                        columns={subtract_consumption.columns[0]: 'timestamp'}
+                        columns={subtract_consumption.columns[0]: "timestamp"}
                     )
 
             # Apply unit conversion if specified
@@ -907,8 +892,9 @@ def virtual_meter_data(
 
                 if from_unit.lower() == "kwh" and to_unit.lower() == "m³":
                     if gas_conversion_factor > 0:
-                        subtract_consumption['value'] = \
-                            subtract_consumption['value'] / gas_conversion_factor
+                        subtract_consumption["value"] = (
+                            subtract_consumption["value"] / gas_conversion_factor
+                        )
                     else:
                         logger.error(
                             f"Cannot convert: invalid conversion factor "
@@ -916,30 +902,31 @@ def virtual_meter_data(
                         )
                         continue
                 elif from_unit.lower() == "m³" and to_unit.lower() == "kwh":
-                    subtract_consumption['value'] = \
-                        subtract_consumption['value'] * gas_conversion_factor
+                    subtract_consumption["value"] = (
+                        subtract_consumption["value"] * gas_conversion_factor
+                    )
 
             # Merge and subtract - align on timestamp
             merged = base_consumption.merge(
-                subtract_consumption[['timestamp', 'value']],
-                on='timestamp',
-                how='left',
-                suffixes=('', '_subtract')
+                subtract_consumption[["timestamp", "value"]],
+                on="timestamp",
+                how="left",
+                suffixes=("", "_subtract"),
             )
 
             # Subtract where both have data
-            merged['value_subtract'] = merged['value_subtract'].fillna(0)
-            merged['value'] = merged['value'] - merged['value_subtract']
+            merged["value_subtract"] = merged["value_subtract"].fillna(0)
+            merged["value"] = merged["value"] - merged["value_subtract"]
 
-            base_consumption = merged[['timestamp', 'value']]
+            base_consumption = merged[["timestamp", "value"]]
 
         # Clip negative values to zero
-        base_consumption['value'] = base_consumption['value'].clip(lower=0)
+        base_consumption["value"] = base_consumption["value"].clip(lower=0)
 
         virtual_results[meter_id] = base_consumption
 
         if len(base_consumption) > 0:
-            total = base_consumption['value'].sum()
+            total = base_consumption["value"].sum()
             logger.info(
                 f"Created virtual meter {meter_id} with {len(base_consumption)} "
                 f"points (total consumption: {total:.2f})"
@@ -954,15 +941,16 @@ def virtual_meter_data(
 # ANOMALY DETECTION
 # =============================================================================
 
+
 @asset(
     group_name="analysis",
     compute_kind="python",
-    description="Detect consumption anomalies using statistical methods"
+    description="Detect consumption anomalies using statistical methods",
 )
 def anomaly_detection(
     context: AssetExecutionContext,
     consumption_data: Dict[str, pd.DataFrame],
-    virtual_meter_data: Dict[str, pd.DataFrame]
+    virtual_meter_data: Dict[str, pd.DataFrame],
 ) -> Dict[str, pd.DataFrame]:
     """
     Detect anomalies in consumption data using statistical methods
@@ -1014,20 +1002,20 @@ def anomaly_detection(
 
         try:
             # Ensure we have a proper DataFrame with value column
-            if 'value' not in consumption.columns:
+            if "value" not in consumption.columns:
                 logger.warning(f"No 'value' column in {meter_id}")
                 continue
 
             df = consumption.copy()
 
             # Ensure timestamp is in columns (not index)
-            if 'timestamp' not in df.columns:
+            if "timestamp" not in df.columns:
                 if isinstance(df.index, pd.DatetimeIndex):
                     df = df.reset_index()
-                    df = df.rename(columns={df.columns[0]: 'timestamp'})
+                    df = df.rename(columns={df.columns[0]: "timestamp"})
 
             # Remove zero-consumption days for better statistics
-            df_nonzero = df[df['value'] > 0].copy()
+            df_nonzero = df[df["value"] > 0].copy()
 
             if len(df_nonzero) < 30:
                 logger.debug(
@@ -1037,60 +1025,51 @@ def anomaly_detection(
                 continue
 
             # Method 1: Global Z-score
-            mean_consumption = df_nonzero['value'].mean()
-            std_consumption = df_nonzero['value'].std()
+            mean_consumption = df_nonzero["value"].mean()
+            std_consumption = df_nonzero["value"].std()
 
             if std_consumption > 0:
-                df['z_score'] = (
-                    df['value'] - mean_consumption
-                ) / std_consumption
-                df['anomaly_zscore'] = df['z_score'].abs() > 3
+                df["z_score"] = (df["value"] - mean_consumption) / std_consumption
+                df["anomaly_zscore"] = df["z_score"].abs() > 3
             else:
-                df['z_score'] = 0
-                df['anomaly_zscore'] = False
+                df["z_score"] = 0
+                df["anomaly_zscore"] = False
 
             # Method 2: IQR method
-            q1 = df_nonzero['value'].quantile(0.25)
-            q3 = df_nonzero['value'].quantile(0.75)
+            q1 = df_nonzero["value"].quantile(0.25)
+            q3 = df_nonzero["value"].quantile(0.75)
             iqr = q3 - q1
 
             lower_bound = q1 - 1.5 * iqr
             upper_bound = q3 + 1.5 * iqr
 
-            df['iqr_lower'] = lower_bound
-            df['iqr_upper'] = upper_bound
-            df['anomaly_iqr'] = (
-                (df['value'] < lower_bound) |
-                (df['value'] > upper_bound)
+            df["iqr_lower"] = lower_bound
+            df["iqr_upper"] = upper_bound
+            df["anomaly_iqr"] = (df["value"] < lower_bound) | (
+                df["value"] > upper_bound
             )
 
             # Method 3: Rolling Z-score (local anomalies)
-            rolling_mean = df['value'].rolling(
-                window=30,
-                min_periods=10,
-                center=True
-            ).mean()
-            rolling_std = df['value'].rolling(
-                window=30,
-                min_periods=10,
-                center=True
-            ).std()
+            rolling_mean = (
+                df["value"].rolling(window=30, min_periods=10, center=True).mean()
+            )
+            rolling_std = (
+                df["value"].rolling(window=30, min_periods=10, center=True).std()
+            )
 
-            df['rolling_z_score'] = (
-                df['value'] - rolling_mean
-            ) / rolling_std
-            df['anomaly_rolling'] = df['rolling_z_score'].abs() > 2.5
+            df["rolling_z_score"] = (df["value"] - rolling_mean) / rolling_std
+            df["anomaly_rolling"] = df["rolling_z_score"].abs() > 2.5
 
             # Combine methods: flag as anomaly if detected by 2+ methods
-            df['anomaly_count'] = (
-                df['anomaly_zscore'].astype(int) +
-                df['anomaly_iqr'].astype(int) +
-                df['anomaly_rolling'].astype(int)
+            df["anomaly_count"] = (
+                df["anomaly_zscore"].astype(int)
+                + df["anomaly_iqr"].astype(int)
+                + df["anomaly_rolling"].astype(int)
             )
-            df['is_anomaly'] = df['anomaly_count'] >= 2
+            df["is_anomaly"] = df["anomaly_count"] >= 2
 
             # Filter to anomalies only
-            anomaly_points = df[df['is_anomaly']].copy()
+            anomaly_points = df[df["is_anomaly"]].copy()
 
             if len(anomaly_points) > 0:
                 anomalies[meter_id] = anomaly_points
@@ -1111,8 +1090,7 @@ def anomaly_detection(
 
         except Exception as e:
             logger.error(
-                f"Error detecting anomalies for {meter_id}: {str(e)}",
-                exc_info=True
+                f"Error detecting anomalies for {meter_id}: {str(e)}", exc_info=True
             )
             continue
 

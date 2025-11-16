@@ -1,12 +1,18 @@
 """
 Unit tests for Dagster resources
 """
+
 import os
-import pytest
 from unittest.mock import MagicMock, patch
-from workflows_dagster.dagster_project.resources.influxdb_resource import InfluxDBResource
-from workflows_dagster.dagster_project.resources.tibber_resource import TibberResource
-from workflows_dagster.dagster_project.resources.config_resource import ConfigResource
+
+import pytest
+
+from workflows_dagster.dagster_project.resources.config_resource import \
+    ConfigResource
+from workflows_dagster.dagster_project.resources.influxdb_resource import \
+    InfluxDBResource
+from workflows_dagster.dagster_project.resources.tibber_resource import \
+    TibberResource
 
 
 class TestInfluxDBResource:
@@ -25,9 +31,7 @@ class TestInfluxDBResource:
     def test_get_client_requires_token(self):
         """Test get_client raises error without INFLUX_TOKEN"""
         resource = InfluxDBResource(
-            url="http://localhost:8086",
-            bucket_raw="test",
-            bucket_processed="test"
+            url="http://localhost:8086", bucket_raw="test", bucket_processed="test"
         )
 
         # Temporarily remove token
@@ -43,9 +47,7 @@ class TestInfluxDBResource:
     def test_get_client_requires_org(self):
         """Test get_client raises error without INFLUX_ORG"""
         resource = InfluxDBResource(
-            url="http://localhost:8086",
-            bucket_raw="test",
-            bucket_processed="test"
+            url="http://localhost:8086", bucket_raw="test", bucket_processed="test"
         )
 
         # Temporarily remove org
@@ -58,7 +60,9 @@ class TestInfluxDBResource:
                 os.environ["INFLUX_ORG"] = org
 
     @pytest.mark.unit
-    @patch('workflows_dagster.dagster_project.resources.influxdb_resource.InfluxDBClient')
+    @patch(
+        "workflows_dagster.dagster_project.resources.influxdb_resource.InfluxDBClient"
+    )
     def test_get_client_creates_client(self, mock_client_class, mock_influxdb_resource):
         """Test get_client creates InfluxDBClient with correct params"""
         mock_influxdb_resource.get_client()
@@ -67,7 +71,7 @@ class TestInfluxDBResource:
             url="http://localhost:8086",
             token="test-token-123",
             org="test-org",
-            timeout=10000
+            timeout=10000,
         )
 
     @pytest.mark.unit
@@ -87,19 +91,17 @@ class TestTibberResource:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('workflows_dagster.dagster_project.resources.tibber_resource.requests.post')
-    def test_fetch_consumption_success(self, mock_post, mock_tibber_resource, sample_tibber_response):
+    @patch("workflows_dagster.dagster_project.resources.tibber_resource.requests.post")
+    def test_fetch_consumption_success(
+        self, mock_post, mock_tibber_resource, sample_tibber_response
+    ):
         """Test successful Tibber API consumption fetch"""
         # Mock successful API response
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "data": {
                 "viewer": {
-                    "homes": [{
-                        "consumption": {
-                            "nodes": sample_tibber_response
-                        }
-                    }]
+                    "homes": [{"consumption": {"nodes": sample_tibber_response}}]
                 }
             }
         }
@@ -126,13 +128,11 @@ class TestTibberResource:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('workflows_dagster.dagster_project.resources.tibber_resource.requests.post')
+    @patch("workflows_dagster.dagster_project.resources.tibber_resource.requests.post")
     def test_fetch_consumption_graphql_error(self, mock_post, mock_tibber_resource):
         """Test fetch_consumption handles GraphQL errors"""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "errors": [{"message": "Invalid token"}]
-        }
+        mock_response.json.return_value = {"errors": [{"message": "Invalid token"}]}
         mock_post.return_value = mock_response
 
         with pytest.raises(ValueError, match="Tibber API error"):
@@ -140,10 +140,11 @@ class TestTibberResource:
 
     @pytest.mark.unit
     @pytest.mark.tibber
-    @patch('workflows_dagster.dagster_project.resources.tibber_resource.requests.post')
+    @patch("workflows_dagster.dagster_project.resources.tibber_resource.requests.post")
     def test_fetch_consumption_network_error(self, mock_post, mock_tibber_resource):
         """Test fetch_consumption handles network errors"""
         import requests
+
         mock_post.side_effect = requests.exceptions.ConnectionError("Connection failed")
 
         with pytest.raises(requests.exceptions.ConnectionError):
@@ -230,7 +231,7 @@ class TestConfigResource:
         resource = ConfigResource(
             config_path=str(tmp_path / "nonexistent.yaml"),
             meters_config_path=str(tmp_path / "meters.yaml"),
-            seasonal_patterns_path=str(tmp_path / "patterns.yaml")
+            seasonal_patterns_path=str(tmp_path / "patterns.yaml"),
         )
 
         with pytest.raises(FileNotFoundError):

@@ -1,22 +1,20 @@
 """
 Unit tests for InfluxDB writer assets
 """
-import pytest
-from unittest.mock import MagicMock, patch
-import pandas as pd
+
 from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
+
+import pandas as pd
+import pytest
 from dagster import build_asset_context
 
+from tests.fixtures.mock_data import (generate_anomaly_data,
+                                      generate_consumption_data,
+                                      generate_meter_readings)
 from workflows_dagster.dagster_project.assets.influxdb_writer_assets import (
-    write_processed_data_to_influxdb,
-    _create_points_from_dataframe,
-    _create_anomaly_points
-)
-from tests.fixtures.mock_data import (
-    generate_meter_readings,
-    generate_consumption_data,
-    generate_anomaly_data
-)
+    _create_anomaly_points, _create_points_from_dataframe,
+    write_processed_data_to_influxdb)
 
 
 def get_metadata_value(metadata_dict, key):
@@ -25,7 +23,7 @@ def get_metadata_value(metadata_dict, key):
     Handles both MetadataValue objects and raw values.
     """
     value = metadata_dict[key]
-    return value.value if hasattr(value, 'value') else value
+    return value.value if hasattr(value, "value") else value
 
 
 class TestCreatePointsFromDataFrame:
@@ -35,26 +33,26 @@ class TestCreatePointsFromDataFrame:
     def test_creates_points_with_timezone_aware_index(self):
         """Test point creation with timezone-aware timestamps"""
         # Create DataFrame with timezone-aware index
-        dates = pd.date_range('2024-01-01', periods=5, freq='D', tz='UTC')
-        df = pd.DataFrame({'value': [10.5, 11.2, 9.8, 10.1, 11.0]}, index=dates)
+        dates = pd.date_range("2024-01-01", periods=5, freq="D", tz="UTC")
+        df = pd.DataFrame({"value": [10.5, 11.2, 9.8, 10.1, 11.0]}, index=dates)
 
         points = _create_points_from_dataframe(df, "test_meter", "meter_reading")
 
         assert len(points) == 5
         # Verify points were created (they should be Point objects)
-        assert all(hasattr(p, '_tags') for p in points)
+        assert all(hasattr(p, "_tags") for p in points)
 
     @pytest.mark.unit
     def test_creates_points_with_naive_timestamps(self):
         """Test point creation with timezone-naive timestamps (should convert to UTC)"""
         # Create DataFrame with naive timestamps
-        dates = pd.date_range('2024-01-01', periods=3, freq='D')
-        df = pd.DataFrame({'value': [5.0, 6.0, 7.0]}, index=dates)
+        dates = pd.date_range("2024-01-01", periods=3, freq="D")
+        df = pd.DataFrame({"value": [5.0, 6.0, 7.0]}, index=dates)
 
         points = _create_points_from_dataframe(df, "meter_naive", "meter_reading")
 
         assert len(points) == 3
-        assert all(hasattr(p, '_tags') for p in points)
+        assert all(hasattr(p, "_tags") for p in points)
 
     @pytest.mark.unit
     def test_creates_points_with_correct_measurement(self):
@@ -69,7 +67,7 @@ class TestCreatePointsFromDataFrame:
     @pytest.mark.unit
     def test_handles_empty_dataframe(self):
         """Test handling of empty DataFrame"""
-        df = pd.DataFrame({'value': []}, index=pd.DatetimeIndex([]))
+        df = pd.DataFrame({"value": []}, index=pd.DatetimeIndex([]))
 
         points = _create_points_from_dataframe(df, "empty_meter", "meter_reading")
 
@@ -78,9 +76,9 @@ class TestCreatePointsFromDataFrame:
     @pytest.mark.unit
     def test_converts_values_to_float(self):
         """Test that values are properly converted to float"""
-        dates = pd.date_range('2024-01-01', periods=3, freq='D', tz='UTC')
+        dates = pd.date_range("2024-01-01", periods=3, freq="D", tz="UTC")
         # Use integer values to ensure float conversion
-        df = pd.DataFrame({'value': [10, 20, 30]}, index=dates)
+        df = pd.DataFrame({"value": [10, 20, 30]}, index=dates)
 
         points = _create_points_from_dataframe(df, "int_meter", "meter_reading")
 
@@ -99,14 +97,14 @@ class TestCreateAnomalyPoints:
 
         assert len(points) == len(df)
         # Verify points were created
-        assert all(hasattr(p, '_tags') for p in points)
+        assert all(hasattr(p, "_tags") for p in points)
 
     @pytest.mark.unit
     def test_creates_anomaly_points_without_optional_fields(self):
         """Test anomaly points when optional fields are missing"""
         # Create DataFrame with only 'value' column
-        dates = pd.date_range('2024-01-01', periods=3, freq='D', tz='UTC')
-        df = pd.DataFrame({'value': [50.0, 60.0, 70.0]}, index=dates)
+        dates = pd.date_range("2024-01-01", periods=3, freq="D", tz="UTC")
+        df = pd.DataFrame({"value": [50.0, 60.0, 70.0]}, index=dates)
 
         points = _create_anomaly_points(df, "test_anomaly")
 
@@ -115,12 +113,15 @@ class TestCreateAnomalyPoints:
     @pytest.mark.unit
     def test_handles_naive_timestamps_in_anomalies(self):
         """Test anomaly points with timezone-naive timestamps"""
-        dates = pd.date_range('2024-01-01', periods=2, freq='D')
-        df = pd.DataFrame({
-            'value': [100.0, 110.0],
-            'rolling_avg': [50.0, 55.0],
-            'threshold': [75.0, 80.0]
-        }, index=dates)
+        dates = pd.date_range("2024-01-01", periods=2, freq="D")
+        df = pd.DataFrame(
+            {
+                "value": [100.0, 110.0],
+                "rolling_avg": [50.0, 55.0],
+                "threshold": [75.0, 80.0],
+            },
+            index=dates,
+        )
 
         points = _create_anomaly_points(df, "naive_anomaly")
 
@@ -129,7 +130,7 @@ class TestCreateAnomalyPoints:
     @pytest.mark.unit
     def test_handles_empty_anomaly_dataframe(self):
         """Test handling of empty anomaly DataFrame"""
-        df = pd.DataFrame({'value': []}, index=pd.DatetimeIndex([]))
+        df = pd.DataFrame({"value": []}, index=pd.DatetimeIndex([]))
 
         points = _create_anomaly_points(df, "no_anomalies")
 
@@ -151,7 +152,7 @@ class TestWriteProcessedDataToInfluxDB:
         master_series = {
             "master1": {
                 "daily": generate_meter_readings(days=10),
-                "monthly": generate_meter_readings(days=2)
+                "monthly": generate_meter_readings(days=2),
             }
         }
         consumption = {"meter1": generate_consumption_data(days=9)}
@@ -178,7 +179,7 @@ class TestWriteProcessedDataToInfluxDB:
             consumption,
             virtual,
             anomalies,
-            mock_influxdb
+            mock_influxdb,
         )
 
         # Verify write API was called multiple times
@@ -196,7 +197,7 @@ class TestWriteProcessedDataToInfluxDB:
 
         daily_series = {
             "meter1": generate_meter_readings(days=5),
-            "meter2": generate_meter_readings(days=5)
+            "meter2": generate_meter_readings(days=5),
         }
 
         # Mock InfluxDB
@@ -219,7 +220,7 @@ class TestWriteProcessedDataToInfluxDB:
             {},  # No consumption
             {},  # No virtual
             {},  # No anomalies
-            mock_influxdb
+            mock_influxdb,
         )
 
         # Should have written for 2 meters
@@ -253,7 +254,7 @@ class TestWriteProcessedDataToInfluxDB:
             {},  # No consumption
             {},  # No virtual
             {},  # No anomalies
-            mock_influxdb
+            mock_influxdb,
         )
 
         assert mock_write_api.write.call_count >= 1
@@ -268,12 +269,12 @@ class TestWriteProcessedDataToInfluxDB:
         master_series = {
             "master1": {
                 "daily": generate_meter_readings(days=10),
-                "monthly": generate_meter_readings(days=2)
+                "monthly": generate_meter_readings(days=2),
             },
             "master2": {
                 "daily": generate_meter_readings(days=10),
-                "monthly": generate_meter_readings(days=2)
-            }
+                "monthly": generate_meter_readings(days=2),
+            },
         }
 
         mock_client = MagicMock()
@@ -295,7 +296,7 @@ class TestWriteProcessedDataToInfluxDB:
             {},  # No consumption
             {},  # No virtual
             {},  # No anomalies
-            mock_influxdb
+            mock_influxdb,
         )
 
         # Should write for 2 masters x 2 frequencies = 4 writes
@@ -310,8 +311,8 @@ class TestWriteProcessedDataToInfluxDB:
 
         master_series = {
             "master_empty": {
-                "daily": pd.DataFrame({'value': []}, index=pd.DatetimeIndex([])),
-                "monthly": pd.DataFrame({'value': []}, index=pd.DatetimeIndex([]))
+                "daily": pd.DataFrame({"value": []}, index=pd.DatetimeIndex([])),
+                "monthly": pd.DataFrame({"value": []}, index=pd.DatetimeIndex([])),
             }
         }
 
@@ -334,7 +335,7 @@ class TestWriteProcessedDataToInfluxDB:
             {},  # No consumption
             {},  # No virtual
             {},  # No anomalies
-            mock_influxdb
+            mock_influxdb,
         )
 
         # Should not write empty dataframes
@@ -348,7 +349,7 @@ class TestWriteProcessedDataToInfluxDB:
 
         consumption = {
             "meter1": generate_consumption_data(days=10),
-            "meter2": generate_consumption_data(days=10)
+            "meter2": generate_consumption_data(days=10),
         }
 
         mock_client = MagicMock()
@@ -370,7 +371,7 @@ class TestWriteProcessedDataToInfluxDB:
             consumption,
             {},  # No virtual
             {},  # No anomalies
-            mock_influxdb
+            mock_influxdb,
         )
 
         assert mock_write_api.write.call_count >= 2
@@ -403,7 +404,7 @@ class TestWriteProcessedDataToInfluxDB:
             {},  # No consumption
             virtual,
             {},  # No anomalies
-            mock_influxdb
+            mock_influxdb,
         )
 
         assert mock_write_api.write.call_count >= 1
@@ -417,7 +418,7 @@ class TestWriteProcessedDataToInfluxDB:
 
         anomalies = {
             "meter1": generate_anomaly_data(days=10, anomaly_days=[3, 7]),
-            "meter2": generate_anomaly_data(days=5, anomaly_days=[2])
+            "meter2": generate_anomaly_data(days=5, anomaly_days=[2]),
         }
 
         mock_client = MagicMock()
@@ -439,7 +440,7 @@ class TestWriteProcessedDataToInfluxDB:
             {},  # No consumption
             {},  # No virtual
             anomalies,
-            mock_influxdb
+            mock_influxdb,
         )
 
         assert mock_write_api.write.call_count >= 2
@@ -470,7 +471,7 @@ class TestWriteProcessedDataToInfluxDB:
             {},  # Empty
             {},  # Empty
             {},  # Empty
-            mock_influxdb
+            mock_influxdb,
         )
 
         # Should complete successfully even with no data
@@ -496,14 +497,7 @@ class TestWriteProcessedDataToInfluxDB:
         mock_influxdb.get_client.return_value = mock_client
 
         write_processed_data_to_influxdb(
-            context,
-            daily_series,
-            {},
-            {},
-            {},
-            {},
-            {},
-            mock_influxdb
+            context, daily_series, {}, {}, {}, {}, {}, mock_influxdb
         )
 
         # Verify write was called with correct bucket and org
@@ -512,8 +506,8 @@ class TestWriteProcessedDataToInfluxDB:
 
         for call in write_calls:
             kwargs = call[1]
-            assert kwargs['bucket'] == "custom_processed_bucket"
-            assert kwargs['org'] == "custom-org"
+            assert kwargs["bucket"] == "custom_processed_bucket"
+            assert kwargs["org"] == "custom-org"
 
     @pytest.mark.unit
     @pytest.mark.influxdb
@@ -544,7 +538,7 @@ class TestWriteProcessedDataToInfluxDB:
             consumption,
             {},
             {},
-            mock_influxdb
+            mock_influxdb,
         )
 
         # Verify metadata structure

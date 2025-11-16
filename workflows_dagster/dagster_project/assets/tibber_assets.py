@@ -2,27 +2,30 @@
 Tibber Data Ingestion Assets
 Fetches electricity consumption from Tibber API and writes to InfluxDB
 """
+
 from datetime import datetime, timezone
 from typing import Optional
-from dagster import asset, AssetExecutionContext, OpExecutionContext, MaterializeResult, MetadataValue
+
+from dagster import (AssetExecutionContext, MaterializeResult, MetadataValue,
+                     OpExecutionContext, asset)
 from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+from ..resources.config_resource import ConfigResource
 from ..resources.influxdb_resource import InfluxDBResource
 from ..resources.tibber_resource import TibberResource
-from ..resources.config_resource import ConfigResource
 
 
 @asset(
     group_name="ingestion",
     compute_kind="api",
-    description="Fetch and store Tibber electricity consumption data"
+    description="Fetch and store Tibber electricity consumption data",
 )
 def tibber_consumption_raw(
     context: AssetExecutionContext,
     influxdb: InfluxDBResource,
     tibber: TibberResource,
-    config: ConfigResource
+    config: ConfigResource,
 ) -> MaterializeResult:
     """
     Fetch consumption data from Tibber API and write to InfluxDB
@@ -99,7 +102,7 @@ def tibber_consumption_raw(
                 "meter_id": meter_id,
                 "last_timestamp": MetadataValue.text(
                     new_data[-1]["to"] if new_data else "N/A"
-                )
+                ),
             }
         )
     else:
@@ -109,14 +112,13 @@ def tibber_consumption_raw(
                 "records_fetched": len(consumption_data),
                 "records_written": 0,
                 "meter_id": meter_id,
-                "status": "up_to_date"
+                "status": "up_to_date",
             }
         )
 
 
 def _get_last_influxdb_timestamp(
-    influxdb: InfluxDBResource,
-    meter_id: str
+    influxdb: InfluxDBResource, meter_id: str
 ) -> Optional[datetime]:
     """
     Get the most recent timestamp from InfluxDB for a specific meter
@@ -131,13 +133,13 @@ def _get_last_influxdb_timestamp(
     with influxdb.get_client() as client:
         query_api = client.query_api()
 
-        query = f'''
+        query = f"""
         from(bucket: "{influxdb.bucket_raw}")
           |> range(start: -30d)
           |> filter(fn: (r) => r["entity_id"] == "{meter_id}")
           |> filter(fn: (r) => r["_field"] == "consumption")
           |> last()
-        '''
+        """
 
         try:
             tables = query_api.query(query, org=influxdb.org)
@@ -153,9 +155,7 @@ def _get_last_influxdb_timestamp(
 
 
 def _write_to_influxdb(
-    influxdb: InfluxDBResource,
-    meter_id: str,
-    consumption_data: list
+    influxdb: InfluxDBResource, meter_id: str, consumption_data: list
 ) -> int:
     """
     Write consumption data points to InfluxDB
@@ -174,7 +174,9 @@ def _write_to_influxdb(
         points = []
         for data_point in consumption_data:
             # Parse timestamp
-            timestamp = datetime.fromisoformat(data_point["from"].replace("Z", "+00:00"))
+            timestamp = datetime.fromisoformat(
+                data_point["from"].replace("Z", "+00:00")
+            )
 
             # Create InfluxDB point
             point = (
@@ -190,10 +192,6 @@ def _write_to_influxdb(
             points.append(point)
 
         # Write all points
-        write_api.write(
-            bucket=influxdb.bucket_raw,
-            org=influxdb.org,
-            record=points
-        )
+        write_api.write(bucket=influxdb.bucket_raw, org=influxdb.org, record=points)
 
         return len(points)

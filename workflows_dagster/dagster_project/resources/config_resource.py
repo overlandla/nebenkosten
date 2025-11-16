@@ -2,10 +2,12 @@
 Configuration Resource for Dagster
 Provides access to meter configurations and settings
 """
+
 import os
-import yaml
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
+import yaml
 from dagster import ConfigurableResource, get_dagster_logger
 from pydantic import Field
 
@@ -19,23 +21,20 @@ class ConfigResource(ConfigurableResource):
     """
 
     config_path: str = Field(
-        default="config/config.yaml",
-        description="Path to main configuration file"
+        default="config/config.yaml", description="Path to main configuration file"
     )
 
     meters_config_path: str = Field(
-        default="config/meters.yaml",
-        description="Path to meters configuration file"
+        default="config/meters.yaml", description="Path to meters configuration file"
     )
 
     seasonal_patterns_path: str = Field(
         default="config/seasonal_patterns.yaml",
-        description="Path to seasonal patterns configuration file"
+        description="Path to seasonal patterns configuration file",
     )
 
     start_year: int = Field(
-        default=2020,
-        description="Starting year for historical data processing"
+        default=2020, description="Starting year for historical data processing"
     )
 
     def load_config(self) -> Dict[str, Any]:
@@ -72,7 +71,9 @@ class ConfigResource(ConfigurableResource):
             with patterns_file.open() as f:
                 patterns_config = yaml.safe_load(f)
                 config["seasonal_patterns"] = patterns_config.get("patterns", {})
-                logger.info(f"Loaded seasonal patterns for {len(config['seasonal_patterns'])} meters")
+                logger.info(
+                    f"Loaded seasonal patterns for {len(config['seasonal_patterns'])} meters"
+                )
         else:
             logger.warning(f"Seasonal patterns file not found: {patterns_file}")
             config["seasonal_patterns"] = {}
@@ -95,7 +96,9 @@ class ConfigResource(ConfigurableResource):
         """
         return [m for m in config.get("meters", []) if m.get("type") == meter_type]
 
-    def get_meter_config(self, config: Dict[str, Any], meter_id: str) -> Optional[Dict[str, Any]]:
+    def get_meter_config(
+        self, config: Dict[str, Any], meter_id: str
+    ) -> Optional[Dict[str, Any]]:
         """
         Get configuration for a specific meter
 
@@ -111,7 +114,9 @@ class ConfigResource(ConfigurableResource):
                 return meter
         return None
 
-    def get_seasonal_pattern(self, config: Dict[str, Any], meter_id: str) -> Optional[List[float]]:
+    def get_seasonal_pattern(
+        self, config: Dict[str, Any], meter_id: str
+    ) -> Optional[List[float]]:
         """
         Get seasonal pattern for a meter
 
@@ -140,5 +145,5 @@ class ConfigResource(ConfigurableResource):
         gas_config = config.get("gas_conversion", {})
         return {
             "energy_content": gas_config.get("energy_content", 11.504),
-            "z_factor": gas_config.get("z_factor", 0.8885)
+            "z_factor": gas_config.get("z_factor", 0.8885),
         }
