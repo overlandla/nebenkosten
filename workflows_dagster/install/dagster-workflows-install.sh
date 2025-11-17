@@ -96,6 +96,29 @@ else
         msg_ok "Configuration database already initialized"
       fi
 
+      msg_info "Validating installation before starting services"
+      # Check virtual environment
+      if [ ! -f /opt/dagster-workflows/venv/bin/dagster ]; then
+        msg_error "Virtual environment not properly installed - dagster binary missing"
+        exit 1
+      fi
+
+      # Check required files
+      if [ ! -f /opt/dagster-workflows/nebenkosten/secrets/influxdb.env ]; then
+        msg_error "Required secrets file missing: influxdb.env"
+        msg_error "Please ensure secrets/influxdb.env exists before starting services"
+        exit 1
+      fi
+
+      # Check systemd service files
+      for service in dagster-user-code dagster-daemon dagster-webserver; do
+        if [ ! -f /etc/systemd/system/${service}.service ]; then
+          msg_error "Systemd service file missing: ${service}.service"
+          exit 1
+        fi
+      done
+      msg_ok "Validation passed"
+
       msg_info "Starting services"
       systemctl start dagster-user-code.service
       systemctl start dagster-daemon.service
@@ -226,6 +249,29 @@ msg_ok "Created directories"
 msg_info "Setting ownership to dagster user"
 chown -R dagster:dagster $INSTALL_DIR
 msg_ok "Set ownership"
+
+msg_info "Validating installation"
+# Check virtual environment
+if [ ! -f "$INSTALL_DIR/venv/bin/dagster" ]; then
+    msg_error "Virtual environment not properly installed - dagster binary missing"
+    exit 1
+fi
+
+# Check required directories
+for dir in secrets config logs storage; do
+    if [ ! -d "$INSTALL_DIR/nebenkosten/$dir" ]; then
+        msg_error "Required directory missing: $dir"
+        exit 1
+    fi
+done
+
+# Check required files
+if [ ! -f "$INSTALL_DIR/nebenkosten/secrets/influxdb.env" ]; then
+    msg_error "Required secrets file missing: influxdb.env"
+    exit 1
+fi
+
+msg_ok "Installation validated"
 
 msg_info "Installing systemd service files"
 cp $REPO_DIR/workflows_dagster/systemd/dagster-webserver.service /etc/systemd/system/
