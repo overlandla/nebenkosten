@@ -85,7 +85,9 @@ def water_temperature_raw(
             temp_data = _scrape_lake_temperature(lake_config, logger)
 
             if not temp_data:
-                logger.error(f"Failed to scrape temperature data for {lake_config['lake_name']}")
+                logger.error(
+                    f"Failed to scrape temperature data for {lake_config['lake_name']}"
+                )
                 results[lake_id] = {
                     "status": "error",
                     "error": "scraping_failed",

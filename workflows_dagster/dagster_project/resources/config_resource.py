@@ -16,6 +16,7 @@ from pydantic import Field
 
 # Import the config database client
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from config_db import ConfigDatabaseClient
 
@@ -29,11 +30,13 @@ class ConfigResource(ConfigurableResource):
     """
 
     config_path: str = Field(
-        default="config/config.yaml", description="Path to main configuration file (fallback)"
+        default="config/config.yaml",
+        description="Path to main configuration file (fallback)",
     )
 
     meters_config_path: str = Field(
-        default="config/meters.yaml", description="Path to meters configuration file (fallback)"
+        default="config/meters.yaml",
+        description="Path to meters configuration file (fallback)",
     )
 
     seasonal_patterns_path: str = Field(
@@ -46,7 +49,8 @@ class ConfigResource(ConfigurableResource):
     )
 
     use_database: bool = Field(
-        default=True, description="Use PostgreSQL database for configuration (fallback to YAML if false or unavailable)"
+        default=True,
+        description="Use PostgreSQL database for configuration (fallback to YAML if false or unavailable)",
     )
 
     def _load_from_database(self) -> Optional[Dict[str, Any]]:
@@ -63,7 +67,9 @@ class ConfigResource(ConfigurableResource):
 
             # Check database connection
             if not db_client.check_connection():
-                logger.warning("Config database connection failed, falling back to YAML")
+                logger.warning(
+                    "Config database connection failed, falling back to YAML"
+                )
                 return None
 
             logger.info("Loading configuration from PostgreSQL database")
@@ -75,50 +81,59 @@ class ConfigResource(ConfigurableResource):
             logger.info(f"Loaded {len(settings)} settings from database")
 
             # Extract specific settings
-            config['gas_conversion'] = settings.get('gas_conversion', {
-                'energy_content': 11.504,
-                'z_factor': 0.8885
-            })
+            config["gas_conversion"] = settings.get(
+                "gas_conversion", {"energy_content": 11.504, "z_factor": 0.8885}
+            )
 
-            config['influxdb'] = settings.get('influxdb', {})
-            config['tibber'] = settings.get('tibber', {})
-            config['workflows'] = settings.get('workflows', {})
+            config["influxdb"] = settings.get("influxdb", {})
+            config["tibber"] = settings.get("tibber", {})
+            config["workflows"] = settings.get("workflows", {})
 
             # Load meters from database and convert to YAML-compatible format
             db_meters = db_client.get_meters(active_only=False)
             logger.info(f"Loaded {len(db_meters)} meters from database")
 
             # Convert database meters to YAML format for compatibility
-            config['meters'] = []
+            config["meters"] = []
             for meter in db_meters:
                 meter_config = {
-                    'meter_id': meter['id'],
-                    'type': meter['category'],  # physical, master, virtual
-                    'output_unit': meter['unit'],
-                    'description': meter['name'],
+                    "meter_id": meter["id"],
+                    "type": meter["category"],  # physical, master, virtual
+                    "output_unit": meter["unit"],
+                    "description": meter["name"],
                 }
 
-                if meter.get('installation_date'):
-                    meter_config['installation_date'] = meter['installation_date'].strftime('%Y-%m-%d')
+                if meter.get("installation_date"):
+                    meter_config["installation_date"] = meter[
+                        "installation_date"
+                    ].strftime("%Y-%m-%d")
 
-                if meter.get('deinstallation_date'):
-                    meter_config['deinstallation_date'] = meter['deinstallation_date'].strftime('%Y-%m-%d')
+                if meter.get("deinstallation_date"):
+                    meter_config["deinstallation_date"] = meter[
+                        "deinstallation_date"
+                    ].strftime("%Y-%m-%d")
 
                 # Add calculation config for master/virtual meters
-                if meter.get('calculation_config'):
-                    calc_config = meter['calculation_config']
+                if meter.get("calculation_config"):
+                    calc_config = meter["calculation_config"]
 
-                    if meter['category'] == 'master' and 'periods' in calc_config:
-                        meter_config['periods'] = calc_config['periods']
+                    if meter["category"] == "master" and "periods" in calc_config:
+                        meter_config["periods"] = calc_config["periods"]
 
-                    elif meter['category'] == 'virtual':
-                        meter_config['calculation_type'] = calc_config.get('calculation_type', 'subtraction')
-                        meter_config['base_meter'] = calc_config.get('base_meter')
-                        meter_config['subtract_meters'] = calc_config.get('subtract_meters', [])
-                        if 'conversions' in calc_config:
-                            meter_config['subtract_meter_conversions'] = calc_config['conversions']
+                    elif meter["category"] == "virtual":
+                        meter_config["calculation_type"] = calc_config.get(
+                            "calculation_type", "subtraction"
+                        )
+                        meter_config["base_meter"] = calc_config.get("base_meter")
+                        meter_config["subtract_meters"] = calc_config.get(
+                            "subtract_meters", []
+                        )
+                        if "conversions" in calc_config:
+                            meter_config["subtract_meter_conversions"] = calc_config[
+                                "conversions"
+                            ]
 
-                config['meters'].append(meter_config)
+                config["meters"].append(meter_config)
 
             # Load seasonal patterns (still from YAML for now)
             patterns_file = Path(self.seasonal_patterns_path)
@@ -126,13 +141,15 @@ class ConfigResource(ConfigurableResource):
                 with patterns_file.open() as f:
                     patterns_config = yaml.safe_load(f)
                     config["seasonal_patterns"] = patterns_config.get("patterns", {})
-                    logger.info(f"Loaded seasonal patterns for {len(config['seasonal_patterns'])} meters")
+                    logger.info(
+                        f"Loaded seasonal patterns for {len(config['seasonal_patterns'])} meters"
+                    )
             else:
                 config["seasonal_patterns"] = {}
 
             # Load households from database
             households = db_client.get_households()
-            config['households'] = households
+            config["households"] = households
             logger.info(f"Loaded {len(households)} households from database")
 
             # Add start year
@@ -141,7 +158,9 @@ class ConfigResource(ConfigurableResource):
             return config
 
         except Exception as e:
-            logger.warning(f"Failed to load config from database: {e}, falling back to YAML")
+            logger.warning(
+                f"Failed to load config from database: {e}, falling back to YAML"
+            )
             return None
 
     def _load_from_yaml(self) -> Dict[str, Any]:
@@ -168,7 +187,9 @@ class ConfigResource(ConfigurableResource):
             with meters_file.open() as f:
                 meters_config = yaml.safe_load(f)
                 config["meters"] = meters_config.get("meters", [])
-                logger.info(f"Loaded {len(config['meters'])} meter definitions from YAML")
+                logger.info(
+                    f"Loaded {len(config['meters'])} meter definitions from YAML"
+                )
         else:
             logger.warning(f"Meters configuration file not found: {meters_file}")
             config["meters"] = []
@@ -179,7 +200,9 @@ class ConfigResource(ConfigurableResource):
             with patterns_file.open() as f:
                 patterns_config = yaml.safe_load(f)
                 config["seasonal_patterns"] = patterns_config.get("patterns", {})
-                logger.info(f"Loaded seasonal patterns for {len(config['seasonal_patterns'])} meters")
+                logger.info(
+                    f"Loaded seasonal patterns for {len(config['seasonal_patterns'])} meters"
+                )
         else:
             logger.warning(f"Seasonal patterns file not found: {patterns_file}")
             config["seasonal_patterns"] = {}

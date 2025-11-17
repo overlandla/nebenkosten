@@ -550,7 +550,9 @@ def master_meter_series(
 
                 # Handle "9999-12-31" or other far-future dates as "no end date"
                 end_date_str = period["end_date"]
-                if end_date_str == "9999-12-31" or (isinstance(end_date_str, str) and end_date_str.startswith("9999")):
+                if end_date_str == "9999-12-31" or (
+                    isinstance(end_date_str, str) and end_date_str.startswith("9999")
+                ):
                     # Use Timestamp.max for far future dates (ongoing periods)
                     end_date = pd.Timestamp.max.tz_localize("UTC")
                 else:
@@ -561,7 +563,11 @@ def master_meter_series(
                 source_unit = period.get("source_unit", output_unit)
                 apply_offset = period.get("apply_offset_from_previous_period", False)
 
-                end_date_display = "ongoing" if end_date == pd.Timestamp.max.tz_localize("UTC") else end_date.date()
+                end_date_display = (
+                    "ongoing"
+                    if end_date == pd.Timestamp.max.tz_localize("UTC")
+                    else end_date.date()
+                )
                 logger.debug(
                     f"Period {period_idx + 1}: {start_date.date()} to {end_date_display}, "
                     f"sources: {source_meters}"
