@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getInfluxClient, getInfluxConfig, MeterReading, InfluxTableMeta } from '@/lib/influxdb';
+import {
+  getOptimalAggregation,
+  getOptimalConsumptionAggregation,
+  getOptimalInterpolatedAggregation,
+  estimateDataPoints,
+} from '@/lib/time-aggregation';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -20,6 +26,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Default to last 90 days if not specified
     const start = startDate || '-90d';
     const end = endDate || 'now()';
+
+    // Calculate optimal aggregation based on time range and data type
+    let aggregationConfig;
+    if (dataType === 'consumption') {
+      aggregationConfig = getOptimalConsumptionAggregation(start, end);
+    } else if (dataType === 'interpolated_daily') {
+      aggregationConfig = getOptimalInterpolatedAggregation(start, end, 'daily');
+    } else if (dataType === 'interpolated_monthly') {
+      aggregationConfig = getOptimalInterpolatedAggregation(start, end, 'monthly');
+    } else {
+      // raw data
+      aggregationConfig = getOptimalAggregation(start, end);
+    }
+
+    const estimatedPoints = estimateDataPoints(start, end, aggregationConfig);
 
     // Determine which bucket and measurement to use based on dataType
     let bucket = config.bucketRaw;
@@ -42,22 +63,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Build query based on data type
     let query = '';
     if (dataType === 'raw') {
-      // Query raw data from lampfi bucket
+      // Query raw data from lampfi bucket with optional aggregation
       query = `
         from(bucket: "${bucket}")
           |> range(start: ${start}, stop: ${end})
           |> filter(fn: (r) => r["entity_id"] == "${meterId}")
           |> filter(fn: (r) => r["_field"] == "value")
+          ${aggregationConfig.shouldAggregate
+            ? `|> aggregateWindow(every: ${aggregationConfig.window}, fn: ${aggregationConfig.fn}, createEmpty: false)`
+            : ''}
           |> sort(columns: ["_time"])
       `;
     } else {
-      // Query processed data from lampfi_processed bucket
+      // Query processed data from lampfi_processed bucket with optional aggregation
       query = `
         from(bucket: "${bucket}")
           |> range(start: ${start}, stop: ${end})
           |> filter(fn: (r) => r["_measurement"] == "${measurement}")
           |> filter(fn: (r) => r["meter_id"] == "${meterId}")
           |> filter(fn: (r) => r["_field"] == "value")
+          ${aggregationConfig.shouldAggregate
+            ? `|> aggregateWindow(every: ${aggregationConfig.window}, fn: ${aggregationConfig.fn}, createEmpty: false)`
+            : ''}
           |> sort(columns: ["_time"])
       `;
     }
@@ -98,7 +125,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           resolve(NextResponse.json({ error: error.message }, { status: 500 }));
         },
         complete() {
-          resolve(NextResponse.json({ readings, dataType }));
+          resolve(NextResponse.json({
+            readings,
+            dataType,
+            metadata: {
+              aggregation: aggregationConfig.description,
+              aggregationWindow: aggregationConfig.window || 'none',
+              estimatedPoints,
+              actualPoints: readings.length,
+              timeRange: {
+                start,
+                end,
+              },
+            },
+          }));
         },
       });
     });

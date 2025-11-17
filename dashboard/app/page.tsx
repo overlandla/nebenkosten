@@ -12,6 +12,7 @@ import SeasonalPatternChart from '@/components/SeasonalPatternChart';
 import FloorComparisonChart from '@/components/FloorComparisonChart';
 import YearOverYearChart from '@/components/YearOverYearChart';
 import AllMetersRawChart from '@/components/AllMetersRawChart';
+import AggregationInfo from '@/components/AggregationInfo';
 import { HouseholdConfig, DEFAULT_HOUSEHOLD_CONFIG, Household, getHouseholdMeters } from '@/types/household';
 import type { MeterReading, WaterTemperature, MeterConfig } from '@/types/meter';
 
@@ -72,6 +73,7 @@ export default function Home() {
   const [rawMeterData, setRawMeterData] = useState<{ [key: string]: MeterReading[] }>({});
   const [interpolatedMeterData, setInterpolatedMeterData] = useState<{ [key: string]: MeterReading[] }>({});
   const [waterTempData, setWaterTempData] = useState<WaterTemperature[]>([]);
+  const [aggregationMetadata, setAggregationMetadata] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'raw' | 'consumption'>('consumption');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -165,6 +167,15 @@ export default function Home() {
             }
           });
 
+          // Store metadata from first successful raw result
+          const firstRawSuccess = rawResults.find((r) => r.status === 'fulfilled');
+          if (firstRawSuccess && firstRawSuccess.status === 'fulfilled' && selectedMeters.length > 0) {
+            const data = await fetch(
+              `/api/readings?meterId=${selectedMeters[0]}&startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&dataType=raw`
+            ).then((r) => r.json());
+            setAggregationMetadata(data.metadata);
+          }
+
           setRawMeterData(newRawData);
           setInterpolatedMeterData(newInterpolatedData);
         } else {
@@ -190,6 +201,15 @@ export default function Home() {
               console.error(`Failed to fetch meter ${selectedMeters[index]}:`, result.reason);
             }
           });
+
+          // Store metadata from first successful result
+          const firstSuccess = results.find((r) => r.status === 'fulfilled');
+          if (firstSuccess && firstSuccess.status === 'fulfilled') {
+            const data = await fetch(
+              `/api/readings?meterId=${selectedMeters[0]}&startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&dataType=consumption`
+            ).then((r) => r.json());
+            setAggregationMetadata(data.metadata);
+          }
 
           setMeterData(newMeterData);
         }
@@ -344,6 +364,11 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Time Range Selector */}
         <TimeRangeSelector onRangeChange={setTimeRange} className="mb-8" />
+
+        {/* Aggregation Info */}
+        {aggregationMetadata && (
+          <AggregationInfo metadata={aggregationMetadata} className="mb-8" />
+        )}
 
         {/* View Mode Selector */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
