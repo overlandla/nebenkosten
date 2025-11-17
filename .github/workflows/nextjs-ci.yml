@@ -1,10 +1,6 @@
 name: Next.js CI
 
 on:
-  push:
-    paths:
-      - 'dashboard/**'
-      - '.github/workflows/nextjs-ci.yml'
   pull_request:
     paths:
       - 'dashboard/**'

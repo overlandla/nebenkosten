@@ -1,13 +1,6 @@
 name: Dagster CI
 
 on:
-  push:
-    paths:
-      - 'workflows_dagster/**'
-      - 'requirements-dagster.txt'
-      - 'requirements-dev.txt'
-      - 'requirements-test.txt'
-      - '.github/workflows/dagster-ci.yml'
   pull_request:
     paths:
       - 'workflows_dagster/**'
