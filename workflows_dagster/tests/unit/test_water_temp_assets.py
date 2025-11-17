@@ -18,7 +18,7 @@ from workflows_dagster.dagster_project.assets.water_temp_assets import (
 
 
 class TestWaterTemperatureRawAsset:
-    """Unit tests for water_temperature_raw partitioned asset"""
+    """Unit tests for water_temperature_raw asset"""
 
     @pytest.mark.unit
     @pytest.mark.water_temp
@@ -34,9 +34,8 @@ class TestWaterTemperatureRawAsset:
     def test_asset_partition_with_new_data(
         self, mock_write, mock_get_timestamp, mock_scrape
     ):
-        """Test asset partition processes new data correctly"""
-        # Test with schliersee partition
-        context = build_asset_context(partition_key="schliersee")
+        """Test asset processes new data correctly for all lakes"""
+        context = build_asset_context()
         mock_get_timestamp.return_value = None  # No existing data
 
         # Mock scraping to return temperature data
@@ -51,11 +50,12 @@ class TestWaterTemperatureRawAsset:
 
         result = water_temperature_raw(context, mock_influxdb)
 
-        # Should have written data for this partition
-        assert result.metadata["lake"] == "Schliersee"
-        assert result.metadata["status"] == "written"
-        assert result.metadata["temperature_celsius"] == 12.5
-        mock_write.assert_called_once()
+        # Should have written data for all 3 lakes
+        assert result.metadata["total_lakes"] == 3
+        assert result.metadata["written"] == 3
+        assert result.metadata["up_to_date"] == 0
+        assert result.metadata["errors"] == 0
+        assert mock_write.call_count == 3
 
     @pytest.mark.unit
     @pytest.mark.water_temp
@@ -71,8 +71,8 @@ class TestWaterTemperatureRawAsset:
     def test_asset_partition_with_existing_data(
         self, mock_write, mock_get_timestamp, mock_scrape
     ):
-        """Test asset partition handles case with existing data (no write)"""
-        context = build_asset_context(partition_key="tegernsee")
+        """Test asset handles case with existing data (no write)"""
+        context = build_asset_context()
 
         # Mock that data already exists
         test_time = datetime(2024, 11, 15, 10, 0, 0, tzinfo=timezone.utc)
@@ -90,8 +90,10 @@ class TestWaterTemperatureRawAsset:
         result = water_temperature_raw(context, mock_influxdb)
 
         # Should not have written anything
-        assert result.metadata["status"] == "up_to_date"
-        assert result.metadata["lake"] == "Tegernsee"
+        assert result.metadata["total_lakes"] == 3
+        assert result.metadata["written"] == 0
+        assert result.metadata["up_to_date"] == 3
+        assert result.metadata["errors"] == 0
         mock_write.assert_not_called()
 
     @pytest.mark.unit
@@ -108,11 +110,11 @@ class TestWaterTemperatureRawAsset:
     def test_asset_partition_with_scraping_failure(
         self, mock_write, mock_get_timestamp, mock_scrape
     ):
-        """Test asset partition handles scraping failures gracefully"""
-        context = build_asset_context(partition_key="isar")
+        """Test asset handles scraping failures gracefully"""
+        context = build_asset_context()
         mock_get_timestamp.return_value = None
 
-        # Mock scraping failure
+        # Mock scraping failure for all lakes
         mock_scrape.return_value = None
 
         # Create mock resource
@@ -123,10 +125,11 @@ class TestWaterTemperatureRawAsset:
 
         result = water_temperature_raw(context, mock_influxdb)
 
-        # Should have error status
-        assert result.metadata["status"] == "error"
-        assert result.metadata["lake"] == "Isar"
-        assert result.metadata["error"] == "scraping_failed"
+        # Should have error status for all lakes
+        assert result.metadata["total_lakes"] == 3
+        assert result.metadata["written"] == 0
+        assert result.metadata["up_to_date"] == 0
+        assert result.metadata["errors"] == 3
         mock_write.assert_not_called()
 
     @pytest.mark.unit
@@ -141,7 +144,7 @@ class TestWaterTemperatureRawAsset:
         "workflows_dagster.dagster_project.assets.water_temp_assets._write_to_influxdb"
     )
     def test_all_lake_partitions(self, mock_write, mock_get_timestamp, mock_scrape):
-        """Test that all lake partitions can be processed"""
+        """Test that all lakes can be processed in single execution"""
         test_time = datetime(2024, 11, 15, 10, 0, 0, tzinfo=timezone.utc)
         mock_get_timestamp.return_value = None
         mock_scrape.return_value = {"temperature": 12.5, "timestamp": test_time}
@@ -151,13 +154,20 @@ class TestWaterTemperatureRawAsset:
         mock_influxdb.bucket_raw = "test_raw"
         mock_influxdb.org = "test-org"
 
-        # Test each partition
-        for lake_id in LAKE_CONFIGS.keys():
-            context = build_asset_context(partition_key=lake_id)
-            result = water_temperature_raw(context, mock_influxdb)
+        context = build_asset_context()
+        result = water_temperature_raw(context, mock_influxdb)
 
-            assert result.metadata["status"] == "written"
-            assert result.metadata["lake"] == LAKE_CONFIGS[lake_id]["lake_name"]
+        # All lakes should be processed successfully
+        assert result.metadata["total_lakes"] == 3
+        assert result.metadata["written"] == 3
+        assert mock_write.call_count == 3
+
+        # Check details has all lake results
+        details = result.metadata["details"]
+        assert len(details.value) == 3
+        for lake_id in LAKE_CONFIGS.keys():
+            assert lake_id in details.value
+            assert details.value[lake_id]["status"] == "written"
 
 
 class TestScrapeLakeTemperature:

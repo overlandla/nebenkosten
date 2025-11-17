@@ -8,12 +8,13 @@ This module serves as a bridge between the database and Dagster assets,
 with YAML fallback support for backwards compatibility.
 """
 
-import os
 import json
 import logging
-from typing import Dict, List, Optional, Any
-from datetime import datetime, date
+import os
 from contextlib import contextmanager
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -41,11 +42,11 @@ class ConfigDatabaseClient:
             user: Database user (defaults to CONFIG_DB_USER env var or 'dagster')
             password: Database password (defaults to CONFIG_DB_PASSWORD env var or 'dagster')
         """
-        self.host = host or os.environ.get('CONFIG_DB_HOST', 'localhost')
-        self.port = port or int(os.environ.get('CONFIG_DB_PORT', '5432'))
-        self.dbname = dbname or os.environ.get('CONFIG_DB_NAME', 'nebenkosten_config')
-        self.user = user or os.environ.get('CONFIG_DB_USER', 'dagster')
-        self.password = password or os.environ.get('CONFIG_DB_PASSWORD', 'dagster')
+        self.host = host or os.environ.get("CONFIG_DB_HOST", "localhost")
+        self.port = port or int(os.environ.get("CONFIG_DB_PORT", "5432"))
+        self.dbname = dbname or os.environ.get("CONFIG_DB_NAME", "nebenkosten_config")
+        self.user = user or os.environ.get("CONFIG_DB_USER", "dagster")
+        self.password = password or os.environ.get("CONFIG_DB_PASSWORD", "dagster")
 
     @contextmanager
     def get_connection(self):
@@ -68,7 +69,9 @@ class ConfigDatabaseClient:
             if conn:
                 conn.close()
 
-    def get_meters(self, active_only: bool = True, meter_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_meters(
+        self, active_only: bool = True, meter_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
         Get all meters from the database
 
@@ -171,13 +174,16 @@ class ConfigDatabaseClient:
         """
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT hm.*, m.name, m.meter_type, m.unit
                 FROM household_meters hm
                 JOIN meters m ON hm.meter_id = m.id
                 WHERE hm.household_id = %s
                 ORDER BY m.meter_type, m.id
-            """, (household_id,))
+            """,
+                (household_id,),
+            )
             assignments = cursor.fetchall()
             return [dict(assignment) for assignment in assignments]
 
@@ -195,7 +201,7 @@ class ConfigDatabaseClient:
             cursor = conn.cursor()
             cursor.execute("SELECT value FROM settings WHERE key = %s", (key,))
             result = cursor.fetchone()
-            return result['value'] if result else None
+            return result["value"] if result else None
 
     def get_all_settings(self) -> Dict[str, Any]:
         """
@@ -208,9 +214,11 @@ class ConfigDatabaseClient:
             cursor = conn.cursor()
             cursor.execute("SELECT key, value FROM settings ORDER BY key")
             settings = cursor.fetchall()
-            return {setting['key']: setting['value'] for setting in settings}
+            return {setting["key"]: setting["value"] for setting in settings}
 
-    def update_setting(self, key: str, value: Any, description: Optional[str] = None) -> bool:
+    def update_setting(
+        self, key: str, value: Any, description: Optional[str] = None
+    ) -> bool:
         """
         Update or insert a setting
 
@@ -228,22 +236,28 @@ class ConfigDatabaseClient:
             value_json = json.dumps(value) if not isinstance(value, str) else value
 
             if description:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO settings (key, value, description)
                     VALUES (%s, %s, %s)
                     ON CONFLICT (key) DO UPDATE SET
                         value = EXCLUDED.value,
                         description = EXCLUDED.description,
                         updated_at = NOW()
-                """, (key, value_json, description))
+                """,
+                    (key, value_json, description),
+                )
             else:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO settings (key, value)
                     VALUES (%s, %s)
                     ON CONFLICT (key) DO UPDATE SET
                         value = EXCLUDED.value,
                         updated_at = NOW()
-                """, (key, value_json))
+                """,
+                    (key, value_json),
+                )
 
             conn.commit()
             return True
@@ -262,7 +276,7 @@ class ConfigDatabaseClient:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM meters WHERE category = %s AND active = true ORDER BY id",
-                (category,)
+                (category,),
             )
             meters = cursor.fetchall()
             return [dict(meter) for meter in meters]
