@@ -1,5 +1,5 @@
 load_from:
   - python_module:
       module_name: workflows_dagster.dagster_project
-      working_directory: /app
+      working_directory: /opt/dagster-workflows/nebenkosten
       attribute: utility_repository
