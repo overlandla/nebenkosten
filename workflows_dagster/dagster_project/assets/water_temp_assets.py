@@ -9,12 +9,7 @@ from typing import Dict, Optional
 
 import requests
 from bs4 import BeautifulSoup
-from dagster import (
-    AssetExecutionContext,
-    MaterializeResult,
-    MetadataValue,
-    asset,
-)
+from dagster import AssetExecutionContext, MaterializeResult, MetadataValue, asset
 from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
