@@ -221,8 +221,6 @@ class ConfigResource(ConfigurableResource):
         Returns:
             Dictionary containing all configuration data
         """
-        logger = get_dagster_logger()
-
         # Try database first if enabled
         if self.use_database:
             config = self._load_from_database()
