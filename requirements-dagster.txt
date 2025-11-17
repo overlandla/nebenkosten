@@ -1,9 +1,10 @@
 # Dagster core
 # SECURITY UPDATE: Upgraded from 1.6.0 to 1.10.16 to fix GHSA-h7x8-jv97-fvvm (Local File Inclusion)
-dagster==1.10.16
-dagster-webserver==1.10.16
-dagster-postgres==0.26.16  # Compatible with dagster 1.10.16
-dagster-docker==0.26.16  # Compatible with dagster 1.10.16
+# Updated to 1.12.2 (latest available as of Nov 2025)
+dagster==1.12.2
+dagster-webserver==1.12.2
+dagster-postgres==0.28.2  # Compatible with dagster 1.12.2
+dagster-docker==0.28.2  # Compatible with dagster 1.12.2
 
 # Existing dependencies (matching worker requirements)
 influxdb-client==1.38.0
