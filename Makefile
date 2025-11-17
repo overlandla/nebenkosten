@@ -1,16 +1,17 @@
-.PHONY: help install-dashboard update-dashboard install-dagster update-dagster
+.PHONY: help install-dashboard update-dashboard configure-dashboard install-dagster update-dagster
 
 help:
 	@echo "Nebenkosten Installation Targets"
 	@echo "================================="
 	@echo ""
 	@echo "Dashboard:"
-	@echo "  make install-dashboard  - Install Utility Meter Dashboard"
-	@echo "  make update-dashboard   - Update Dashboard to latest version"
+	@echo "  make install-dashboard    - Install Utility Meter Dashboard"
+	@echo "  make update-dashboard     - Update Dashboard to latest version"
+	@echo "  make configure-dashboard  - Reconfigure database credentials"
 	@echo ""
 	@echo "Dagster Workflows:"
-	@echo "  make install-dagster    - Install Dagster Workflows"
-	@echo "  make update-dagster     - Update Dagster to latest version"
+	@echo "  make install-dagster      - Install Dagster Workflows"
+	@echo "  make update-dagster       - Update Dagster to latest version"
 	@echo ""
 
 install-dashboard:
@@ -25,6 +26,31 @@ install-dashboard:
 	@mkdir -p /opt/utility-meter-dashboard
 	@rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' \
 		$(CURDIR)/dashboard/ /opt/utility-meter-dashboard/
+	@echo ""
+	@echo "[INFO] Configuring database connections..."
+	@echo "Please provide the following connection details:"
+	@echo ""
+	@read -p "InfluxDB URL (e.g., http://192.168.1.75:8086): " INFLUX_URL; \
+	read -p "InfluxDB Token: " INFLUX_TOKEN; \
+	read -p "InfluxDB Organization: " INFLUX_ORG; \
+	read -p "InfluxDB Raw Bucket [homeassistant_raw]: " INFLUX_BUCKET_RAW; \
+	INFLUX_BUCKET_RAW=$${INFLUX_BUCKET_RAW:-homeassistant_raw}; \
+	read -p "InfluxDB Processed Bucket [homeassistant_processed]: " INFLUX_BUCKET_PROCESSED; \
+	INFLUX_BUCKET_PROCESSED=$${INFLUX_BUCKET_PROCESSED:-homeassistant_processed}; \
+	read -p "PostgreSQL Config DB URL (e.g., postgresql://user:pass@host:5432/db): " CONFIG_DATABASE_URL; \
+	printf '%s\n' \
+		"# InfluxDB Configuration" \
+		"INFLUX_URL=$$INFLUX_URL" \
+		"INFLUX_TOKEN=$$INFLUX_TOKEN" \
+		"INFLUX_ORG=$$INFLUX_ORG" \
+		"INFLUX_BUCKET_RAW=$$INFLUX_BUCKET_RAW" \
+		"INFLUX_BUCKET_PROCESSED=$$INFLUX_BUCKET_PROCESSED" \
+		"" \
+		"# PostgreSQL Configuration Database" \
+		"CONFIG_DATABASE_URL=$$CONFIG_DATABASE_URL" \
+		> /opt/utility-meter-dashboard/.env.local
+	@echo ""
+	@echo "[INFO] Configuration saved to /opt/utility-meter-dashboard/.env.local"
 	@cd /opt/utility-meter-dashboard && npm install >/dev/null 2>&1
 	@cd /opt/utility-meter-dashboard && npm run build >/dev/null 2>&1
 	@echo "[INFO] Creating systemd service..."
@@ -61,8 +87,11 @@ update-dashboard:
 	@echo "[INFO] Stopping service..."
 	@systemctl stop utility-meter-dashboard || true
 	@echo "[INFO] Updating files..."
-	@rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' \
+	@rsync -a --exclude='.git' --exclude='node_modules' --exclude='.next' --exclude='.env.local' \
 		$(CURDIR)/dashboard/ /opt/utility-meter-dashboard/
+	@if [ ! -f /opt/utility-meter-dashboard/.env.local ]; then \
+		echo "[WARN] No .env.local found. Run 'make configure-dashboard' to set up database credentials."; \
+	fi
 	@cd /opt/utility-meter-dashboard && npm install >/dev/null 2>&1
 	@cd /opt/utility-meter-dashboard && npm run build >/dev/null 2>&1
 	@echo "[INFO] Starting service..."
@@ -71,6 +100,40 @@ update-dashboard:
 	@echo ""
 	@echo "✓ Dashboard updated successfully!"
 	@echo "  Access at: http://$$(hostname -I | awk '{print $$1}'):3000"
+	@echo ""
+
+configure-dashboard:
+	@echo "[INFO] Configuring Dashboard database connections..."
+	@if [ ! -d /opt/utility-meter-dashboard ]; then \
+		echo "[ERROR] Dashboard not installed. Run 'make install-dashboard' first."; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "Please provide the following connection details:"
+	@echo ""
+	@read -p "InfluxDB URL (e.g., http://192.168.1.75:8086): " INFLUX_URL; \
+	read -p "InfluxDB Token: " INFLUX_TOKEN; \
+	read -p "InfluxDB Organization: " INFLUX_ORG; \
+	read -p "InfluxDB Raw Bucket [homeassistant_raw]: " INFLUX_BUCKET_RAW; \
+	INFLUX_BUCKET_RAW=$${INFLUX_BUCKET_RAW:-homeassistant_raw}; \
+	read -p "InfluxDB Processed Bucket [homeassistant_processed]: " INFLUX_BUCKET_PROCESSED; \
+	INFLUX_BUCKET_PROCESSED=$${INFLUX_BUCKET_PROCESSED:-homeassistant_processed}; \
+	read -p "PostgreSQL Config DB URL (e.g., postgresql://user:pass@host:5432/db): " CONFIG_DATABASE_URL; \
+	printf '%s\n' \
+		"# InfluxDB Configuration" \
+		"INFLUX_URL=$$INFLUX_URL" \
+		"INFLUX_TOKEN=$$INFLUX_TOKEN" \
+		"INFLUX_ORG=$$INFLUX_ORG" \
+		"INFLUX_BUCKET_RAW=$$INFLUX_BUCKET_RAW" \
+		"INFLUX_BUCKET_PROCESSED=$$INFLUX_BUCKET_PROCESSED" \
+		"" \
+		"# PostgreSQL Configuration Database" \
+		"CONFIG_DATABASE_URL=$$CONFIG_DATABASE_URL" \
+		> /opt/utility-meter-dashboard/.env.local
+	@echo ""
+	@echo "[INFO] Configuration saved. Restarting dashboard..."
+	@systemctl restart utility-meter-dashboard
+	@echo "✓ Dashboard reconfigured successfully!"
 	@echo ""
 
 install-dagster:
