@@ -64,6 +64,30 @@ else
       /opt/dagster-workflows/venv/bin/pip install -q --upgrade -r requirements-dagster.txt
       msg_ok "Updated dependencies"
 
+      msg_info "Updating systemd service files"
+      cp /opt/dagster-workflows/nebenkosten/workflows_dagster/systemd/*.service /etc/systemd/system/
+      systemctl daemon-reload
+      msg_ok "Updated systemd services"
+
+      msg_info "Checking configuration database"
+      if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw "nebenkosten_config"; then
+        msg_info "Creating configuration database"
+        sudo -u postgres psql -c "CREATE DATABASE nebenkosten_config OWNER dagster;" 2>/dev/null || true
+      fi
+
+      if ! sudo -u postgres psql -d nebenkosten_config -c '\dt' 2>/dev/null | grep -q 'meters'; then
+        msg_info "Initializing configuration database schema"
+        sudo -u postgres psql -d nebenkosten_config -f /opt/dagster-workflows/nebenkosten/database/schema.sql >/dev/null 2>&1
+        msg_ok "Configuration database schema initialized"
+
+        msg_info "Migrating YAML configuration to database"
+        cd /opt/dagster-workflows/nebenkosten
+        /opt/dagster-workflows/venv/bin/python database/migrate_yaml_to_postgres.py >/dev/null 2>&1 || true
+        msg_ok "Configuration migrated"
+      else
+        msg_ok "Configuration database already initialized"
+      fi
+
       msg_info "Starting services"
       systemctl start dagster-user-code.service
       systemctl start dagster-daemon.service
@@ -201,6 +225,25 @@ cp $REPO_DIR/workflows_dagster/systemd/dagster-daemon.service /etc/systemd/syste
 cp $REPO_DIR/workflows_dagster/systemd/dagster-user-code.service /etc/systemd/system/
 systemctl daemon-reload
 msg_ok "Installed systemd services"
+
+msg_info "Initializing configuration database schema"
+# Initialize the schema for the configuration database
+if sudo -u postgres psql -d nebenkosten_config -c '\dt' 2>/dev/null | grep -q 'meters'; then
+    msg_ok "Configuration database already initialized"
+else
+    sudo -u postgres psql -d nebenkosten_config -f $REPO_DIR/database/schema.sql >/dev/null 2>&1
+    msg_ok "Configuration database schema initialized"
+fi
+
+msg_info "Migrating YAML configuration to database"
+# Run the migration script to import YAML configs
+cd $REPO_DIR
+if $INSTALL_DIR/venv/bin/python database/migrate_yaml_to_postgres.py >/dev/null 2>&1; then
+    msg_ok "Configuration migrated to database"
+else
+    msg_error "Configuration migration failed (will use YAML fallback)"
+fi
+cd $INSTALL_DIR/nebenkosten
 
 msg_info "Enabling and starting Dagster services"
 systemctl enable dagster-user-code.service

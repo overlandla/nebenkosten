@@ -14,6 +14,11 @@ Environment="PYTHONPATH=/opt/dagster-workflows/nebenkosten:/opt/dagster-workflow
 Environment="DAGSTER_CURRENT_IMAGE=dagster-user-code"
 EnvironmentFile=/opt/dagster-workflows/nebenkosten/secrets/influxdb.env
 EnvironmentFile=-/opt/dagster-workflows/nebenkosten/secrets/tibber.env
+Environment="CONFIG_DB_HOST=localhost"
+Environment="CONFIG_DB_PORT=5432"
+Environment="CONFIG_DB_NAME=nebenkosten_config"
+Environment="CONFIG_DB_USER=dagster"
+Environment="CONFIG_DB_PASSWORD=dagster"
 
 # Use virtual environment Python
 ExecStart=/opt/dagster-workflows/venv/bin/dagster code-server start -h 0.0.0.0 -p 4000 -m workflows_dagster.dagster_project

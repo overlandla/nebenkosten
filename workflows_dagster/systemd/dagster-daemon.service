@@ -19,6 +19,11 @@ Environment="DAGSTER_POSTGRES_PASSWORD=dagster"
 Environment="DAGSTER_POSTGRES_DB=dagster"
 Environment="DAGSTER_POSTGRES_HOST=localhost"
 Environment="DAGSTER_POSTGRES_PORT=5432"
+Environment="CONFIG_DB_HOST=localhost"
+Environment="CONFIG_DB_PORT=5432"
+Environment="CONFIG_DB_NAME=nebenkosten_config"
+Environment="CONFIG_DB_USER=dagster"
+Environment="CONFIG_DB_PASSWORD=dagster"
 
 # Use virtual environment Python
 ExecStart=/opt/dagster-workflows/venv/bin/dagster-daemon run
