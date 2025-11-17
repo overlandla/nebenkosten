@@ -11,6 +11,7 @@ import WaterTemperatureChart from '@/components/WaterTemperatureChart';
 import SeasonalPatternChart from '@/components/SeasonalPatternChart';
 import FloorComparisonChart from '@/components/FloorComparisonChart';
 import YearOverYearChart from '@/components/YearOverYearChart';
+import AllMetersRawChart from '@/components/AllMetersRawChart';
 import { HouseholdConfig, DEFAULT_HOUSEHOLD_CONFIG, Household, getHouseholdMeters } from '@/types/household';
 import type { MeterReading, WaterTemperature, MeterConfig } from '@/types/meter';
 
@@ -68,8 +69,11 @@ export default function Home() {
   });
 
   const [meterData, setMeterData] = useState<{ [key: string]: MeterReading[] }>({});
+  const [rawMeterData, setRawMeterData] = useState<{ [key: string]: MeterReading[] }>({});
+  const [interpolatedMeterData, setInterpolatedMeterData] = useState<{ [key: string]: MeterReading[] }>({});
   const [waterTempData, setWaterTempData] = useState<WaterTemperature[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'raw' | 'consumption'>('consumption');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedHousehold, setSelectedHousehold] = useState<string | null>(null);
   const [householdConfig, setHouseholdConfig] = useState<HouseholdConfig>(DEFAULT_HOUSEHOLD_CONFIG);
@@ -111,36 +115,88 @@ export default function Home() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch data for selected meters using processed consumption data
-        const meterPromises = selectedMeters.map(async (meterId) => {
-          const startDate = format(timeRange.start, 'yyyy-MM-dd');
-          const endDate = format(timeRange.end, 'yyyy-MM-dd');
-          const response = await fetch(
-            `/api/readings?meterId=${meterId}&startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&dataType=consumption`,
-            { signal: controller.signal }
-          );
-          const data = await response.json();
-          return { meterId, readings: data.readings || [] };
-        });
+        const startDate = format(timeRange.start, 'yyyy-MM-dd');
+        const endDate = format(timeRange.end, 'yyyy-MM-dd');
 
-        // Use allSettled to handle partial failures gracefully
-        const results = await Promise.allSettled(meterPromises);
-        const newMeterData: { [key: string]: MeterReading[] } = {};
+        if (viewMode === 'raw') {
+          // Fetch raw and interpolated data for raw meter view
+          const rawPromises = selectedMeters.map(async (meterId) => {
+            const response = await fetch(
+              `/api/readings?meterId=${meterId}&startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&dataType=raw`,
+              { signal: controller.signal }
+            );
+            const data = await response.json();
+            return { meterId, readings: data.readings || [] };
+          });
 
-        results.forEach((result, index) => {
-          if (result.status === 'fulfilled') {
-            const { meterId, readings } = result.value;
-            newMeterData[meterId] = readings;
-          } else {
-            console.error(`Failed to fetch meter ${selectedMeters[index]}:`, result.reason);
-          }
-        });
+          const interpolatedPromises = selectedMeters.map(async (meterId) => {
+            const response = await fetch(
+              `/api/readings?meterId=${meterId}&startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&dataType=interpolated_daily`,
+              { signal: controller.signal }
+            );
+            const data = await response.json();
+            return { meterId, readings: data.readings || [] };
+          });
 
-        setMeterData(newMeterData);
+          // Use allSettled to handle partial failures gracefully
+          const [rawResults, interpolatedResults] = await Promise.all([
+            Promise.allSettled(rawPromises),
+            Promise.allSettled(interpolatedPromises),
+          ]);
+
+          const newRawData: { [key: string]: MeterReading[] } = {};
+          const newInterpolatedData: { [key: string]: MeterReading[] } = {};
+
+          rawResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              const { meterId, readings } = result.value;
+              newRawData[meterId] = readings;
+            } else {
+              console.error(`Failed to fetch raw data for ${selectedMeters[index]}:`, result.reason);
+            }
+          });
+
+          interpolatedResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              const { meterId, readings } = result.value;
+              newInterpolatedData[meterId] = readings;
+            } else {
+              console.error(`Failed to fetch interpolated data for ${selectedMeters[index]}:`, result.reason);
+            }
+          });
+
+          setRawMeterData(newRawData);
+          setInterpolatedMeterData(newInterpolatedData);
+        } else {
+          // Fetch data for selected meters using processed consumption data
+          const meterPromises = selectedMeters.map(async (meterId) => {
+            const response = await fetch(
+              `/api/readings?meterId=${meterId}&startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z&dataType=consumption`,
+              { signal: controller.signal }
+            );
+            const data = await response.json();
+            return { meterId, readings: data.readings || [] };
+          });
+
+          // Use allSettled to handle partial failures gracefully
+          const results = await Promise.allSettled(meterPromises);
+          const newMeterData: { [key: string]: MeterReading[] } = {};
+
+          results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              const { meterId, readings } = result.value;
+              newMeterData[meterId] = readings;
+            } else {
+              console.error(`Failed to fetch meter ${selectedMeters[index]}:`, result.reason);
+            }
+          });
+
+          setMeterData(newMeterData);
+        }
 
         // Fetch water temperature data
         const waterResponse = await fetch(
-          `/api/water-temp?startDate=${format(timeRange.start, 'yyyy-MM-dd')}T00:00:00Z&endDate=${format(timeRange.end, 'yyyy-MM-dd')}T23:59:59Z`,
+          `/api/water-temp?startDate=${startDate}T00:00:00Z&endDate=${endDate}T23:59:59Z`,
           { signal: controller.signal }
         );
         const waterData = await waterResponse.json();
@@ -163,7 +219,7 @@ export default function Home() {
     return () => {
       controller.abort();
     };
-  }, [timeRange, selectedMeters]);
+  }, [timeRange, selectedMeters, viewMode]);
 
   const handleMeterToggle = (meterId: string) => {
     setSelectedMeters((prev) =>
@@ -288,6 +344,47 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Time Range Selector */}
         <TimeRangeSelector onRangeChange={setTimeRange} className="mb-8" />
+
+        {/* View Mode Selector */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Dashboard View
+          </h2>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => setViewMode('raw')}
+              className={`flex-1 min-w-[200px] px-6 py-4 rounded-lg font-semibold transition-all ${
+                viewMode === 'raw'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <div className="flex flex-col items-center space-y-2">
+                <span className="text-2xl">📊</span>
+                <span className="text-base">Raw Meter Readings</span>
+                <span className="text-xs opacity-75">
+                  View cumulative meter values over time
+                </span>
+              </div>
+            </button>
+            <button
+              onClick={() => setViewMode('consumption')}
+              className={`flex-1 min-w-[200px] px-6 py-4 rounded-lg font-semibold transition-all ${
+                viewMode === 'consumption'
+                  ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <div className="flex flex-col items-center space-y-2">
+                <span className="text-2xl">📈</span>
+                <span className="text-base">Consumption Analysis</span>
+                <span className="text-xs opacity-75">
+                  Analyze usage patterns and trends
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
 
         {/* Household Selector */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
@@ -513,15 +610,115 @@ export default function Home() {
                   Data Source
                 </h3>
                 <p className="text-lg font-bold text-purple-600">
-                  Dagster
+                  {viewMode === 'raw' ? 'InfluxDB Raw' : 'Dagster'}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Processed consumption data
+                  {viewMode === 'raw' ? 'Raw & interpolated meter readings' : 'Processed consumption data'}
                 </p>
               </div>
             </div>
 
-            {/* Consumption Charts by Category */}
+            {/* Raw Meter View */}
+            {viewMode === 'raw' && (
+              <div className="space-y-8">
+                {/* All Meters Combined Chart */}
+                {(() => {
+                  const meterColors = [
+                    '#3b82f6', // blue
+                    '#ef4444', // red
+                    '#10b981', // green
+                    '#f59e0b', // amber
+                    '#8b5cf6', // violet
+                    '#ec4899', // pink
+                    '#06b6d4', // cyan
+                    '#f97316', // orange
+                    '#84cc16', // lime
+                    '#6366f1', // indigo
+                  ];
+
+                  const metersData = selectedMeters
+                    .map((meterId, index) => {
+                      const config = METERS_CONFIG.find((m) => m.id === meterId);
+                      if (!config) return null;
+
+                      return {
+                        id: meterId,
+                        name: config.name,
+                        unit: config.unit,
+                        color: meterColors[index % meterColors.length],
+                        rawReadings: rawMeterData[meterId] || [],
+                        interpolatedReadings: interpolatedMeterData[meterId] || [],
+                      };
+                    })
+                    .filter((m): m is NonNullable<typeof m> => m !== null);
+
+                  return (
+                    <>
+                      {metersData.length > 0 && (
+                        <AllMetersRawChart
+                          meters={metersData}
+                          title="All Selected Meters - Raw Points & Interpolated Lines"
+                        />
+                      )}
+
+                      {/* Individual meter charts by category */}
+                      {Object.entries(metersByCategory).map(([category, meters]) => {
+                        const selectedInCategory = meters.filter((m) => selectedMeters.includes(m.id));
+                        if (selectedInCategory.length === 0) return null;
+
+                        return (
+                          <div key={category}>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4 capitalize">
+                              {category === 'electricity' && '⚡ Electricity Meters'}
+                              {category === 'gas' && '🔥 Gas Meters'}
+                              {category === 'heat' && '🌡️ Heat Meters'}
+                              {category === 'water' && '💧 Water Meters'}
+                              {category === 'solar' && '☀️ Solar Meters'}
+                              {category === 'virtual' && '🔮 Virtual Meters'}
+                            </h2>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              {selectedInCategory.map((meter) => (
+                                <MeterReadingsChart
+                                  key={meter.id}
+                                  rawReadings={rawMeterData[meter.id] || []}
+                                  interpolatedReadings={interpolatedMeterData[meter.id] || []}
+                                  meterId={meter.id}
+                                  unit={meter.unit}
+                                  title={meter.name}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  );
+                })()}
+
+                {/* Info Section for Raw View */}
+                <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                    About Raw Meter Readings
+                  </h3>
+                  <div className="text-blue-800 space-y-2">
+                    <p>
+                      This view displays the actual cumulative meter readings directly from your sensors.
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 mt-3">
+                      <li><strong>Raw readings:</strong> Actual sensor values as points (may have gaps)</li>
+                      <li><strong>Interpolated readings:</strong> Daily interpolated values as smooth lines</li>
+                      <li><strong>Cumulative values:</strong> Shows total consumption since meter installation</li>
+                      <li><strong>Data validation:</strong> Use this view to spot anomalies or sensor issues</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Consumption Analysis View */}
+            {viewMode === 'consumption' && (
+              <div className="space-y-8">
+                {/* Consumption Charts by Category */}
             {Object.entries(metersByCategory).map(([category, meters]) => {
               const selectedInCategory = meters.filter((m) => selectedMeters.includes(m.id));
               if (selectedInCategory.length === 0) return null;
@@ -720,26 +917,26 @@ export default function Home() {
             )}
 
             {/* Info Section */}
-            <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                About This Dashboard
+            <div className="bg-green-50 rounded-lg border border-green-200 p-6">
+              <h3 className="text-lg font-semibold text-green-900 mb-2">
+                About Consumption Analysis
               </h3>
-              <div className="text-blue-800 space-y-2">
+              <div className="text-green-800 space-y-2">
                 <p>
-                  This dashboard displays comprehensive utility consumption data processed by the Dagster pipeline
+                  This view displays comprehensive utility consumption data processed by the Dagster pipeline
                   and stored in InfluxDB. All data is pre-processed, interpolated, and ready for analysis.
                 </p>
                 <ul className="list-disc list-inside space-y-1 mt-3">
-                  <li><strong>31 meters available:</strong> Electricity, gas, water, heat, solar, and virtual meters</li>
-                  <li><strong>Processed data:</strong> All consumption values are calculated from interpolated readings</li>
-                  <li><strong>Master meters:</strong> Combines physical meters across time periods for continuity</li>
-                  <li><strong>Virtual meters:</strong> Calculated metrics like fireplace gas and general electricity</li>
-                  <li><strong>Heat tracking:</strong> Per-floor heat consumption for cost allocation</li>
-                  <li><strong>Environmental data:</strong> Water temperature from Bavarian lakes (Schliersee, Tegernsee, Isar)</li>
-                  <li>All timestamps are displayed in your local timezone</li>
+                  <li><strong>Consumption data:</strong> Calculated usage per period (not cumulative)</li>
+                  <li><strong>Seasonal patterns:</strong> Identify usage trends across different seasons</li>
+                  <li><strong>Floor comparisons:</strong> Compare consumption across different floors</li>
+                  <li><strong>Year-over-year:</strong> Track consumption changes over time</li>
+                  <li><strong>Cost allocation:</strong> Use this data for household billing</li>
                 </ul>
               </div>
             </div>
+              </div>
+            )}
           </div>
         )}
       </main>

@@ -1,0 +1,195 @@
+'use client';
+
+import { ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { format } from 'date-fns';
+import useMediaQuery from '@/hooks/useMediaQuery';
+
+interface MeterReading {
+  timestamp: string;
+  value: number;
+}
+
+interface MeterData {
+  id: string;
+  name: string;
+  unit: string;
+  color: string;
+  rawReadings: MeterReading[];
+  interpolatedReadings: MeterReading[];
+}
+
+interface AllMetersRawChartProps {
+  meters: MeterData[];
+  title?: string;
+}
+
+export default function AllMetersRawChart({
+  meters,
+  title = 'All Meters - Raw and Interpolated Readings',
+}: AllMetersRawChartProps) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
+  // Combine all meter data into a single timeline
+  const combinedData = new Map<string, any>();
+
+  meters.forEach((meter) => {
+    // Add raw readings as scatter points
+    meter.rawReadings.forEach((reading) => {
+      const timestamp = new Date(reading.timestamp).getTime();
+      const key = timestamp.toString();
+
+      if (!combinedData.has(key)) {
+        combinedData.set(key, { timestamp });
+      }
+
+      const existing = combinedData.get(key);
+      existing[`${meter.id}_raw`] = reading.value;
+    });
+
+    // Add interpolated readings for line chart
+    meter.interpolatedReadings.forEach((reading) => {
+      const timestamp = new Date(reading.timestamp).getTime();
+      const key = timestamp.toString();
+
+      if (!combinedData.has(key)) {
+        combinedData.set(key, { timestamp });
+      }
+
+      const existing = combinedData.get(key);
+      existing[`${meter.id}_interpolated`] = reading.value;
+    });
+  });
+
+  const chartData = Array.from(combinedData.values())
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  const chartHeight = isMobile ? 400 : 600;
+
+  // Custom tooltip to show all meter values at a timestamp
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload || !payload.length) return null;
+
+    const timestamp = payload[0]?.payload?.timestamp;
+    if (!timestamp) return null;
+
+    return (
+      <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg max-w-xs">
+        <p className="font-semibold text-sm mb-2">
+          {format(new Date(timestamp), 'MMM d, yyyy HH:mm')}
+        </p>
+        <div className="space-y-1">
+          {payload.map((entry: any, index: number) => {
+            const meterId = entry.dataKey.replace('_raw', '').replace('_interpolated', '');
+            const meter = meters.find(m => m.id === meterId);
+            const isRaw = entry.dataKey.includes('_raw');
+
+            if (!meter || entry.value === undefined) return null;
+
+            return (
+              <div key={index} className="text-xs flex items-center gap-2">
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: entry.color }}
+                />
+                <span className="font-medium">{meter.name}</span>
+                <span className="text-gray-600">
+                  ({isRaw ? 'Raw' : 'Interp'}):
+                </span>
+                <span className="font-semibold">
+                  {entry.value.toFixed(2)} {meter.unit}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+
+      {/* Legend explanation */}
+      <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
+        <p className="text-sm text-blue-800">
+          <strong>Chart Legend:</strong> Points represent raw meter readings, lines show interpolated daily values.
+          Each meter has a unique color for both raw points and interpolated lines.
+        </p>
+      </div>
+
+      <ResponsiveContainer width="100%" height={chartHeight}>
+        <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis
+            dataKey="timestamp"
+            type="number"
+            domain={['auto', 'auto']}
+            tickFormatter={(timestamp) => format(new Date(timestamp), 'MMM d')}
+            stroke="#6b7280"
+            angle={isMobile ? -90 : -45}
+            textAnchor="end"
+            height={60}
+          />
+          <YAxis
+            stroke="#6b7280"
+            label={{ value: 'Reading Value', angle: -90, position: 'insideLeft' }}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend
+            wrapperStyle={{ paddingTop: '20px' }}
+            iconType="line"
+          />
+
+          {/* Render scatter plots for raw data */}
+          {meters.map((meter) => (
+            <Scatter
+              key={`${meter.id}_raw`}
+              dataKey={`${meter.id}_raw`}
+              fill={meter.color}
+              name={`${meter.name} (Raw)`}
+              shape="circle"
+            />
+          ))}
+
+          {/* Render lines for interpolated data */}
+          {meters.map((meter) => (
+            <Line
+              key={`${meter.id}_interpolated`}
+              type="monotone"
+              dataKey={`${meter.id}_interpolated`}
+              stroke={meter.color}
+              strokeWidth={2}
+              dot={false}
+              name={`${meter.name} (Interpolated)`}
+              connectNulls
+            />
+          ))}
+        </ComposedChart>
+      </ResponsiveContainer>
+
+      {/* Meter list */}
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {meters.map((meter) => (
+          <div
+            key={meter.id}
+            className="flex items-center gap-2 p-2 rounded bg-gray-50"
+          >
+            <div
+              className="w-4 h-4 rounded-full flex-shrink-0"
+              style={{ backgroundColor: meter.color }}
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {meter.name}
+              </p>
+              <p className="text-xs text-gray-500">
+                {meter.unit} • {meter.rawReadings.length} raw / {meter.interpolatedReadings.length} interp
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
