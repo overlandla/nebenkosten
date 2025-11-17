@@ -77,7 +77,7 @@ else
 
       if ! sudo -u postgres psql -d nebenkosten_config -c '\dt' 2>/dev/null | grep -q 'meters'; then
         msg_info "Initializing configuration database schema"
-        sudo -u postgres psql -d nebenkosten_config -f /opt/dagster-workflows/nebenkosten/database/schema.sql
+        cat /opt/dagster-workflows/nebenkosten/database/schema.sql | sudo -u postgres psql -d nebenkosten_config
         if [ $? -eq 0 ]; then
           msg_ok "Configuration database schema initialized"
 
@@ -239,7 +239,7 @@ msg_info "Initializing configuration database schema"
 if sudo -u postgres psql -d nebenkosten_config -c '\dt' 2>/dev/null | grep -q 'meters'; then
     msg_ok "Configuration database already initialized"
 else
-    sudo -u postgres psql -d nebenkosten_config -f $REPO_DIR/database/schema.sql
+    cat $REPO_DIR/database/schema.sql | sudo -u postgres psql -d nebenkosten_config
     if [ $? -eq 0 ]; then
       msg_ok "Configuration database schema initialized"
 
