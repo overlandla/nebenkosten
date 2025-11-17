@@ -546,8 +546,8 @@ def master_meter_series(
             previous_period_last_value = 0.0
 
             for period_idx, period in enumerate(periods):
-                start_date = pd.to_datetime(period["start_date"])
-                end_date = pd.to_datetime(period["end_date"])
+                start_date = pd.to_datetime(period["start_date"]).tz_localize("UTC")
+                end_date = pd.to_datetime(period["end_date"]).tz_localize("UTC")
                 composition_type = period.get("composition_type", "single")
                 source_meters = period.get("source_meters", [])
                 source_unit = period.get("source_unit", output_unit)
