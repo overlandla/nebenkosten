@@ -8,12 +8,13 @@ This module serves as a bridge between the database and Dagster assets,
 with YAML fallback support for backwards compatibility.
 """
 
-import os
 import json
 import logging
-from typing import Dict, List, Optional, Any
-from datetime import datetime, date
+import os
 from contextlib import contextmanager
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 

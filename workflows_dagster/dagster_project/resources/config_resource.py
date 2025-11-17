@@ -7,15 +7,15 @@ with YAML files as a fallback for backwards compatibility.
 """
 
 import os
+
+# Import the config database client
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
 from dagster import ConfigurableResource, get_dagster_logger
 from pydantic import Field
-
-# Import the config database client
-import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from config_db import ConfigDatabaseClient
