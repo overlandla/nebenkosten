@@ -9,10 +9,14 @@
     "lint": "eslint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@influxdata/influxdb-client": "^1.35.0",
+    "@prisma/client": "^6.1.0",
     "date-fns": "^4.1.0",
     "next": "16.0.3",
     "react": "19.2.0",
@@ -32,6 +36,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.3",
     "jest": "^30.2.0",
+    "prisma": "^6.1.0",
     "jest-environment-jsdom": "^30.2.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.5",
