@@ -28,23 +28,23 @@ install-dashboard:
 	@cd /opt/utility-meter-dashboard && npm install >/dev/null 2>&1
 	@cd /opt/utility-meter-dashboard && npm run build >/dev/null 2>&1
 	@echo "[INFO] Creating systemd service..."
-	@cat > /etc/systemd/system/utility-meter-dashboard.service <<'EOF'
-[Unit]
-Description=Utility Meter Dashboard
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/utility-meter-dashboard
-ExecStart=/usr/bin/npm start
-Restart=on-failure
-Environment=NODE_ENV=production
-Environment=PORT=3000
-
-[Install]
-WantedBy=multi-user.target
-EOF
+	@printf '%s\n' \
+		'[Unit]' \
+		'Description=Utility Meter Dashboard' \
+		'After=network.target' \
+		'' \
+		'[Service]' \
+		'Type=simple' \
+		'User=root' \
+		'WorkingDirectory=/opt/utility-meter-dashboard' \
+		'ExecStart=/usr/bin/npm start' \
+		'Restart=on-failure' \
+		'Environment=NODE_ENV=production' \
+		'Environment=PORT=3000' \
+		'' \
+		'[Install]' \
+		'WantedBy=multi-user.target' \
+		> /etc/systemd/system/utility-meter-dashboard.service
 	@systemctl daemon-reload
 	@systemctl enable utility-meter-dashboard >/dev/null 2>&1
 	@systemctl start utility-meter-dashboard
