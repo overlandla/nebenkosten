@@ -77,18 +77,20 @@ else
 
       if ! sudo -u postgres psql -d nebenkosten_config -c '\dt' 2>/dev/null | grep -q 'meters'; then
         msg_info "Initializing configuration database schema"
-        if sudo -u postgres psql -d nebenkosten_config -f /opt/dagster-workflows/nebenkosten/database/schema.sql 2>&1; then
+        sudo -u postgres psql -d nebenkosten_config -f /opt/dagster-workflows/nebenkosten/database/schema.sql
+        if [ $? -eq 0 ]; then
           msg_ok "Configuration database schema initialized"
+
+          msg_info "Migrating YAML configuration to database"
+          cd /opt/dagster-workflows/nebenkosten
+          /opt/dagster-workflows/venv/bin/python database/migrate_yaml_to_postgres.py
+          if [ $? -eq 0 ]; then
+            msg_ok "Configuration migrated"
+          else
+            msg_error "Migration failed (will use YAML fallback)"
+          fi
         else
           msg_error "Failed to initialize schema (will use YAML fallback)"
-        fi
-
-        msg_info "Migrating YAML configuration to database"
-        cd /opt/dagster-workflows/nebenkosten
-        if /opt/dagster-workflows/venv/bin/python database/migrate_yaml_to_postgres.py 2>&1; then
-          msg_ok "Configuration migrated"
-        else
-          msg_error "Migration failed (will use YAML fallback)"
         fi
       else
         msg_ok "Configuration database already initialized"
@@ -237,22 +239,23 @@ msg_info "Initializing configuration database schema"
 if sudo -u postgres psql -d nebenkosten_config -c '\dt' 2>/dev/null | grep -q 'meters'; then
     msg_ok "Configuration database already initialized"
 else
-    if sudo -u postgres psql -d nebenkosten_config -f $REPO_DIR/database/schema.sql 2>&1; then
+    sudo -u postgres psql -d nebenkosten_config -f $REPO_DIR/database/schema.sql
+    if [ $? -eq 0 ]; then
       msg_ok "Configuration database schema initialized"
+
+      msg_info "Migrating YAML configuration to database"
+      cd $REPO_DIR
+      $INSTALL_DIR/venv/bin/python database/migrate_yaml_to_postgres.py
+      if [ $? -eq 0 ]; then
+        msg_ok "Configuration migrated to database"
+      else
+        msg_error "Configuration migration failed (will use YAML fallback)"
+      fi
+      cd $INSTALL_DIR/nebenkosten
     else
       msg_error "Failed to initialize schema (will use YAML fallback)"
     fi
 fi
-
-msg_info "Migrating YAML configuration to database"
-# Run the migration script to import YAML configs
-cd $REPO_DIR
-if $INSTALL_DIR/venv/bin/python database/migrate_yaml_to_postgres.py 2>&1; then
-    msg_ok "Configuration migrated to database"
-else
-    msg_error "Configuration migration failed (will use YAML fallback)"
-fi
-cd $INSTALL_DIR/nebenkosten
 
 msg_info "Enabling and starting Dagster services"
 systemctl enable dagster-user-code.service
