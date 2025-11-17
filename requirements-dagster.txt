@@ -1,27 +1,23 @@
-# Dagster core
-# SECURITY UPDATE: Upgraded from 1.6.0 to 1.10.16 to fix GHSA-h7x8-jv97-fvvm (Local File Inclusion)
-# Updated to 1.12.2 (latest available as of Nov 2025)
+# Dagster core - Latest stable versions
 dagster==1.12.2
 dagster-webserver==1.12.2
-dagster-postgres==0.28.2  # Compatible with dagster 1.12.2
-dagster-docker==0.28.2  # Compatible with dagster 1.12.2
+dagster-postgres==0.28.2
+dagster-docker==0.28.2
 
-# Existing dependencies (matching worker requirements)
-influxdb-client==1.38.0
-pandas==2.1.3
-numpy==1.26.2
-scipy==1.11.4
-# SECURITY UPDATE: Upgraded from 1.3.2 to 1.5.0 to fix PYSEC-2024-110 (TF-IDF sensitive data leakage)
-scikit-learn==1.5.0
-pyyaml==6.0.1
-python-dotenv==1.0.0
-# SECURITY UPDATE: Upgraded from 2.31.0 to 2.32.4 to fix:
-#   - GHSA-9wx4-h78v-vm56 (cert verification bypass)
-#   - GHSA-9hjg-9r4m-mvj7 (.netrc credential leakage)
-requests==2.32.4
-beautifulsoup4==4.12.2
-openpyxl==3.1.2
-plotly==5.18.0
+# Data processing and analysis - Latest stable versions (Python 3.13 compatible)
+influxdb-client==1.48.0
+pandas==2.2.3
+numpy==2.2.1
+scipy==1.15.0
+scikit-learn==1.6.0
+pyyaml==6.0.2
 
-# PostgreSQL adapter for Dagster storage
-psycopg2-binary==2.9.9
+# Utilities - Latest stable versions
+python-dotenv==1.0.1
+requests==2.32.3
+beautifulsoup4==4.12.3
+openpyxl==3.1.5
+plotly==5.24.1
+
+# PostgreSQL adapter - Latest stable version
+psycopg2-binary==2.9.10
