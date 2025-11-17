@@ -57,28 +57,78 @@ The installation will:
 - Build the Next.js application
 - Create and start systemd service
 
-### Step 3: Configure InfluxDB Connection
+### Step 3: Configure Database Connections
 
-Edit the environment file:
+During installation, you'll be prompted for:
+
+1. **InfluxDB Configuration** - Your time-series database for meter readings
+2. **PostgreSQL Configuration** - The configuration database for meters and households
+
+#### PostgreSQL Connection String
+
+If you installed Dagster using `make install-dagster`, it automatically created a PostgreSQL database with these credentials:
+
+- **Host:** IP address of the Dagster LXC (e.g., `192.168.1.94`)
+- **Port:** `5432`
+- **Database:** `nebenkosten_config`
+- **Username:** `dagster`
+- **Password:** `dagster`
+
+**Connection string format:**
+```
+postgresql://dagster:dagster@<DAGSTER_LXC_IP>:5432/nebenkosten_config
+```
+<!-- trufflehog:ignore -->
+
+**Example:**
+```
+postgresql://dagster:dagster@192.168.1.94:5432/nebenkosten_config
+```
+<!-- trufflehog:ignore -->
+
+#### Enabling Remote Access (if Dagster is on a different LXC)
+
+If your Dashboard and Dagster are on separate LXCs, you need to enable remote PostgreSQL access on the Dagster LXC:
+
+```bash
+# On Dagster LXC, edit PostgreSQL config
+sudo nano /etc/postgresql/*/main/postgresql.conf
+
+# Add Dagster LXC IP to listen_addresses
+listen_addresses = 'localhost,192.168.1.94'
+
+# Edit pg_hba.conf
+sudo nano /etc/postgresql/*/main/pg_hba.conf
+
+# Add line (replace 192.168.1.X with Dashboard LXC IP)
+host    nebenkosten_config    dagster    192.168.1.X/32    md5
+
+# Restart PostgreSQL
+sudo systemctl restart postgresql
+```
+
+#### Manual Configuration
+
+If you need to reconfigure later, edit the environment file:
 
 ```bash
 nano /opt/utility-meter-dashboard/.env.local
 ```
 
-Add your InfluxDB configuration:
+Example configuration:
 
 ```env
 # InfluxDB Configuration
-INFLUX_URL=http://your-influxdb-server:8086
+INFLUX_URL=http://192.168.1.75:8086
 INFLUX_TOKEN=your_token_here
 INFLUX_ORG=your_organization
-INFLUX_BUCKET_RAW=homeassistant_raw
-INFLUX_BUCKET_PROCESSED=homeassistant_processed
+INFLUX_BUCKET_RAW=lampfi
+INFLUX_BUCKET_PROCESSED=lampfi_processed
 
-# Gas Conversion Parameters
-GAS_ENERGY_CONTENT=10.3
-GAS_Z_FACTOR=0.95
+# PostgreSQL Configuration Database
+CONFIG_DATABASE_URL=postgresql://dagster:dagster@192.168.1.94:5432/nebenkosten_config
 ```
+<!-- trufflehog:ignore -->
 
 ### Step 4: Restart Service
 
