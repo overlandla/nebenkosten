@@ -25,7 +25,7 @@ Environment="CONFIG_DB_USER=dagster"
 Environment="CONFIG_DB_PASSWORD=dagster"
 
 # Use virtual environment Python
-ExecStart=/opt/dagster-workflows/venv/bin/dagster-webserver -h 0.0.0.0 -p 3000
+ExecStart=/opt/dagster-workflows/venv/bin/dagster-webserver -h 0.0.0.0 -p 3000 -w /opt/dagster-workflows/nebenkosten/workflows_dagster/workspace.yaml
 
 # Restart on failure
 Restart=on-failure
