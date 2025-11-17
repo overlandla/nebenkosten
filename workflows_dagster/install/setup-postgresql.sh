@@ -24,6 +24,7 @@ msg_error() { echo -e "${RD}[ERROR]${CL} $1"; }
 POSTGRES_USER="dagster"
 POSTGRES_PASSWORD="dagster"
 POSTGRES_DB="dagster"
+CONFIG_DB="nebenkosten_config"
 
 msg_info "Installing PostgreSQL"
 apt-get install -y postgresql postgresql-contrib >/dev/null 2>&1
@@ -57,6 +58,19 @@ EOF
 
 msg_ok "Created Dagster database and user"
 
+msg_info "Creating configuration database (nebenkosten_config)"
+# Create configuration database for shared settings
+sudo -u postgres psql <<EOF
+-- Create configuration database if it doesn't exist
+SELECT 'CREATE DATABASE $CONFIG_DB OWNER $POSTGRES_USER'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$CONFIG_DB')\gexec
+
+-- Grant privileges
+GRANT ALL PRIVILEGES ON DATABASE $CONFIG_DB TO $POSTGRES_USER;
+EOF
+
+msg_ok "Created configuration database"
+
 msg_info "Configuring PostgreSQL for local connections"
 # Allow local connections (already default in Debian, but ensure it's set)
 PG_VERSION=$(ls /etc/postgresql/ | head -n1)
@@ -73,10 +87,17 @@ fi
 systemctl reload postgresql
 msg_ok "PostgreSQL configured"
 
-msg_info "Testing database connection"
+msg_info "Testing database connections"
 if sudo -u postgres psql -d $POSTGRES_DB -c '\q' 2>/dev/null; then
-    msg_ok "Database connection successful"
+    msg_ok "Dagster database connection successful"
 else
-    msg_error "Failed to connect to database"
+    msg_error "Failed to connect to Dagster database"
+    exit 1
+fi
+
+if sudo -u postgres psql -d $CONFIG_DB -c '\q' 2>/dev/null; then
+    msg_ok "Config database connection successful"
+else
+    msg_error "Failed to connect to config database"
     exit 1
 fi

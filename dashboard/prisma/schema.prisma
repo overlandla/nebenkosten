@@ -1,0 +1,105 @@
+// Prisma Schema for Nebenkosten Configuration Database
+// This schema defines the data models for meters, households, and settings
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CONFIG_DATABASE_URL")
+}
+
+// Meter definitions (physical, master, virtual)
+model Meter {
+  id                  String              @id @db.VarChar(100)
+  name                String              @db.VarChar(255)
+  meterType           String              @map("meter_type") @db.VarChar(50)
+  category            String              @db.VarChar(50)
+  unit                String              @db.VarChar(20)
+  installationDate    DateTime?           @map("installation_date") @db.Date
+  deinstallationDate  DateTime?           @map("deinstallation_date") @db.Date
+  sourceMeters        Json?               @map("source_meters") @db.JsonB
+  calculationConfig   Json?               @map("calculation_config") @db.JsonB
+  active              Boolean             @default(true)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  householdMeters     HouseholdMeter[]
+
+  @@map("meters")
+}
+
+// Household/unit definitions
+model Household {
+  id                    String              @id @db.VarChar(100)
+  name                  String              @db.VarChar(255)
+  floors                String[]
+  allocationPercentage  Decimal?            @map("allocation_percentage") @db.Decimal(5, 2)
+  active                Boolean             @default(true)
+  createdAt             DateTime            @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  householdMeters       HouseholdMeter[]
+
+  @@map("households")
+}
+
+// Many-to-many relationship between households and meters
+model HouseholdMeter {
+  id              Int         @id @default(autoincrement())
+  householdId     String      @map("household_id") @db.VarChar(100)
+  meterId         String      @map("meter_id") @db.VarChar(100)
+  allocationType  String?     @map("allocation_type") @db.VarChar(50)
+  allocationValue Decimal?    @map("allocation_value") @db.Decimal(5, 2)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+
+  household       Household   @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  meter           Meter       @relation(fields: [meterId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, meterId])
+  @@map("household_meters")
+}
+
+// System settings (key-value store)
+model Setting {
+  key         String    @id @db.VarChar(255)
+  value       Json      @db.JsonB
+  description String?   @db.Text
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("settings")
+}
+
+// User accounts (for future authentication)
+model User {
+  id            Int         @id @default(autoincrement())
+  email         String      @unique @db.VarChar(255)
+  passwordHash  String?     @map("password_hash") @db.VarChar(255)
+  role          String      @default("viewer") @db.VarChar(50)
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+// Audit log for tracking configuration changes
+model AuditLog {
+  id         Int       @id @default(autoincrement())
+  tableName  String    @map("table_name") @db.VarChar(100)
+  recordId   String    @map("record_id") @db.VarChar(100)
+  action     String    @db.VarChar(20)
+  oldData    Json?     @map("old_data") @db.JsonB
+  newData    Json?     @map("new_data") @db.JsonB
+  userId     Int?      @map("user_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user       User?     @relation(fields: [userId], references: [id])
+
+  @@index([tableName, recordId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
