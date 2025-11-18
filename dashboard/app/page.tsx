@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import useMediaQuery from '@/hooks/useMediaQuery';
+import { useHouseholdStore } from '@/stores/useHouseholdStore';
 import TimeRangeSelector, { TimeRange } from '@/components/TimeRangeSelector';
 import ConsumptionChart from '@/components/ConsumptionChart';
 import WaterTemperatureChart from '@/components/WaterTemperatureChart';
@@ -13,10 +14,21 @@ import YearOverYearChart from '@/components/YearOverYearChart';
 import IndividualMeterChart from '@/components/IndividualMeterChart';
 import FilterPanel from '@/components/FilterPanel';
 import AggregationInfo from '@/components/AggregationInfo';
-import { HouseholdConfig, DEFAULT_HOUSEHOLD_CONFIG, Household, getHouseholdMeters } from '@/types/household';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { getHouseholdMeters } from '@/types/household';
 import type { MeterReading, WaterTemperature, MeterConfig } from '@/types/meter';
-
-const STORAGE_KEY = 'household_config';
+import {
+  Home,
+  DollarSign,
+  Settings,
+  Zap,
+  Flame,
+  Droplets,
+  Thermometer,
+  Sun,
+  Activity,
+} from 'lucide-react';
 
 const METERS_CONFIG: MeterConfig[] = [
   // Electricity - Master & Physical Meters
@@ -63,6 +75,9 @@ const METERS_CONFIG: MeterConfig[] = [
 export default function Home() {
   const isMobile = useMediaQuery('(max-width: 640px)');
 
+  // Use Zustand store for household config
+  const { config: householdConfig } = useHouseholdStore();
+
   const [timeRange, setTimeRange] = useState<TimeRange>({
     start: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
     end: new Date(),
@@ -78,7 +93,6 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'raw' | 'consumption'>('consumption');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedHousehold, setSelectedHousehold] = useState<string | null>(null);
-  const [householdConfig, setHouseholdConfig] = useState<HouseholdConfig>(DEFAULT_HOUSEHOLD_CONFIG);
   const [selectedMeters, setSelectedMeters] = useState<string[]>([
     'strom_total',
     'gas_total',
@@ -90,27 +104,6 @@ export default function Home() {
     'og2_heat',
   ]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-
-  // Load household config from localStorage
-  useEffect(() => {
-    // Check if running in browser (SSR safety)
-    if (typeof window === 'undefined') return;
-
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Validate structure before setting
-        if (parsed && parsed.version && Array.isArray(parsed.households)) {
-          setHouseholdConfig(parsed);
-        } else {
-          console.warn('Invalid household config structure in localStorage');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to parse stored config:', error);
-    }
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -336,27 +329,24 @@ export default function Home() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Link
-                href="/household-overview"
-                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-center"
-                title="Household Overview"
-              >
-                {isMobile ? '🏠' : '🏠 Annual Overview'}
-              </Link>
-              <Link
-                href="/costs"
-                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-center"
-                title="Costs & Billing"
-              >
-                {isMobile ? '💰' : '💰 Costs & Billing'}
-              </Link>
-              <Link
-                href="/settings"
-                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center"
-                title="Settings"
-              >
-                {isMobile ? '⚙️' : '⚙️ Settings'}
-              </Link>
+              <Button variant="outline" size={isMobile ? 'icon' : 'default'} asChild>
+                <Link href="/household-overview" title="Household Overview">
+                  <Home className="h-4 w-4" />
+                  {!isMobile && <span className="ml-2">Annual Overview</span>}
+                </Link>
+              </Button>
+              <Button variant="outline" size={isMobile ? 'icon' : 'default'} asChild>
+                <Link href="/costs" title="Costs & Billing">
+                  <DollarSign className="h-4 w-4" />
+                  {!isMobile && <span className="ml-2">Costs & Billing</span>}
+                </Link>
+              </Button>
+              <Button variant="outline" size={isMobile ? 'icon' : 'default'} asChild>
+                <Link href="/settings" title="Settings">
+                  <Settings className="h-4 w-4" />
+                  {!isMobile && <span className="ml-2">Settings</span>}
+                </Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -379,12 +369,12 @@ export default function Home() {
           onCategoryChange={handleCategoryToggle}
           categories={[
             { id: 'all', label: 'All Categories', count: METERS_CONFIG.length },
-            { id: 'electricity', label: '⚡ Electricity', count: METERS_CONFIG.filter(m => m.category === 'electricity').length },
-            { id: 'gas', label: '🔥 Gas', count: METERS_CONFIG.filter(m => m.category === 'gas').length },
-            { id: 'heat', label: '🌡️ Heat', count: METERS_CONFIG.filter(m => m.category === 'heat').length },
-            { id: 'water', label: '💧 Water', count: METERS_CONFIG.filter(m => m.category === 'water').length },
-            { id: 'solar', label: '☀️ Solar', count: METERS_CONFIG.filter(m => m.category === 'solar').length },
-            { id: 'virtual', label: '🔮 Virtual', count: METERS_CONFIG.filter(m => m.category === 'virtual').length },
+            { id: 'electricity', label: 'Electricity', count: METERS_CONFIG.filter(m => m.category === 'electricity').length },
+            { id: 'gas', label: 'Gas', count: METERS_CONFIG.filter(m => m.category === 'gas').length },
+            { id: 'heat', label: 'Heat', count: METERS_CONFIG.filter(m => m.category === 'heat').length },
+            { id: 'water', label: 'Water', count: METERS_CONFIG.filter(m => m.category === 'water').length },
+            { id: 'solar', label: 'Solar', count: METERS_CONFIG.filter(m => m.category === 'solar').length },
+            { id: 'virtual', label: 'Virtual', count: METERS_CONFIG.filter(m => m.category === 'virtual').length },
           ]}
           selectedHousehold={selectedHousehold}
           onHouseholdChange={handleHouseholdSelect}
@@ -415,55 +405,63 @@ export default function Home() {
           <div className="space-y-8">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-sm font-medium text-gray-600 mb-1">
-                  Selected Meters
-                </h3>
-                <p className="text-3xl font-bold text-blue-600">
-                  {selectedMeters.length}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  of {METERS_CONFIG.length} available
-                </p>
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-sm font-medium text-gray-600 mb-1">
-                  Time Range
-                </h3>
-                <p className="text-lg font-bold text-gray-900">
-                  {timeRange.label}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {format(timeRange.start, 'MMM d, yyyy')} - {format(timeRange.end, 'MMM d, yyyy')}
-                </p>
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-sm font-medium text-gray-600 mb-1">
-                  Categories Active
-                </h3>
-                <p className="text-3xl font-bold text-green-600">
-                  {new Set(
-                    selectedMeters
-                      .map((id) => METERS_CONFIG.find((m) => m.id === id))
-                      .filter((m): m is MeterConfig => m !== undefined)
-                      .map((m) => m.category)
-                  ).size}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  utility types
-                </p>
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-sm font-medium text-gray-600 mb-1">
-                  Data Source
-                </h3>
-                <p className="text-lg font-bold text-purple-600">
-                  {viewMode === 'raw' ? 'InfluxDB Raw' : 'Dagster'}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {viewMode === 'raw' ? 'Raw & interpolated meter readings' : 'Processed consumption data'}
-                </p>
-              </div>
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-sm font-medium text-neutral-600 mb-1">
+                    Selected Meters
+                  </h3>
+                  <p className="text-3xl font-bold text-blue-600">
+                    {selectedMeters.length}
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    of {METERS_CONFIG.length} available
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-sm font-medium text-neutral-600 mb-1">
+                    Time Range
+                  </h3>
+                  <p className="text-lg font-bold text-gray-900">
+                    {timeRange.label}
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {format(timeRange.start, 'MMM d, yyyy')} - {format(timeRange.end, 'MMM d, yyyy')}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-sm font-medium text-neutral-600 mb-1">
+                    Categories Active
+                  </h3>
+                  <p className="text-3xl font-bold text-green-600">
+                    {new Set(
+                      selectedMeters
+                        .map((id) => METERS_CONFIG.find((m) => m.id === id))
+                        .filter((m): m is MeterConfig => m !== undefined)
+                        .map((m) => m.category)
+                    ).size}
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    utility types
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-sm font-medium text-neutral-600 mb-1">
+                    Data Source
+                  </h3>
+                  <p className="text-lg font-bold text-purple-600 capitalize">
+                    {viewMode}
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {viewMode === 'raw' ? 'Unprocessed meter data' : 'Calculated usage'}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Raw Meter View */}
@@ -534,15 +532,19 @@ export default function Home() {
               const selectedInCategory = meters.filter((m) => selectedMeters.includes(m.id));
               if (selectedInCategory.length === 0) return null;
 
+              const IconComponent =
+                category === 'electricity' ? Zap :
+                category === 'gas' ? Flame :
+                category === 'heat' ? Thermometer :
+                category === 'water' ? Droplets :
+                category === 'solar' ? Sun :
+                Activity;
+
               return (
                 <div key={category}>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4 capitalize">
-                    {category === 'electricity' && '⚡ Electricity Consumption'}
-                    {category === 'gas' && '🔥 Gas Consumption'}
-                    {category === 'heat' && '🌡️ Heat Consumption'}
-                    {category === 'water' && '💧 Water Consumption'}
-                    {category === 'solar' && '☀️ Solar Storage'}
-                    {category === 'virtual' && '🔮 Virtual Meters'}
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4 capitalize flex items-center gap-2">
+                    <IconComponent className="h-6 w-6" />
+                    {category} Consumption
                   </h2>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {selectedInCategory.map((meter) => (
@@ -575,8 +577,9 @@ export default function Home() {
                 <>
                   {heatMeters.length > 1 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                        🌡️ Seasonal Heating Patterns
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Thermometer className="h-6 w-6" />
+                        Seasonal Heating Patterns
                       </h2>
                       <SeasonalPatternChart
                         data={meterData}
@@ -588,8 +591,9 @@ export default function Home() {
 
                   {gasMeters.length > 0 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                        🔥 Seasonal Gas Patterns
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Flame className="h-6 w-6" />
+                        Seasonal Gas Patterns
                       </h2>
                       <SeasonalPatternChart
                         data={meterData}
@@ -635,8 +639,9 @@ export default function Home() {
                 <>
                   {heatByFloor.length > 1 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                        🏢 Heat Consumption by Floor
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Thermometer className="h-6 w-6" />
+                        Heat Consumption by Floor
                       </h2>
                       <FloorComparisonChart
                         data={meterData}
@@ -650,8 +655,9 @@ export default function Home() {
 
                   {waterByFloor.length > 1 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                        💧 Water Consumption by Floor
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Droplets className="h-6 w-6" />
+                        Water Consumption by Floor
                       </h2>
                       <FloorComparisonChart
                         data={meterData}
@@ -665,8 +671,9 @@ export default function Home() {
 
                   {electricityByFloor.length > 1 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                        ⚡ Electricity Consumption by Floor
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Zap className="h-6 w-6" />
+                        Electricity Consumption by Floor
                       </h2>
                       <FloorComparisonChart
                         data={meterData}
@@ -694,8 +701,9 @@ export default function Home() {
                 <>
                   {keyMeters.length > 0 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                        📊 Year-over-Year Comparison
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Activity className="h-6 w-6" />
+                        Year-over-Year Comparison
                       </h2>
                       <div className="grid grid-cols-1 gap-6">
                         {keyMeters.map((meter) => (

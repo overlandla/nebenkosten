@@ -1,527 +1,405 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import useMediaQuery from '@/hooks/useMediaQuery';
+import { useState } from 'react'
+import Link from 'next/link'
+import { useHouseholdStore } from '@/stores/useHouseholdStore'
+import { HouseholdEditForm } from '@/components/forms/HouseholdEditForm'
+import { HouseholdFormData } from '@/lib/schemas/household'
+import { Household, validateCostAllocation, getHouseholdMeters } from '@/types/household'
+import PriceManagement from '@/components/PriceManagement'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
 import {
-  Household,
-  HouseholdConfig,
-  DEFAULT_HOUSEHOLD_CONFIG,
-  validateCostAllocation,
-  getHouseholdMeters,
-} from '@/types/household';
-import PriceManagement from '@/components/PriceManagement';
-
-const STORAGE_KEY = 'household_config';
-
-type TabType = 'households' | 'prices';
+  Home,
+  Settings as SettingsIcon,
+  DollarSign,
+  Plus,
+  Trash2,
+  Save,
+  RotateCcw,
+  Download,
+  Upload,
+  AlertCircle,
+} from 'lucide-react'
 
 export default function SettingsPage() {
-  const isMobile = useMediaQuery('(max-width: 640px)');
+  const { config, addHousehold, updateHousehold, deleteHousehold, resetConfig, syncToAPI } = useHouseholdStore()
+  const { toast } = useToast()
 
-  const [activeTab, setActiveTab] = useState<TabType>('households');
-  const [config, setConfig] = useState<HouseholdConfig>(DEFAULT_HOUSEHOLD_CONFIG);
-  const [selectedHousehold, setSelectedHousehold] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string>('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingHousehold, setEditingHousehold] = useState<Household | undefined>()
+  const [saving, setSaving] = useState(false)
 
-  // Load config from localStorage on mount
-  useEffect(() => {
-    // Check if running in browser (SSR safety)
-    if (typeof window === 'undefined') return;
+  const handleAddHousehold = () => {
+    setEditingHousehold(undefined)
+    setEditDialogOpen(true)
+  }
 
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Validate structure before setting
-        if (parsed && parsed.version && Array.isArray(parsed.households)) {
-          setConfig(parsed);
-        } else {
-          console.warn('Invalid household config structure in localStorage');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to parse stored config:', error);
+  const handleEditHousehold = (household: Household) => {
+    setEditingHousehold(household)
+    setEditDialogOpen(true)
+  }
+
+  const handleFormSubmit = (data: HouseholdFormData) => {
+    if (editingHousehold) {
+      updateHousehold(editingHousehold.id, data)
+      toast({
+        title: 'Household updated',
+        description: `${data.name} has been updated successfully.`,
+      })
+    } else {
+      addHousehold(data as Household)
+      toast({
+        title: 'Household added',
+        description: `${data.name} has been added successfully.`,
+      })
     }
-  }, []);
+    setEditDialogOpen(false)
+    setEditingHousehold(undefined)
+  }
+
+  const handleDeleteHousehold = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) {
+      deleteHousehold(id)
+      toast({
+        title: 'Household deleted',
+        description: `${name} has been removed.`,
+        variant: 'destructive',
+      })
+    }
+  }
 
   const handleSave = async () => {
-    setSaving(true);
+    setSaving(true)
     try {
-      const updatedConfig = {
-        ...config,
-        lastUpdated: new Date().toISOString(),
-      };
-
-      // Save to localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedConfig));
-
-      // Also save to InfluxDB
-      try {
-        const response = await fetch('/api/household-config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedConfig),
-        });
-
-        if (response.ok) {
-          setSaveMessage('✓ Configuration saved to localStorage and InfluxDB!');
-        } else {
-          setSaveMessage('✓ Configuration saved to localStorage (InfluxDB sync failed)');
-        }
-      } catch (apiError) {
-        console.error('InfluxDB sync error:', apiError);
-        setSaveMessage('✓ Configuration saved to localStorage (InfluxDB sync failed)');
-      }
-
-      setConfig(updatedConfig);
-      setTimeout(() => setSaveMessage(''), 3000);
+      await syncToAPI()
+      toast({
+        title: 'Success',
+        description: 'Configuration saved to localStorage and API.',
+      })
     } catch (error) {
-      setSaveMessage('✗ Failed to save configuration');
-      console.error('Save error:', error);
+      toast({
+        title: 'Partial success',
+        description: 'Configuration saved to localStorage, but API sync failed.',
+        variant: 'destructive',
+      })
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const handleReset = () => {
     if (confirm('Are you sure you want to reset to default configuration? This cannot be undone.')) {
-      setConfig(DEFAULT_HOUSEHOLD_CONFIG);
-      localStorage.removeItem(STORAGE_KEY);
-      setSaveMessage('✓ Reset to default configuration');
-      setTimeout(() => setSaveMessage(''), 3000);
+      resetConfig()
+      toast({
+        title: 'Configuration reset',
+        description: 'Settings have been reset to defaults.',
+      })
     }
-  };
+  }
 
   const handleExport = () => {
-    const dataStr = JSON.stringify(config, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-    const exportFileDefaultName = `household-config-${new Date().toISOString().split('T')[0]}.json`;
+    const dataStr = JSON.stringify(config, null, 2)
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
+    const exportFileDefaultName = `household-config-${new Date().toISOString().split('T')[0]}.json`
 
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  };
+    const linkElement = document.createElement('a')
+    linkElement.setAttribute('href', dataUri)
+    linkElement.setAttribute('download', exportFileDefaultName)
+    linkElement.click()
+
+    toast({
+      title: 'Configuration exported',
+      description: `Saved as ${exportFileDefaultName}`,
+    })
+  }
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const file = event.target.files?.[0]
+    if (!file) return
 
-    const reader = new FileReader();
+    const reader = new FileReader()
     reader.onload = (e) => {
       try {
-        const imported = JSON.parse(e.target?.result as string);
-        setConfig(imported);
-        setSaveMessage('✓ Configuration imported successfully');
-        setTimeout(() => setSaveMessage(''), 3000);
+        const imported = JSON.parse(e.target?.result as string)
+        if (imported && imported.version && Array.isArray(imported.households)) {
+          useHouseholdStore.setState({ config: imported })
+          toast({
+            title: 'Configuration imported',
+            description: 'Settings have been successfully imported.',
+          })
+        } else {
+          throw new Error('Invalid configuration format')
+        }
       } catch (error) {
-        setSaveMessage('✗ Failed to import configuration');
-        console.error('Import error:', error);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const updateHousehold = (id: string, updates: Partial<Household>) => {
-    setConfig({
-      ...config,
-      households: config.households.map((h) =>
-        h.id === id ? { ...h, ...updates } : h
-      ),
-    });
-  };
-
-  const addHousehold = () => {
-    const newId = `household_${Date.now()}`;
-    const newHousehold: Household = {
-      id: newId,
-      name: 'New Household',
-      type: 'unit',
-      color: '#3b82f6',
-      meters: {},
-    };
-    setConfig({
-      ...config,
-      households: [...config.households, newHousehold],
-    });
-    setSelectedHousehold(newId);
-  };
-
-  const deleteHousehold = (id: string) => {
-    if (confirm('Are you sure you want to delete this household?')) {
-      setConfig({
-        ...config,
-        households: config.households.filter((h) => h.id !== id),
-      });
-      if (selectedHousehold === id) {
-        setSelectedHousehold(null);
+        toast({
+          title: 'Import failed',
+          description: 'Invalid configuration file format.',
+          variant: 'destructive',
+        })
       }
     }
-  };
+    reader.readAsText(file)
+  }
 
-  const selectedHouseholdData = config.households.find((h) => h.id === selectedHousehold);
+  // Validation summary
+  const allocationValidation = {
+    electricity: validateCostAllocation(config.households, 'sharedElectricity'),
+    gas: validateCostAllocation(config.households, 'sharedGas'),
+    water: validateCostAllocation(config.households, 'sharedWater'),
+    heat: validateCostAllocation(config.households, 'sharedHeat'),
+  }
 
-  // Calculate allocation totals
-  const allocationTotals = {
-    sharedElectricity: config.households.reduce((sum, h) => sum + (h.costAllocation?.sharedElectricity || 0), 0),
-    sharedGas: config.households.reduce((sum, h) => sum + (h.costAllocation?.sharedGas || 0), 0),
-    sharedWater: config.households.reduce((sum, h) => sum + (h.costAllocation?.sharedWater || 0), 0),
-    sharedHeat: config.households.reduce((sum, h) => sum + (h.costAllocation?.sharedHeat || 0), 0),
-  };
+  const hasValidationErrors = Object.values(allocationValidation).some((v) => !v.valid)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Household Settings</h1>
-              <p className="mt-1 text-sm text-gray-600">
-                Configure households and cost allocation for multi-unit building management
-              </p>
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href="/" className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors">
+                <Home className="h-5 w-5" />
+                Dashboard
+              </Link>
+              <Separator orientation="vertical" className="h-6" />
+              <div className="flex items-center gap-2">
+                <SettingsIcon className="h-5 w-5" />
+                <h1 className="text-2xl font-bold">Settings</h1>
+              </div>
             </div>
-            <Link
-              href="/"
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-center"
-            >
-              ← Back to Dashboard
-            </Link>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <label className="cursor-pointer">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImport}
+                    className="hidden"
+                  />
+                </label>
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleReset}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 mb-8">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setActiveTab('households')}
-              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
-                activeTab === 'households'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🏠 Households & Allocation
-            </button>
-            <button
-              onClick={() => setActiveTab('prices')}
-              className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
-                activeTab === 'prices'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              💰 Price Management
-            </button>
-          </div>
-        </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs defaultValue="households" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="households" className="gap-2">
+              <Home className="h-4 w-4" />
+              Households
+            </TabsTrigger>
+            <TabsTrigger value="prices" className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              Prices
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Household Configuration Tab */}
-        {activeTab === 'households' && (
-          <>
-            {/* Action Buttons */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Saving...' : '💾 Save Configuration'}
-            </button>
-            <button
-              onClick={handleReset}
-              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              🔄 Reset to Default
-            </button>
-            <button
-              onClick={handleExport}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              📤 Export Config
-            </button>
-            <label className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors cursor-pointer">
-              📥 Import Config
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-              />
-            </label>
-            <button
-              onClick={addHousehold}
-              className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-            >
-              ➕ Add Household
-            </button>
-          </div>
-          {saveMessage && (
-            <div className={`mt-4 p-3 rounded-lg ${saveMessage.includes('✓') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
-              {saveMessage}
-            </div>
-          )}
-        </div>
-
-        {/* Cost Allocation Summary */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Cost Allocation Summary</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.entries(allocationTotals).map(([key, total]) => {
-              const isValid = Math.abs(total - 100) < 0.01 || total === 0;
-              return (
-                <div
-                  key={key}
-                  className={`p-4 rounded-lg border-2 ${
-                    total === 0
-                      ? 'border-gray-200 bg-gray-50'
-                      : isValid
-                      ? 'border-green-200 bg-green-50'
-                      : 'border-red-200 bg-red-50'
-                  }`}
-                >
-                  <h3 className="text-sm font-medium text-gray-600 mb-1">
-                    {key.replace('shared', '').replace(/([A-Z])/g, ' $1')}
-                  </h3>
-                  <p className={`text-2xl font-bold ${
-                    total === 0 ? 'text-gray-400' : isValid ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {total.toFixed(1)}%
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {total === 0 ? 'Not allocated' : isValid ? '✓ Valid' : '✗ Must equal 100%'}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Households List */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left: Household List */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Households ({config.households.length})
-              </h2>
-              <div className="space-y-2">
-                {config.households.map((household) => (
-                  <button
-                    key={household.id}
-                    onClick={() => setSelectedHousehold(household.id)}
-                    className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                      selectedHousehold === household.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: household.color }}
-                        />
-                        <div>
-                          <h3 className="font-medium text-gray-900">{household.name}</h3>
-                          <p className="text-xs text-gray-500 capitalize">{household.type}</p>
+          {/* Households Tab */}
+          <TabsContent value="households" className="mt-6 space-y-6">
+            {/* Validation Summary */}
+            {hasValidationErrors && (
+              <Card className="border-red-200 bg-red-50">
+                <CardHeader>
+                  <CardTitle className="text-red-700 flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5" />
+                    Cost Allocation Errors
+                  </CardTitle>
+                  <CardDescription className="text-red-600">
+                    The following shared utilities have invalid allocations (must sum to 100%):
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {Object.entries(allocationValidation).map(([key, result]) => (
+                      <div
+                        key={key}
+                        className={`p-3 rounded-md ${
+                          result.valid
+                            ? 'bg-green-100 border border-green-200'
+                            : 'bg-red-100 border border-red-200'
+                        }`}
+                      >
+                        <div className="text-sm font-medium capitalize">{key}</div>
+                        <div className={`text-lg font-bold ${result.valid ? 'text-green-700' : 'text-red-700'}`}>
+                          {result.total.toFixed(1)}%
                         </div>
                       </div>
-                      <span className="text-xs text-gray-400">
-                        {getHouseholdMeters(household).length} meters
-                      </span>
-                    </div>
-                  </button>
-                ))}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Add Household Button */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold">Manage Households</h2>
+                <p className="text-sm text-neutral-500">
+                  Configure households and their cost allocations
+                </p>
               </div>
+              <Button onClick={handleAddHousehold}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Household
+              </Button>
             </div>
-          </div>
 
-          {/* Right: Household Details */}
-          <div className="lg:col-span-2">
-            {selectedHouseholdData ? (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Edit Household</h2>
-                  <button
-                    onClick={() => deleteHousehold(selectedHouseholdData.id)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
+            {/* Households List */}
+            <Card>
+              <CardContent className="pt-6">
+                <Accordion type="single" collapsible className="w-full">
+                  {config.households.map((household) => (
+                    <AccordionItem key={household.id} value={household.id}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div
+                            className="h-4 w-4 rounded-full border-2 border-white shadow"
+                            style={{ backgroundColor: household.color }}
+                          />
+                          <div className="flex items-center gap-2 flex-1">
+                            <span className="font-medium">{household.name}</span>
+                            <Badge variant={household.type === 'shared' ? 'secondary' : 'default'}>
+                              {household.type}
+                            </Badge>
+                          </div>
+                          {household.description && (
+                            <span className="text-sm text-neutral-500 hidden md:block">
+                              {household.description}
+                            </span>
+                          )}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4 pt-4">
+                          {/* Meters */}
+                          <div>
+                            <h4 className="text-sm font-semibold mb-2">Assigned Meters</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(household.meters).map(([category, meters]) =>
+                                meters?.map((meter) => (
+                                  <Badge key={meter} variant="outline">
+                                    {meter}
+                                  </Badge>
+                                ))
+                              )}
+                              {getHouseholdMeters(household).length === 0 && (
+                                <p className="text-sm text-neutral-500">No meters assigned</p>
+                              )}
+                            </div>
+                          </div>
 
-                <div className="space-y-6">
-                  {/* Basic Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Name
-                      </label>
-                      <input
-                        type="text"
-                        value={selectedHouseholdData.name}
-                        onChange={(e) =>
-                          updateHousehold(selectedHouseholdData.id, { name: e.target.value })
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Type
-                      </label>
-                      <select
-                        value={selectedHouseholdData.type}
-                        onChange={(e) =>
-                          updateHousehold(selectedHouseholdData.id, {
-                            type: e.target.value as 'unit' | 'shared',
-                          })
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="unit">Unit</option>
-                        <option value="shared">Shared</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Color
-                      </label>
-                      <input
-                        type="color"
-                        value={selectedHouseholdData.color}
-                        onChange={(e) =>
-                          updateHousehold(selectedHouseholdData.id, { color: e.target.value })
-                        }
-                        className="w-full h-10 rounded-lg cursor-pointer"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={selectedHouseholdData.description || ''}
-                      onChange={(e) =>
-                        updateHousehold(selectedHouseholdData.id, { description: e.target.value })
-                      }
-                      rows={2}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Optional description..."
-                    />
-                  </div>
-
-                  {/* Cost Allocation */}
-                  {selectedHouseholdData.type === 'unit' && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                        Cost Allocation (% of Shared Utilities)
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {(['sharedElectricity', 'sharedGas', 'sharedWater', 'sharedHeat'] as const).map(
-                          (key) => (
-                            <div key={key}>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                {key.replace('shared', '')}
-                              </label>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="0.1"
-                                  value={selectedHouseholdData.costAllocation?.[key] || 0}
-                                  onChange={(e) => {
-                                    let value = parseFloat(e.target.value);
-                                    // Validate and clamp to 0-100 range
-                                    if (isNaN(value)) value = 0;
-                                    value = Math.max(0, Math.min(100, value));
-                                    updateHousehold(selectedHouseholdData.id, {
-                                      costAllocation: {
-                                        ...selectedHouseholdData.costAllocation,
-                                        [key]: value,
-                                      },
-                                    });
-                                  }}
-                                  onBlur={(e) => {
-                                    // Ensure value is clamped on blur as well
-                                    let value = parseFloat(e.target.value);
-                                    if (isNaN(value) || value < 0 || value > 100) {
-                                      if (isNaN(value)) value = 0;
-                                      value = Math.max(0, Math.min(100, value));
-                                      updateHousehold(selectedHouseholdData.id, {
-                                        costAllocation: {
-                                          ...selectedHouseholdData.costAllocation,
-                                          [key]: value,
-                                        },
-                                      });
-                                    }
-                                  }}
-                                  className="w-full px-4 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                                <span className="absolute right-3 top-2 text-gray-500">%</span>
+                          {/* Cost Allocation */}
+                          {household.costAllocation && household.type === 'unit' && (
+                            <div>
+                              <h4 className="text-sm font-semibold mb-2">Cost Allocation</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {Object.entries(household.costAllocation).map(([key, value]) =>
+                                  value ? (
+                                    <div key={key} className="text-sm">
+                                      <span className="text-neutral-500 capitalize">
+                                        {key.replace('shared', '')}:
+                                      </span>{' '}
+                                      <span className="font-medium">{value}%</span>
+                                    </div>
+                                  ) : null
+                                )}
                               </div>
                             </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )}
+                          )}
 
-                  {/* Assigned Meters */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      Assigned Meters ({getHouseholdMeters(selectedHouseholdData).length})
-                    </h3>
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <p className="text-sm text-gray-600 mb-2">
-                        Meters assigned to this household:
-                      </p>
-                      {getHouseholdMeters(selectedHouseholdData).length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {getHouseholdMeters(selectedHouseholdData).map((meterId) => (
-                            <span
-                              key={meterId}
-                              className="px-3 py-1 bg-white border border-gray-300 rounded-lg text-sm"
+                          {/* Actions */}
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditHousehold(household)}
                             >
-                              {meterId}
-                            </span>
-                          ))}
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteHousehold(household.id, household.name)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </Button>
+                          </div>
                         </div>
-                      ) : (
-                        <p className="text-sm text-gray-400 italic">No meters assigned yet</p>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Note: Use the main dashboard to assign meters to households
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-                <p className="text-gray-500">Select a household to edit its configuration</p>
-              </div>
-            )}
-          </div>
-        </div>
-          </>
-        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Price Management Tab */}
-        {activeTab === 'prices' && (
-          <PriceManagement />
-        )}
+          {/* Prices Tab */}
+          <TabsContent value="prices" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Utility Price Management</CardTitle>
+                <CardDescription>
+                  Configure pricing for electricity, gas, water, and heat
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PriceManagement />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
+
+      {/* Edit/Add Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingHousehold ? 'Edit Household' : 'Add New Household'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingHousehold
+                ? 'Update the household information below.'
+                : 'Fill in the details for the new household.'}
+            </DialogDescription>
+          </DialogHeader>
+          <HouseholdEditForm
+            household={editingHousehold}
+            onSubmit={handleFormSubmit}
+            onCancel={() => {
+              setEditDialogOpen(false)
+              setEditingHousehold(undefined)
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
-  );
+  )
 }
