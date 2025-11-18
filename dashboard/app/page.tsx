@@ -316,32 +316,32 @@ export default function Home() {
   }, {} as Record<string, MeterConfig[]>);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <header className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 shadow-lg border-b border-blue-800">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-h-screen bg-white dark:bg-black">
+      <header className="border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">
+              <h1 className="text-3xl font-semibold text-black dark:text-white tracking-tight">
                 Utility Meter Dashboard
               </h1>
-              <p className="mt-1 text-sm text-blue-100">
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                 Real-time monitoring and analysis of utility consumption
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" size={isMobile ? 'icon' : 'default'} asChild className="bg-white/10 hover:bg-white/20 text-white border-white/20">
+            <div className="flex gap-3">
+              <Button variant="outline" size={isMobile ? 'icon' : 'default'} asChild>
                 <Link href="/household-overview" title="Household Overview">
                   <HomeIcon className="h-4 w-4" />
                   {!isMobile && <span className="ml-2">Annual Overview</span>}
                 </Link>
               </Button>
-              <Button variant="secondary" size={isMobile ? 'icon' : 'default'} asChild className="bg-white/10 hover:bg-white/20 text-white border-white/20">
+              <Button variant="outline" size={isMobile ? 'icon' : 'default'} asChild>
                 <Link href="/costs" title="Costs & Billing">
                   <DollarSign className="h-4 w-4" />
                   {!isMobile && <span className="ml-2">Costs & Billing</span>}
                 </Link>
               </Button>
-              <Button variant="secondary" size={isMobile ? 'icon' : 'default'} asChild className="bg-white/10 hover:bg-white/20 text-white border-white/20">
+              <Button variant="outline" size={isMobile ? 'icon' : 'default'} asChild>
                 <Link href="/settings" title="Settings">
                   <Settings className="h-4 w-4" />
                   {!isMobile && <span className="ml-2">Settings</span>}
@@ -352,7 +352,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto px-6 sm:px-8 py-12">
         {/* Time Range Selector */}
         <TimeRangeSelector onRangeChange={setTimeRange} className="mb-6" />
 
@@ -395,48 +395,48 @@ export default function Home() {
         />
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-24">
             <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
-              <p className="mt-4 text-slate-600 dark:text-slate-300">Loading data...</p>
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading data...</p>
             </div>
           </div>
         ) : (
           <div className="space-y-8">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 border-blue-200 dark:border-blue-700 shadow-md hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="border border-gray-200 dark:border-gray-800">
+                <CardContent className="p-8">
+                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                     Selected Meters
                   </h3>
-                  <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+                  <p className="text-5xl font-semibold text-black dark:text-white tabular-nums">
                     {selectedMeters.length}
                   </p>
-                  <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                     of {METERS_CONFIG.length} available
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 border-purple-200 dark:border-purple-700 shadow-md hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <h3 className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">
+              <Card className="border border-gray-200 dark:border-gray-800">
+                <CardContent className="p-8">
+                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                     Time Range
                   </h3>
-                  <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
+                  <p className="text-xl font-semibold text-black dark:text-white">
                     {timeRange.label}
                   </p>
-                  <p className="text-xs text-purple-600/70 dark:text-purple-400/70 mt-1">
-                    {format(timeRange.start, 'MMM d, yyyy')} - {format(timeRange.end, 'MMM d, yyyy')}
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                    {format(timeRange.start, 'MMM d, yyyy')} – {format(timeRange.end, 'MMM d, yyyy')}
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 border-green-200 dark:border-green-700 shadow-md hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <h3 className="text-sm font-medium text-green-700 dark:text-green-300 mb-1">
+              <Card className="border border-gray-200 dark:border-gray-800">
+                <CardContent className="p-8">
+                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                     Categories Active
                   </h3>
-                  <p className="text-4xl font-bold text-green-600 dark:text-green-400">
+                  <p className="text-5xl font-semibold text-black dark:text-white tabular-nums">
                     {new Set(
                       selectedMeters
                         .map((id) => METERS_CONFIG.find((m) => m.id === id))
@@ -444,20 +444,20 @@ export default function Home() {
                         .map((m) => m.category)
                     ).size}
                   </p>
-                  <p className="text-xs text-green-600/70 dark:text-green-400/70 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                     utility types
                   </p>
                 </CardContent>
               </Card>
-              <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 border-amber-200 dark:border-amber-700 shadow-md hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <h3 className="text-sm font-medium text-amber-700 dark:text-amber-300 mb-1">
+              <Card className="border border-gray-200 dark:border-gray-800">
+                <CardContent className="p-8">
+                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                     Data Source
                   </h3>
-                  <p className="text-lg font-bold text-amber-900 dark:text-amber-100 capitalize">
+                  <p className="text-xl font-semibold text-black dark:text-white capitalize">
                     {viewMode}
                   </p>
-                  <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                     {viewMode === 'raw' ? 'Unprocessed meter data' : 'Calculated usage'}
                   </p>
                 </CardContent>
@@ -476,8 +476,8 @@ export default function Home() {
 
                   if (selectedMeters.length === 0) {
                     return (
-                      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-slate-200 dark:border-slate-700 p-12 text-center">
-                        <p className="text-slate-500 dark:text-slate-400 text-lg">
+                      <div className="border border-gray-200 dark:border-gray-800 p-12 text-center">
+                        <p className="text-gray-500 dark:text-gray-400">
                           No meters selected. Please select meters from the filter panel above.
                         </p>
                       </div>
@@ -504,16 +504,15 @@ export default function Home() {
 
                 {/* Info Section for Raw View */}
                 {selectedMeters.length > 0 && (
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl border border-blue-200 dark:border-blue-700 p-6 shadow-md">
-                    <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
-                      <Activity className="h-5 w-5" />
+                  <div className="border border-gray-200 dark:border-gray-800 p-8">
+                    <h3 className="text-sm font-semibold text-black dark:text-white mb-4">
                       About Raw Meter Readings
                     </h3>
-                    <div className="text-blue-800 dark:text-blue-200 space-y-2">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
                       <p>
                         This view displays the actual cumulative meter readings directly from your sensors.
                       </p>
-                      <ul className="list-disc list-inside space-y-1 mt-3">
+                      <ul className="list-disc list-inside space-y-2 ml-4">
                         <li><strong>Raw readings (points):</strong> Actual sensor values as scatter points - may have gaps or irregular timing</li>
                         <li><strong>Interpolated data (line):</strong> Daily interpolated values as smooth lines for trend analysis</li>
                         <li><strong>Cumulative values:</strong> Shows total consumption since meter installation</li>
@@ -543,8 +542,7 @@ export default function Home() {
 
               return (
                 <div key={category}>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 capitalize flex items-center gap-3">
-                    <IconComponent className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                  <h2 className="text-xl font-semibold text-black dark:text-white mb-6 capitalize border-b border-gray-200 dark:border-gray-800 pb-4">
                     {category} Consumption
                   </h2>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -578,8 +576,7 @@ export default function Home() {
                 <>
                   {heatMeters.length > 1 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-3">
-                        <Thermometer className="h-7 w-7 text-red-600 dark:text-red-400" />
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
                         Seasonal Heating Patterns
                       </h2>
                       <SeasonalPatternChart
@@ -592,8 +589,7 @@ export default function Home() {
 
                   {gasMeters.length > 0 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-3">
-                        <Flame className="h-7 w-7 text-orange-600 dark:text-orange-400" />
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
                         Seasonal Gas Patterns
                       </h2>
                       <SeasonalPatternChart
@@ -640,8 +636,7 @@ export default function Home() {
                 <>
                   {heatByFloor.length > 1 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-3">
-                        <Thermometer className="h-7 w-7 text-red-600 dark:text-red-400" />
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
                         Heat Consumption by Floor
                       </h2>
                       <FloorComparisonChart
@@ -656,8 +651,7 @@ export default function Home() {
 
                   {waterByFloor.length > 1 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-3">
-                        <Droplets className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
                         Water Consumption by Floor
                       </h2>
                       <FloorComparisonChart
@@ -672,8 +666,7 @@ export default function Home() {
 
                   {electricityByFloor.length > 1 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-3">
-                        <Zap className="h-7 w-7 text-yellow-600 dark:text-yellow-400" />
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
                         Electricity Consumption by Floor
                       </h2>
                       <FloorComparisonChart
@@ -702,8 +695,7 @@ export default function Home() {
                 <>
                   {keyMeters.length > 0 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-3">
-                        <Activity className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
                         Year-over-Year Comparison
                       </h2>
                       <div className="grid grid-cols-1 gap-6">
@@ -726,8 +718,7 @@ export default function Home() {
             {/* Water Temperature Chart */}
             {waterTempData.length > 0 && (
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-3">
-                  <Droplets className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
                   Water Temperature
                 </h2>
                 <WaterTemperatureChart
@@ -738,17 +729,16 @@ export default function Home() {
             )}
 
             {/* Info Section */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl border border-green-200 dark:border-green-700 p-6 shadow-md">
-              <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-2 flex items-center gap-2">
-                <Activity className="h-5 w-5" />
+            <div className="border border-gray-200 dark:border-gray-800 p-8">
+              <h3 className="text-sm font-semibold text-black dark:text-white mb-4">
                 About Consumption Analysis
               </h3>
-              <div className="text-green-800 dark:text-green-200 space-y-2">
+              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
                 <p>
                   This view displays comprehensive utility consumption data processed by the Dagster pipeline
                   and stored in InfluxDB. All data is pre-processed, interpolated, and ready for analysis.
                 </p>
-                <ul className="list-disc list-inside space-y-1 mt-3">
+                <ul className="list-disc list-inside space-y-2 ml-4">
                   <li><strong>Consumption data:</strong> Calculated usage per period (not cumulative)</li>
                   <li><strong>Seasonal patterns:</strong> Identify usage trends across different seasons</li>
                   <li><strong>Floor comparisons:</strong> Compare consumption across different floors</li>
