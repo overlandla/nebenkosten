@@ -108,7 +108,9 @@ export const useDashboardStore = create<DashboardStore>()(
         searchQuery: state.searchQuery,
       }),
       merge: (persistedState, currentState) => {
-        const persisted = persistedState as any
+        const persisted = persistedState as Partial<DashboardFilters> & {
+          timeRange?: { startDate?: string; endDate?: string; preset?: string }
+        }
         return {
           ...currentState,
           ...persisted,

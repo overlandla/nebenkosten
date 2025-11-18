@@ -9,13 +9,13 @@ import { generateConsumptionData } from '@/__tests__/fixtures/meterData';
 
 // Mock recharts
 jest.mock('recharts', () => ({
-  ResponsiveContainer: ({ children, height }: any) => (
+  ResponsiveContainer: ({ children, height }: { children: React.ReactNode; height?: number }) => (
     <div data-testid="responsive-container" data-height={height}>
       {children}
     </div>
   ),
-  BarChart: ({ children, data }: any) => <div data-testid="bar-chart" data-length={data?.length}>{children}</div>,
-  Bar: ({ dataKey, name, fill }: any) => <div data-testid={`bar-${dataKey}`} data-name={name} data-fill={fill} />,
+  BarChart: ({ children, data }: { children: React.ReactNode; data?: unknown[] }) => <div data-testid="bar-chart" data-length={data?.length}>{children}</div>,
+  Bar: ({ dataKey, name, fill }: { dataKey: string; name: string; fill: string }) => <div data-testid={`bar-${dataKey}`} data-name={name} data-fill={fill} />,
   XAxis: () => <div data-testid="x-axis" />,
   YAxis: () => <div data-testid="y-axis" />,
   CartesianGrid: () => <div data-testid="cartesian-grid" />,

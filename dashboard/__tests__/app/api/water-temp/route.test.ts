@@ -98,7 +98,7 @@ describe('/api/water-temp', () => {
     expect(response.status).toBe(200);
     expect(data.temperatures).toHaveLength(10);
 
-    const lakes = new Set(data.temperatures.map((t: any) => t.lake));
+    const lakes = new Set(data.temperatures.map((t: { lake: string }) => t.lake));
     expect(lakes.size).toBeGreaterThan(1);
   });
 

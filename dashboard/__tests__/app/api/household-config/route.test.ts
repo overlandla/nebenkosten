@@ -10,8 +10,8 @@ import type { HouseholdConfig } from '@/types/household';
 // Mock Point class
 jest.mock('@influxdata/influxdb-client', () => ({
   Point: jest.fn().mockImplementation(function (measurement: string) {
-    const fields: any = {};
-    const tags: any = {};
+    const fields: Record<string, unknown> = {};
+    const tags: Record<string, string> = {};
     return {
       tag: jest.fn(function (key: string, value: string) {
         tags[key] = value;

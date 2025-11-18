@@ -216,7 +216,7 @@ describe('/api/household-costs', () => {
 
       expect(response.status).toBe(200);
       expect(data.households.length).toBe(2); // Only unit-type households
-      expect(data.households.every((h: any) => h.householdId !== 'shared')).toBe(true);
+      expect(data.households.every((h: { householdId: string }) => h.householdId !== 'shared')).toBe(true);
     });
 
     it('should parse year parameter correctly', async () => {
@@ -239,7 +239,6 @@ describe('/api/household-costs', () => {
 
       const request = new NextRequest('http://localhost:3000/api/household-costs?year=2024');
       const response = await GET(request);
-      const data = await response.json();
 
       // Should return 404 since parsing fails and config is null
       expect(response.status).toBe(404);
@@ -273,7 +272,6 @@ describe('/api/household-costs', () => {
 
       const request = new NextRequest('http://localhost:3000/api/household-costs?year=2024');
       const response = await GET(request);
-      const data = await response.json();
 
       expect(response.status).toBe(200);
       // Should still work, just with fewer price configs
@@ -308,7 +306,6 @@ describe('/api/household-costs', () => {
 
       const request = new NextRequest('http://localhost:3000/api/household-costs?year=2024');
       const response = await GET(request);
-      const data = await response.json();
 
       expect(response.status).toBe(200);
       // The deduplication logic should keep the more recent one
