@@ -11,6 +11,12 @@ interface ChartSkeletonProps {
 }
 
 export default function ChartSkeleton({ title, height = 400 }: ChartSkeletonProps) {
+  // Generate stable random heights using useMemo to avoid calling Math.random() during render
+  const barHeights = React.useMemo(
+    () => Array.from({ length: 12 }, () => Math.random() * 70 + 30),
+    []
+  );
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       {title && (
@@ -21,12 +27,12 @@ export default function ChartSkeleton({ title, height = 400 }: ChartSkeletonProp
       <div className="space-y-3" style={{ height: `${height}px` }}>
         {/* Simulate chart bars/lines */}
         <div className="flex items-end justify-between h-full space-x-2">
-          {[...Array(12)].map((_, i) => (
+          {barHeights.map((barHeight, i) => (
             <div
               key={i}
               className="flex-1 bg-gray-200 rounded-t animate-pulse"
               style={{
-                height: `${Math.random() * 70 + 30}%`,
+                height: `${barHeight}%`,
                 animationDelay: `${i * 50}ms`,
               }}
             />

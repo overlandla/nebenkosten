@@ -23,6 +23,41 @@ interface IndividualMeterChartProps {
   color?: string;
 }
 
+// Custom tooltip component
+function CustomTooltip({ active, payload, unit, color }: any) {
+  if (!active || !payload || !payload.length) return null;
+
+  const data = payload[0].payload;
+  const date = new Date(data.timestamp);
+
+  const formatValue = (value: number) => {
+    return `${value.toFixed(2)} ${unit}`;
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 p-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
+      <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+        {date.toLocaleString('de-DE', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        })}
+      </p>
+      {data.raw !== undefined && (
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ backgroundColor: color }} />
+          Raw: {formatValue(data.raw)}
+        </p>
+      )}
+      {data.interpolated !== undefined && (
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ backgroundColor: color, opacity: 0.6 }} />
+          Interpolated: {formatValue(data.interpolated)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function IndividualMeterChart({
   meterId,
   meterName,
@@ -76,40 +111,6 @@ export default function IndividualMeterChart({
     });
   };
 
-  const formatValue = (value: number) => {
-    return `${value.toFixed(2)} ${unit}`;
-  };
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (!active || !payload || !payload.length) return null;
-
-    const data = payload[0].payload;
-    const date = new Date(data.timestamp);
-
-    return (
-      <div className="bg-white dark:bg-gray-800 p-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
-        <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-          {date.toLocaleString('de-DE', {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-          })}
-        </p>
-        {data.raw !== undefined && (
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ backgroundColor: color }} />
-            Raw: {formatValue(data.raw)}
-          </p>
-        )}
-        {data.interpolated !== undefined && (
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ backgroundColor: color, opacity: 0.6 }} />
-            Interpolated: {formatValue(data.interpolated)}
-          </p>
-        )}
-      </div>
-    );
-  };
-
   const hasData = rawData.length > 0 || interpolatedData.length > 0;
 
   return (
@@ -142,7 +143,7 @@ export default function IndividualMeterChart({
               stroke="#9ca3af"
               tick={{ fill: '#6b7280' }}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip unit={unit} color={color} />} />
             <Legend
               wrapperStyle={{ paddingTop: '20px' }}
               iconType="circle"
