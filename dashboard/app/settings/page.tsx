@@ -159,24 +159,25 @@ export default function SettingsPage() {
   const hasValidationErrors = Object.values(allocationValidation).some((v) => !v.valid)
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-white dark:bg-black">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors">
-                <Home className="h-5 w-5" />
-                Dashboard
-              </Link>
-              <Separator orientation="vertical" className="h-6" />
-              <div className="flex items-center gap-2">
-                <SettingsIcon className="h-5 w-5" />
-                <h1 className="text-2xl font-bold">Settings</h1>
-              </div>
+      <header className="border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-semibold text-black dark:text-white tracking-tight">Settings</h1>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Configure households, meters, and utility pricing
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="px-4 py-2 border border-gray-200 dark:border-gray-800 text-black dark:text-white hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-center text-sm"
+              >
+                ← Back to Dashboard
+              </Link>
               <Button variant="outline" size="sm" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
@@ -197,7 +198,7 @@ export default function SettingsPage() {
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
+              <Button size="sm" onClick={handleSave} disabled={saving} className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100">
                 <Save className="h-4 w-4 mr-2" />
                 {saving ? 'Saving...' : 'Save'}
               </Button>
@@ -224,62 +225,58 @@ export default function SettingsPage() {
           <TabsContent value="households" className="mt-6 space-y-6">
             {/* Validation Summary */}
             {hasValidationErrors && (
-              <Card className="border-red-200 bg-red-50">
-                <CardHeader>
-                  <CardTitle className="text-red-700 flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5" />
+              <div className="border border-gray-200 dark:border-gray-800 p-8">
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-black dark:text-white mb-2 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
                     Cost Allocation Errors
-                  </CardTitle>
-                  <CardDescription className="text-red-600">
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     The following shared utilities have invalid allocations (must sum to 100%):
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {Object.entries(allocationValidation).map(([key, result]) => (
-                      <div
-                        key={key}
-                        className={`p-3 rounded-md ${
-                          result.valid
-                            ? 'bg-green-100 border border-green-200'
-                            : 'bg-red-100 border border-red-200'
-                        }`}
-                      >
-                        <div className="text-sm font-medium capitalize">{key}</div>
-                        <div className={`text-lg font-bold ${result.valid ? 'text-green-700' : 'text-red-700'}`}>
-                          {result.total.toFixed(1)}%
-                        </div>
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(allocationValidation).map(([key, result]) => (
+                    <div
+                      key={key}
+                      className="border border-gray-200 dark:border-gray-800 p-4"
+                    >
+                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 capitalize">{key}</div>
+                      <div className={`text-2xl font-semibold tabular-nums ${result.valid ? 'text-black dark:text-white' : 'text-black dark:text-white'}`}>
+                        {result.total.toFixed(1)}%
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      {!result.valid && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Invalid</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Add Household Button */}
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-4">
               <div>
-                <h2 className="text-xl font-semibold">Manage Households</h2>
-                <p className="text-sm text-neutral-500">
+                <h2 className="text-xl font-semibold text-black dark:text-white">Manage Households</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Configure households and their cost allocations
                 </p>
               </div>
-              <Button onClick={handleAddHousehold}>
+              <Button onClick={handleAddHousehold} className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Household
               </Button>
             </div>
 
             {/* Households List */}
-            <Card>
-              <CardContent className="pt-6">
-                <Accordion type="single" collapsible className="w-full">
+            <div className="border border-gray-200 dark:border-gray-800 p-8">
+              <Accordion type="single" collapsible className="w-full">
                   {config.households.map((household) => (
                     <AccordionItem key={household.id} value={household.id}>
                       <AccordionTrigger className="hover:no-underline">
                         <div className="flex items-center gap-3 flex-1">
                           <div
-                            className="h-4 w-4 rounded-full border-2 border-white shadow"
+                            className="h-4 w-4 rounded-full border-2 border-gray-200 dark:border-gray-800"
                             style={{ backgroundColor: household.color }}
                           />
                           <div className="flex items-center gap-2 flex-1">
@@ -289,7 +286,7 @@ export default function SettingsPage() {
                             </Badge>
                           </div>
                           {household.description && (
-                            <span className="text-sm text-neutral-500 hidden md:block">
+                            <span className="text-sm text-gray-500 dark:text-gray-400 hidden md:block">
                               {household.description}
                             </span>
                           )}
@@ -309,7 +306,7 @@ export default function SettingsPage() {
                                 ))
                               )}
                               {getHouseholdMeters(household).length === 0 && (
-                                <p className="text-sm text-neutral-500">No meters assigned</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">No meters assigned</p>
                               )}
                             </div>
                           </div>
@@ -322,10 +319,10 @@ export default function SettingsPage() {
                                 {Object.entries(household.costAllocation).map(([key, value]) =>
                                   value ? (
                                     <div key={key} className="text-sm">
-                                      <span className="text-neutral-500 capitalize">
+                                      <span className="text-gray-500 dark:text-gray-400 capitalize">
                                         {key.replace('shared', '')}:
                                       </span>{' '}
-                                      <span className="font-medium">{value}%</span>
+                                      <span className="font-medium font-mono tabular-nums">{value}%</span>
                                     </div>
                                   ) : null
                                 )}
@@ -344,8 +341,9 @@ export default function SettingsPage() {
                             </Button>
                             <Button
                               size="sm"
-                              variant="destructive"
+                              variant="outline"
                               onClick={() => handleDeleteHousehold(household.id, household.name)}
+                              className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Delete
@@ -356,23 +354,20 @@ export default function SettingsPage() {
                     </AccordionItem>
                   ))}
                 </Accordion>
-              </CardContent>
-            </Card>
+            </div>
           </TabsContent>
 
           {/* Prices Tab */}
           <TabsContent value="prices" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Utility Price Management</CardTitle>
-                <CardDescription>
+            <div className="border border-gray-200 dark:border-gray-800 p-8">
+              <div className="mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
+                <h2 className="text-xl font-semibold text-black dark:text-white">Utility Price Management</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                   Configure pricing for electricity, gas, water, and heat
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PriceManagement />
-              </CardContent>
-            </Card>
+                </p>
+              </div>
+              <PriceManagement />
+            </div>
           </TabsContent>
         </Tabs>
       </main>
