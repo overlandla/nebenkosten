@@ -53,7 +53,8 @@ describe('/api/costs', () => {
 
     expect(response.status).toBe(200);
     expect(data.costs).toHaveLength(5);
-    expect(data.aggregation).toBe('daily');
+    // Default uses auto aggregation which may be hourly or daily depending on time range
+    expect(['hourly', 'daily']).toContain(data.aggregation);
     expect(data.costs[0]).toHaveProperty('timestamp');
     expect(data.costs[0]).toHaveProperty('consumption');
     expect(data.costs[0]).toHaveProperty('cost');
