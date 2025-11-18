@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 .PHONY: help install-dashboard update-dashboard configure-dashboard dashboard-connection-test install-dagster update-dagster
 
 help:
