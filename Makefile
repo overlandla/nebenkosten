@@ -104,9 +104,16 @@ update-dashboard:
 		$(CURDIR)/dashboard/ /opt/utility-meter-dashboard/
 	@if [ ! -f /opt/utility-meter-dashboard/.env.local ]; then \
 		echo "[WARN] No .env.local found. Run 'make configure-dashboard' to set up database credentials."; \
+	fi || true
+	@echo "[INFO] Installing dependencies..."
+	@cd /opt/utility-meter-dashboard && npm install >/dev/null 2>&1 || { echo "[ERROR] npm install failed"; exit 1; }
+	@echo "[INFO] Building dashboard..."
+	@cd /opt/utility-meter-dashboard && npm run build 2>&1 | tee /tmp/dashboard-build.log | grep -E "(error|Error|ERROR|✓|✗)" || true
+	@if [ $${PIPESTATUS[0]} -ne 0 ]; then \
+		echo "[ERROR] Build failed. Check /tmp/dashboard-build.log for details"; \
+		tail -50 /tmp/dashboard-build.log; \
+		exit 1; \
 	fi
-	@cd /opt/utility-meter-dashboard && npm install >/dev/null 2>&1
-	@cd /opt/utility-meter-dashboard && npm run build >/dev/null 2>&1
 	@echo "[INFO] Starting service..."
 	@systemctl start utility-meter-dashboard
 	@sleep 2
