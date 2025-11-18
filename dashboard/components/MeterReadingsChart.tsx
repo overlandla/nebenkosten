@@ -58,8 +58,8 @@ export default function MeterReadingsChart({
   const xAxisHeight = isMobile ? 100 : 80;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{displayTitle}</h3>
+    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+      <h3 className="text-lg font-semibold text-neutral-900 mb-4">{displayTitle}</h3>
       <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

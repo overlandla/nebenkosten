@@ -317,14 +317,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black">
-      <header className="border-b border-gray-200 dark:border-gray-800">
+      <header className="border-b border-neutral-200 dark:border-neutral-800">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-semibold text-black dark:text-white tracking-tight">
                 Utility Meter Dashboard
               </h1>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
                 Real-time monitoring and analysis of utility consumption
               </p>
             </div>
@@ -398,42 +398,42 @@ export default function Home() {
           <div className="flex items-center justify-center py-24">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading data...</p>
+              <p className="mt-4 text-neutral-600 dark:text-neutral-400">Loading data...</p>
             </div>
           </div>
         ) : (
           <div className="space-y-8">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="border border-gray-200 dark:border-gray-800">
+              <Card className="border border-neutral-200 dark:border-neutral-800">
                 <CardContent className="p-8">
-                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                  <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
                     Selected Meters
                   </h3>
                   <p className="text-5xl font-semibold text-black dark:text-white tabular-nums">
                     {selectedMeters.length}
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
                     of {METERS_CONFIG.length} available
                   </p>
                 </CardContent>
               </Card>
-              <Card className="border border-gray-200 dark:border-gray-800">
+              <Card className="border border-neutral-200 dark:border-neutral-800">
                 <CardContent className="p-8">
-                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                  <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
                     Time Range
                   </h3>
                   <p className="text-xl font-semibold text-black dark:text-white">
                     {timeRange.label}
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 font-mono">
                     {format(timeRange.start, 'MMM d, yyyy')} – {format(timeRange.end, 'MMM d, yyyy')}
                   </p>
                 </CardContent>
               </Card>
-              <Card className="border border-gray-200 dark:border-gray-800">
+              <Card className="border border-neutral-200 dark:border-neutral-800">
                 <CardContent className="p-8">
-                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                  <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
                     Categories Active
                   </h3>
                   <p className="text-5xl font-semibold text-black dark:text-white tabular-nums">
@@ -444,20 +444,20 @@ export default function Home() {
                         .map((m) => m.category)
                     ).size}
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
                     utility types
                   </p>
                 </CardContent>
               </Card>
-              <Card className="border border-gray-200 dark:border-gray-800">
+              <Card className="border border-neutral-200 dark:border-neutral-800">
                 <CardContent className="p-8">
-                  <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                  <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
                     Data Source
                   </h3>
                   <p className="text-xl font-semibold text-black dark:text-white capitalize">
                     {viewMode}
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
                     {viewMode === 'raw' ? 'Unprocessed meter data' : 'Calculated usage'}
                   </p>
                 </CardContent>
@@ -476,8 +476,8 @@ export default function Home() {
 
                   if (selectedMeters.length === 0) {
                     return (
-                      <div className="border border-gray-200 dark:border-gray-800 p-12 text-center">
-                        <p className="text-gray-500 dark:text-gray-400">
+                      <div className="border border-neutral-200 dark:border-neutral-800 p-12 text-center">
+                        <p className="text-neutral-500 dark:text-neutral-400">
                           No meters selected. Please select meters from the filter panel above.
                         </p>
                       </div>
@@ -504,11 +504,11 @@ export default function Home() {
 
                 {/* Info Section for Raw View */}
                 {selectedMeters.length > 0 && (
-                  <div className="border border-gray-200 dark:border-gray-800 p-8">
+                  <div className="border border-neutral-200 dark:border-neutral-800 p-8">
                     <h3 className="text-sm font-semibold text-black dark:text-white mb-4">
                       About Raw Meter Readings
                     </h3>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
+                    <div className="text-sm text-neutral-600 dark:text-neutral-400 space-y-3">
                       <p>
                         This view displays the actual cumulative meter readings directly from your sensors.
                       </p>
@@ -542,7 +542,7 @@ export default function Home() {
 
               return (
                 <div key={category}>
-                  <h2 className="text-xl font-semibold text-black dark:text-white mb-6 capitalize border-b border-gray-200 dark:border-gray-800 pb-4">
+                  <h2 className="text-xl font-semibold text-black dark:text-white mb-6 capitalize border-b border-neutral-200 dark:border-neutral-800 pb-4">
                     {category} Consumption
                   </h2>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -576,7 +576,7 @@ export default function Home() {
                 <>
                   {heatMeters.length > 1 && (
                     <div>
-                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-neutral-200 dark:border-neutral-800 pb-4">
                         Seasonal Heating Patterns
                       </h2>
                       <SeasonalPatternChart
@@ -589,7 +589,7 @@ export default function Home() {
 
                   {gasMeters.length > 0 && (
                     <div>
-                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-neutral-200 dark:border-neutral-800 pb-4">
                         Seasonal Gas Patterns
                       </h2>
                       <SeasonalPatternChart
@@ -636,7 +636,7 @@ export default function Home() {
                 <>
                   {heatByFloor.length > 1 && (
                     <div>
-                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-neutral-200 dark:border-neutral-800 pb-4">
                         Heat Consumption by Floor
                       </h2>
                       <FloorComparisonChart
@@ -651,7 +651,7 @@ export default function Home() {
 
                   {waterByFloor.length > 1 && (
                     <div>
-                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-neutral-200 dark:border-neutral-800 pb-4">
                         Water Consumption by Floor
                       </h2>
                       <FloorComparisonChart
@@ -666,7 +666,7 @@ export default function Home() {
 
                   {electricityByFloor.length > 1 && (
                     <div>
-                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-neutral-200 dark:border-neutral-800 pb-4">
                         Electricity Consumption by Floor
                       </h2>
                       <FloorComparisonChart
@@ -695,7 +695,7 @@ export default function Home() {
                 <>
                   {keyMeters.length > 0 && (
                     <div>
-                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
+                      <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-neutral-200 dark:border-neutral-800 pb-4">
                         Year-over-Year Comparison
                       </h2>
                       <div className="grid grid-cols-1 gap-6">
@@ -718,7 +718,7 @@ export default function Home() {
             {/* Water Temperature Chart */}
             {waterTempData.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-gray-200 dark:border-gray-800 pb-4">
+                <h2 className="text-xl font-semibold text-black dark:text-white mb-6 border-b border-neutral-200 dark:border-neutral-800 pb-4">
                   Water Temperature
                 </h2>
                 <WaterTemperatureChart
@@ -729,11 +729,11 @@ export default function Home() {
             )}
 
             {/* Info Section */}
-            <div className="border border-gray-200 dark:border-gray-800 p-8">
+            <div className="border border-neutral-200 dark:border-neutral-800 p-8">
               <h3 className="text-sm font-semibold text-black dark:text-white mb-4">
                 About Consumption Analysis
               </h3>
-              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
+              <div className="text-sm text-neutral-600 dark:text-neutral-400 space-y-3">
                 <p>
                   This view displays comprehensive utility consumption data processed by the Dagster pipeline
                   and stored in InfluxDB. All data is pre-processed, interpolated, and ready for analysis.

@@ -188,8 +188,8 @@ export default function PriceManagement() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Price Management</h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <h2 className="text-2xl font-bold text-neutral-900">Price Management</h2>
+          <p className="mt-1 text-sm text-neutral-600">
             Configure time-based pricing for utilities (electricity uses Tibber prices)
           </p>
         </div>
@@ -215,14 +215,14 @@ export default function PriceManagement() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
         <div className="flex flex-wrap gap-4">
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Filter:</label>
+            <label className="text-sm font-medium text-neutral-700">Filter:</label>
             <select
               value={selectedUtility}
               onChange={(e) => setSelectedUtility(e.target.value as UtilityType | 'all')}
-              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+              className="px-3 py-1.5 border border-neutral-300 rounded-lg text-sm"
             >
               <option value="all">All Utilities</option>
               {Object.entries(UTILITY_LABELS).map(([type, { label, icon }]) => (
@@ -237,9 +237,9 @@ export default function PriceManagement() {
               type="checkbox"
               checked={showActiveOnly}
               onChange={(e) => setShowActiveOnly(e.target.checked)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+              className="w-4 h-4 text-blue-600 border-neutral-300 rounded"
             />
-            <span className="text-sm text-gray-700">Show active prices only</span>
+            <span className="text-sm text-neutral-700">Show active prices only</span>
           </label>
         </div>
       </div>
@@ -247,12 +247,12 @@ export default function PriceManagement() {
       {/* Create/Edit Form */}
       {(isCreating || editingPrice) && (
         <div className="bg-blue-50 rounded-lg border-2 border-blue-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">
             {isCreating ? 'Create New Price' : 'Edit Price'}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Utility Type
               </label>
               <select
@@ -266,7 +266,7 @@ export default function PriceManagement() {
                   });
                 }}
                 disabled={!isCreating}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
               >
                 {Object.entries(UTILITY_LABELS).map(([type, { label, icon }]) => (
                   <option key={type} value={type}>
@@ -276,7 +276,7 @@ export default function PriceManagement() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Price per Unit (EUR)
               </label>
               <input
@@ -286,44 +286,44 @@ export default function PriceManagement() {
                 onChange={(e) =>
                   setFormData({ ...formData, pricePerUnit: parseFloat(e.target.value) || 0 })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Unit
               </label>
               <input
                 type="text"
                 value={formData.unit}
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Currency
               </label>
               <input
                 type="text"
                 value={formData.currency}
                 onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Valid From
               </label>
               <input
                 type="datetime-local"
                 value={formData.validFrom}
                 onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Valid To (optional)
               </label>
               <input
@@ -332,18 +332,18 @@ export default function PriceManagement() {
                 onChange={(e) =>
                   setFormData({ ...formData, validTo: e.target.value || null })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Description (optional)
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={2}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg"
                 placeholder="e.g., Winter rate 2024-2025"
               />
             </div>
@@ -358,7 +358,7 @@ export default function PriceManagement() {
             </button>
             <button
               onClick={handleCancel}
-              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="px-6 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors"
             >
               Cancel
             </button>
@@ -367,15 +367,15 @@ export default function PriceManagement() {
       )}
 
       {/* Prices List */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200">
         {loading ? (
-          <div className="p-12 text-center text-gray-500">Loading prices...</div>
+          <div className="p-12 text-center text-neutral-500">Loading prices...</div>
         ) : filteredPrices.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
+          <div className="p-12 text-center text-neutral-500">
             No price configurations found. Click "Add New Price" to create one.
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-neutral-200">
             {filteredPrices.map((price) => {
               const utilityInfo = UTILITY_LABELS[price.utilityType];
               const active = isActive(price);
@@ -383,17 +383,17 @@ export default function PriceManagement() {
               return (
                 <div
                   key={price.id}
-                  className={`p-6 ${active ? 'bg-green-50' : 'bg-gray-50'} hover:bg-gray-100 transition-colors`}
+                  className={`p-6 ${active ? 'bg-green-50' : 'bg-neutral-50'} hover:bg-neutral-100 transition-colors`}
                 >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3">
                         <span className="text-2xl">{utilityInfo.icon}</span>
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900">
+                          <h3 className="text-lg font-semibold text-neutral-900">
                             {utilityInfo.label}
                           </h3>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-neutral-600">
                             {price.description || 'No description'}
                           </p>
                         </div>
@@ -405,28 +405,28 @@ export default function PriceManagement() {
                       </div>
                       <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                         <div>
-                          <span className="text-gray-600">Price:</span>
-                          <p className="font-semibold text-gray-900">
+                          <span className="text-neutral-600">Price:</span>
+                          <p className="font-semibold text-neutral-900">
                             {price.pricePerUnit.toFixed(4)} {price.currency}/{price.unit}
                           </p>
                         </div>
                         <div>
-                          <span className="text-gray-600">Valid From:</span>
-                          <p className="font-semibold text-gray-900">
+                          <span className="text-neutral-600">Valid From:</span>
+                          <p className="font-semibold text-neutral-900">
                             {format(new Date(price.validFrom), 'MMM d, yyyy')}
                           </p>
                         </div>
                         <div>
-                          <span className="text-gray-600">Valid To:</span>
-                          <p className="font-semibold text-gray-900">
+                          <span className="text-neutral-600">Valid To:</span>
+                          <p className="font-semibold text-neutral-900">
                             {price.validTo
                               ? format(new Date(price.validTo), 'MMM d, yyyy')
                               : 'No expiry'}
                           </p>
                         </div>
                         <div>
-                          <span className="text-gray-600">Last Updated:</span>
-                          <p className="font-semibold text-gray-900">
+                          <span className="text-neutral-600">Last Updated:</span>
+                          <p className="font-semibold text-neutral-900">
                             {format(new Date(price.updatedAt), 'MMM d, yyyy')}
                           </p>
                         </div>

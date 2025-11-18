@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
           <div className="max-w-2xl w-full">
             <div className="bg-white rounded-lg shadow-lg border border-red-200 p-8">
               <div className="flex items-start space-x-4">
@@ -58,10 +58,10 @@ export class ErrorBoundary extends Component<Props, State> {
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h1 className="text-2xl font-bold text-neutral-900 mb-2">
                     Something went wrong
                   </h1>
-                  <p className="text-gray-600 mb-4">
+                  <p className="text-neutral-600 mb-4">
                     An unexpected error occurred. Please try refreshing the page.
                   </p>
 
@@ -77,11 +77,11 @@ export class ErrorBoundary extends Component<Props, State> {
                   )}
 
                   {this.state.errorInfo && process.env.NODE_ENV === 'development' && (
-                    <details className="bg-gray-100 rounded-lg p-4 mb-4">
-                      <summary className="text-sm font-semibold text-gray-700 cursor-pointer">
+                    <details className="bg-neutral-100 rounded-lg p-4 mb-4">
+                      <summary className="text-sm font-semibold text-neutral-700 cursor-pointer">
                         Component Stack (Development Only)
                       </summary>
-                      <pre className="text-xs text-gray-600 mt-2 overflow-x-auto">
+                      <pre className="text-xs text-neutral-600 mt-2 overflow-x-auto">
                         {this.state.errorInfo.componentStack}
                       </pre>
                     </details>
@@ -96,7 +96,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     </button>
                     <button
                       onClick={() => window.location.href = '/'}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      className="px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors"
                     >
                       Go to Home
                     </button>

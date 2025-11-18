@@ -35,21 +35,21 @@ function CustomTooltip({ active, payload, unit, color }: any) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
-      <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+    <div className="bg-white dark:bg-neutral-800 p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg shadow-lg">
+      <p className="text-sm font-medium text-neutral-900 dark:text-white mb-2">
         {date.toLocaleString('de-DE', {
           dateStyle: 'medium',
           timeStyle: 'short',
         })}
       </p>
       {data.raw !== undefined && (
-        <p className="text-sm text-gray-600 dark:text-gray-300">
+        <p className="text-sm text-neutral-600 dark:text-neutral-300">
           <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ backgroundColor: color }} />
           Raw: {formatValue(data.raw)}
         </p>
       )}
       {data.interpolated !== undefined && (
-        <p className="text-sm text-gray-600 dark:text-gray-300">
+        <p className="text-sm text-neutral-600 dark:text-neutral-300">
           <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ backgroundColor: color, opacity: 0.6 }} />
           Interpolated: {formatValue(data.interpolated)}
         </p>
@@ -114,22 +114,22 @@ export default function IndividualMeterChart({
   const hasData = rawData.length > 0 || interpolatedData.length > 0;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{meterName}</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">{meterName}</h3>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           {meterId} • {rawData.length} raw readings, {interpolatedData.length} interpolated points
         </p>
       </div>
 
       {!hasData ? (
-        <div className="h-80 flex items-center justify-center text-gray-500 dark:text-gray-400">
+        <div className="h-80 flex items-center justify-center text-neutral-500 dark:text-neutral-400">
           No data available for the selected time range
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={400}>
           <ComposedChart data={combinedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-gray-300 dark:stroke-gray-600" />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-300 dark:stroke-neutral-600" />
             <XAxis
               dataKey="timestamp"
               tickFormatter={formatDate}

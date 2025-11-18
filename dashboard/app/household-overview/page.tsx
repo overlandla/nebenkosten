@@ -96,22 +96,22 @@ export default function HouseholdOverviewPage() {
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white shadow-sm border-b border-neutral-200">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">
                 Annual Household Overview
               </h1>
-              <p className="mt-1 text-sm text-gray-600">
+              <p className="mt-1 text-sm text-neutral-600">
                 Comprehensive consumption and cost breakdown per household
               </p>
             </div>
             <Link
               href="/"
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-center"
+              className="px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors text-center"
             >
               ← Back to Dashboard
             </Link>
@@ -121,14 +121,14 @@ export default function HouseholdOverviewPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Year Selector */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 mb-8">
+          <label className="block text-sm font-medium text-neutral-700 mb-2">
             Select Year
           </label>
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
+            className="px-4 py-2 border border-neutral-300 rounded-lg"
           >
             {yearOptions.map((year) => (
               <option key={year} value={year}>
@@ -142,23 +142,23 @@ export default function HouseholdOverviewPage() {
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <p className="mt-4 text-gray-600">Loading household costs...</p>
+              <p className="mt-4 text-neutral-600">Loading household costs...</p>
             </div>
           </div>
         ) : householdCosts.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <p className="text-gray-500">
+          <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
+            <p className="text-neutral-500">
               No household cost data available for {selectedYear}.
             </p>
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-sm text-neutral-400 mt-2">
               Make sure you have configured households and price settings.
             </p>
           </div>
         ) : (
           <>
             {/* Household Selector */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 mb-8">
+              <h2 className="text-lg font-semibold text-neutral-900 mb-4">
                 Select Household
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -169,14 +169,14 @@ export default function HouseholdOverviewPage() {
                     className={`p-4 rounded-lg border-2 transition-all text-left ${
                       selectedHousehold === household.householdId
                         ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-neutral-200 hover:border-neutral-300'
                     }`}
                   >
-                    <h3 className="font-semibold text-gray-900">{household.householdName}</h3>
+                    <h3 className="font-semibold text-neutral-900">{household.householdName}</h3>
                     <p className="text-2xl font-bold text-blue-600 mt-2">
                       €{household.annualTotals.totalCost.toFixed(2)}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Annual Total</p>
+                    <p className="text-xs text-neutral-500 mt-1">Annual Total</p>
                   </button>
                 ))}
               </div>
@@ -186,8 +186,8 @@ export default function HouseholdOverviewPage() {
             {selectedHouseholdData && (
               <>
                 {/* Annual Totals Summary */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">
+                <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 mb-8">
+                  <h2 className="text-xl font-bold text-neutral-900 mb-6">
                     {selectedHouseholdData.householdName} - {selectedYear} Annual Totals
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -241,19 +241,19 @@ export default function HouseholdOverviewPage() {
                       </p>
                     </div>
 
-                    <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
-                      <h3 className="text-sm font-medium text-gray-100 mb-1">💰 Total</h3>
+                    <div className="bg-neutral-900 rounded-lg p-4 border border-neutral-700">
+                      <h3 className="text-sm font-medium text-neutral-100 mb-1">💰 Total</h3>
                       <p className="text-2xl font-bold text-white">
                         €{selectedHouseholdData.annualTotals.totalCost.toFixed(2)}
                       </p>
-                      <p className="text-sm text-gray-300 mt-1">All utilities</p>
+                      <p className="text-sm text-neutral-300 mt-1">All utilities</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Monthly Cost Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">
+                <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 mb-8">
+                  <h2 className="text-xl font-bold text-neutral-900 mb-6">
                     Monthly Cost Breakdown
                   </h2>
                   <ResponsiveContainer width="100%" height={400}>
@@ -273,8 +273,8 @@ export default function HouseholdOverviewPage() {
                 </div>
 
                 {/* Monthly Consumption Chart */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">
+                <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6 mb-8">
+                  <h2 className="text-xl font-bold text-neutral-900 mb-6">
                     Monthly Consumption Trends
                   </h2>
                   <ResponsiveContainer width="100%" height={400}>
@@ -294,52 +294,52 @@ export default function HouseholdOverviewPage() {
                 </div>
 
                 {/* Monthly Details Table */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
                   <div className="p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">
+                    <h2 className="text-xl font-bold text-neutral-900 mb-6">
                       Monthly Breakdown Table
                     </h2>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-neutral-200">
+                      <thead className="bg-neutral-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Electricity</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Gas</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Water (Cold)</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Water (Warm)</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Heat</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase font-bold">Total</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Month</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Electricity</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Gas</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Water (Cold)</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Water (Warm)</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Heat</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase font-bold">Total</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-neutral-200">
                         {selectedHouseholdData.monthlyBreakdown.map((month) => (
-                          <tr key={month.month} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <tr key={month.month} className="hover:bg-neutral-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-900">
                               {month.month}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <div className="text-sm text-gray-900">€{month.electricityCost.toFixed(2)}</div>
-                              <div className="text-xs text-gray-500">{month.electricityConsumption.toFixed(1)} kWh</div>
+                              <div className="text-sm text-neutral-900">€{month.electricityCost.toFixed(2)}</div>
+                              <div className="text-xs text-neutral-500">{month.electricityConsumption.toFixed(1)} kWh</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <div className="text-sm text-gray-900">€{month.gasCost.toFixed(2)}</div>
-                              <div className="text-xs text-gray-500">{month.gasConsumption.toFixed(1)} kWh</div>
+                              <div className="text-sm text-neutral-900">€{month.gasCost.toFixed(2)}</div>
+                              <div className="text-xs text-neutral-500">{month.gasConsumption.toFixed(1)} kWh</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <div className="text-sm text-gray-900">€{month.waterColdCost.toFixed(2)}</div>
-                              <div className="text-xs text-gray-500">{month.waterColdConsumption.toFixed(1)} m³</div>
+                              <div className="text-sm text-neutral-900">€{month.waterColdCost.toFixed(2)}</div>
+                              <div className="text-xs text-neutral-500">{month.waterColdConsumption.toFixed(1)} m³</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <div className="text-sm text-gray-900">€{month.waterWarmCost.toFixed(2)}</div>
-                              <div className="text-xs text-gray-500">{month.waterWarmConsumption.toFixed(1)} m³</div>
+                              <div className="text-sm text-neutral-900">€{month.waterWarmCost.toFixed(2)}</div>
+                              <div className="text-xs text-neutral-500">{month.waterWarmConsumption.toFixed(1)} m³</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <div className="text-sm text-gray-900">€{month.heatCost.toFixed(2)}</div>
-                              <div className="text-xs text-gray-500">{month.heatConsumption.toFixed(2)} MWh</div>
+                              <div className="text-sm text-neutral-900">€{month.heatCost.toFixed(2)}</div>
+                              <div className="text-xs text-neutral-500">{month.heatConsumption.toFixed(2)} MWh</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-neutral-900">
                               €{month.totalCost.toFixed(2)}
                             </td>
                           </tr>

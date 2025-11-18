@@ -8,6 +8,7 @@ import TimeRangeSelector, { TimeRange } from '@/components/TimeRangeSelector';
 import CostBreakdownChart from '@/components/CostBreakdownChart';
 import CostAllocationTable from '@/components/CostAllocationTable';
 import { HouseholdConfig, DEFAULT_HOUSEHOLD_CONFIG } from '@/types/household';
+import { Button } from '@/components/ui/button';
 
 const STORAGE_KEY = 'household_config';
 
@@ -105,21 +106,20 @@ export default function CostsPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800">
+      <header className="border-b border-neutral-200 dark:border-neutral-800">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 py-8">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-semibold text-black dark:text-white tracking-tight">Cost Analysis & Billing</h1>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
                 Detailed cost breakdown and household allocation
               </p>
             </div>
-            <Link
-              href="/"
-              className="px-4 py-2 border border-gray-200 dark:border-gray-800 text-black dark:text-white hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-center text-sm"
-            >
-              ← Back to Dashboard
-            </Link>
+            <Button variant="outline" asChild>
+              <Link href="/">
+                ← Back to Dashboard
+              </Link>
+            </Button>
           </div>
         </div>
       </header>
@@ -132,43 +132,43 @@ export default function CostsPage() {
           <div className="flex items-center justify-center py-24">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading cost data...</p>
+              <p className="mt-4 text-neutral-600 dark:text-neutral-400">Loading cost data...</p>
             </div>
           </div>
         ) : (
           <div className="space-y-8">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-              <div className="border border-gray-200 dark:border-gray-800 p-8">
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Total Costs</h3>
+              <div className="border border-neutral-200 dark:border-neutral-800 p-8">
+                <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Total Costs</h3>
                 <p className="text-4xl font-semibold text-black dark:text-white tabular-nums">€{grandTotal.toFixed(2)}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{timeRange.label}</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">{timeRange.label}</p>
               </div>
-              <div className="border border-gray-200 dark:border-gray-800 p-8">
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Electricity</h3>
+              <div className="border border-neutral-200 dark:border-neutral-800 p-8">
+                <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Electricity</h3>
                 <p className="text-3xl font-semibold text-black dark:text-white tabular-nums">€{totalElectricityCost.toFixed(2)}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 font-mono">
                   {grandTotal > 0 ? ((totalElectricityCost / grandTotal) * 100).toFixed(1) : '0.0'}% of total
                 </p>
               </div>
-              <div className="border border-gray-200 dark:border-gray-800 p-8">
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Gas</h3>
+              <div className="border border-neutral-200 dark:border-neutral-800 p-8">
+                <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Gas</h3>
                 <p className="text-3xl font-semibold text-black dark:text-white tabular-nums">€{totalGasCost.toFixed(2)}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 font-mono">
                   {grandTotal > 0 ? ((totalGasCost / grandTotal) * 100).toFixed(1) : '0.0'}% of total
                 </p>
               </div>
-              <div className="border border-gray-200 dark:border-gray-800 p-8">
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Water</h3>
+              <div className="border border-neutral-200 dark:border-neutral-800 p-8">
+                <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Water</h3>
                 <p className="text-3xl font-semibold text-black dark:text-white tabular-nums">€{totalWaterCost.toFixed(2)}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 font-mono">
                   {grandTotal > 0 ? ((totalWaterCost / grandTotal) * 100).toFixed(1) : '0.0'}% of total
                 </p>
               </div>
-              <div className="border border-gray-200 dark:border-gray-800 p-8">
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Heat</h3>
+              <div className="border border-neutral-200 dark:border-neutral-800 p-8">
+                <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">Heat</h3>
                 <p className="text-3xl font-semibold text-black dark:text-white tabular-nums">€{totalHeatCost.toFixed(2)}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 font-mono">
                   {grandTotal > 0 ? ((totalHeatCost / grandTotal) * 100).toFixed(1) : '0.0'}% of total
                 </p>
               </div>
@@ -187,9 +187,9 @@ export default function CostsPage() {
             <CostAllocationTable households={householdConfig.households} totalCosts={totalCosts} />
 
             {/* Info Box */}
-            <div className="border border-gray-200 dark:border-gray-800 p-8">
+            <div className="border border-neutral-200 dark:border-neutral-800 p-8">
               <h3 className="text-sm font-semibold text-black dark:text-white mb-4">About Cost Analysis</h3>
-              <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
+              <div className="text-sm text-neutral-600 dark:text-neutral-400 space-y-3">
                 <p>
                   This page displays comprehensive cost analysis from Tibber API (electricity) and
                   estimated costs for other utilities based on consumption data.

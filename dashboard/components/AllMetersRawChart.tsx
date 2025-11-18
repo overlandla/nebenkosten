@@ -31,7 +31,7 @@ function CustomTooltip({ active, payload, meters }: any) {
   if (!timestamp) return null;
 
   return (
-    <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg max-w-xs">
+    <div className="bg-white p-3 border border-neutral-300 rounded-lg shadow-lg max-w-xs">
       <p className="font-semibold text-sm mb-2">
         {format(new Date(timestamp), 'MMM d, yyyy HH:mm')}
       </p>
@@ -50,7 +50,7 @@ function CustomTooltip({ active, payload, meters }: any) {
                 style={{ backgroundColor: entry.color }}
               />
               <span className="font-medium">{meter.name}</span>
-              <span className="text-gray-600">
+              <span className="text-neutral-600">
                 ({isRaw ? 'Raw' : 'Interp'}):
               </span>
               <span className="font-semibold">
@@ -107,8 +107,8 @@ export default function AllMetersRawChart({
   const chartHeight = isMobile ? 400 : 600;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+      <h3 className="text-lg font-semibold text-neutral-900 mb-4">{title}</h3>
 
       {/* Legend explanation */}
       <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
@@ -173,17 +173,17 @@ export default function AllMetersRawChart({
         {meters.map((meter) => (
           <div
             key={meter.id}
-            className="flex items-center gap-2 p-2 rounded bg-gray-50"
+            className="flex items-center gap-2 p-2 rounded bg-neutral-50"
           >
             <div
               className="w-4 h-4 rounded-full flex-shrink-0"
               style={{ backgroundColor: meter.color }}
             />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-neutral-900 truncate">
                 {meter.name}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-neutral-500">
                 {meter.unit} • {meter.rawReadings.length} raw / {meter.interpolatedReadings.length} interp
               </p>
             </div>

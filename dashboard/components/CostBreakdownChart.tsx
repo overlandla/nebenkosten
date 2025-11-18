@@ -44,20 +44,20 @@ export default function CostBreakdownChart({
   const xAxisHeight = isMobile ? 100 : 80;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
         <div className="flex items-center justify-between mt-2">
           <div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-neutral-600">
               Total Cost: <span className="font-bold text-green-600">€{totalCost.toFixed(2)}</span>
             </p>
             {showConsumption && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-neutral-600">
                 Total Consumption: <span className="font-bold text-blue-600">{totalConsumption.toFixed(2)} kWh</span>
               </p>
             )}
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-neutral-600">
               Avg Price: <span className="font-bold text-orange-600">€{avgPrice.toFixed(4)}/kWh</span>
             </p>
           </div>
