@@ -5,13 +5,13 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import useMediaQuery from '@/hooks/useMediaQuery';
 import TimeRangeSelector, { TimeRange } from '@/components/TimeRangeSelector';
-import MeterReadingsChart from '@/components/MeterReadingsChart';
 import ConsumptionChart from '@/components/ConsumptionChart';
 import WaterTemperatureChart from '@/components/WaterTemperatureChart';
 import SeasonalPatternChart from '@/components/SeasonalPatternChart';
 import FloorComparisonChart from '@/components/FloorComparisonChart';
 import YearOverYearChart from '@/components/YearOverYearChart';
-import AllMetersRawChart from '@/components/AllMetersRawChart';
+import IndividualMeterChart from '@/components/IndividualMeterChart';
+import FilterPanel from '@/components/FilterPanel';
 import AggregationInfo from '@/components/AggregationInfo';
 import { HouseholdConfig, DEFAULT_HOUSEHOLD_CONFIG, Household, getHouseholdMeters } from '@/types/household';
 import type { MeterReading, WaterTemperature, MeterConfig } from '@/types/meter';
@@ -89,6 +89,7 @@ export default function Home() {
     'og1_heat',
     'og2_heat',
   ]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Load household config from localStorage
   useEffect(() => {
@@ -363,223 +364,45 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Time Range Selector */}
-        <TimeRangeSelector onRangeChange={setTimeRange} className="mb-8" />
+        <TimeRangeSelector onRangeChange={setTimeRange} className="mb-6" />
 
         {/* Aggregation Info */}
         {aggregationMetadata && (
-          <AggregationInfo metadata={aggregationMetadata} className="mb-8" />
+          <AggregationInfo metadata={aggregationMetadata} className="mb-6" />
         )}
 
-        {/* View Mode Selector */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Dashboard View
-          </h2>
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={() => setViewMode('raw')}
-              className={`flex-1 min-w-[200px] px-6 py-4 rounded-lg font-semibold transition-all ${
-                viewMode === 'raw'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <div className="flex flex-col items-center space-y-2">
-                <span className="text-2xl">📊</span>
-                <span className="text-base">Raw Meter Readings</span>
-                <span className="text-xs opacity-75">
-                  View cumulative meter values over time
-                </span>
-              </div>
-            </button>
-            <button
-              onClick={() => setViewMode('consumption')}
-              className={`flex-1 min-w-[200px] px-6 py-4 rounded-lg font-semibold transition-all ${
-                viewMode === 'consumption'
-                  ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <div className="flex flex-col items-center space-y-2">
-                <span className="text-2xl">📈</span>
-                <span className="text-base">Consumption Analysis</span>
-                <span className="text-xs opacity-75">
-                  Analyze usage patterns and trends
-                </span>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Household Selector */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Select Household
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleHouseholdSelect(null)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedHousehold === null
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🏢 All Meters
-            </button>
-            {householdConfig.households.map((household) => (
-              <button
-                key={household.id}
-                onClick={() => handleHouseholdSelect(household.id)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
-                  selectedHousehold === household.id
-                    ? 'text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                style={{
-                  backgroundColor: selectedHousehold === household.id ? household.color : undefined,
-                }}
-              >
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: household.color }}
-                />
-                <span>{household.name}</span>
-                <span className="text-xs opacity-75">
-                  ({getHouseholdMeters(household).length})
-                </span>
-              </button>
-            ))}
-          </div>
-          {selectedHousehold && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">
-                <strong>Filtering by:</strong>{' '}
-                {householdConfig.households.find((h) => h.id === selectedHousehold)?.name}
-                {' - '}
-                {householdConfig.households.find((h) => h.id === selectedHousehold)?.description}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Category & Meter Selection */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Select Utility Category
-          </h2>
-
-          {/* Category Tabs */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            <button
-              onClick={() => handleCategoryToggle('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => handleCategoryToggle('electricity')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === 'electricity'
-                  ? 'bg-yellow-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              ⚡ Electricity
-            </button>
-            <button
-              onClick={() => handleCategoryToggle('gas')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === 'gas'
-                  ? 'bg-orange-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🔥 Gas
-            </button>
-            <button
-              onClick={() => handleCategoryToggle('heat')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === 'heat'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🌡️ Heat
-            </button>
-            <button
-              onClick={() => handleCategoryToggle('water')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === 'water'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              💧 Water
-            </button>
-            <button
-              onClick={() => handleCategoryToggle('solar')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === 'solar'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              ☀️ Solar
-            </button>
-            <button
-              onClick={() => handleCategoryToggle('virtual')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedCategory === 'virtual'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🔮 Virtual
-            </button>
-          </div>
-
-          {/* Individual Meter Selection */}
-          <div className="space-y-4">
-            {Object.entries(metersByCategory).map(([category, meters]) => (
-              <div key={category} className="border-t border-gray-200 pt-4 first:border-t-0 first:pt-0">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 capitalize">
-                  {category === 'electricity' && '⚡ Electricity'}
-                  {category === 'gas' && '🔥 Gas'}
-                  {category === 'heat' && '🌡️ Heat'}
-                  {category === 'water' && '💧 Water'}
-                  {category === 'solar' && '☀️ Solar'}
-                  {category === 'virtual' && '🔮 Virtual Meters'}
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {meters.map((meter) => (
-                    <label
-                      key={meter.id}
-                      className="flex items-center space-x-2 cursor-pointer p-3 rounded hover:bg-gray-50 min-h-[44px]"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedMeters.includes(meter.id)}
-                        onChange={() => handleMeterToggle(meter.id)}
-                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-sm text-gray-700">{meter.name}</span>
-                        <span className="text-xs text-gray-500">
-                          {meter.unit} • {meter.type}
-                        </span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Filter Panel */}
+        <FilterPanel
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          selectedCategory={selectedCategory}
+          onCategoryChange={handleCategoryToggle}
+          categories={[
+            { id: 'all', label: 'All Categories', count: METERS_CONFIG.length },
+            { id: 'electricity', label: '⚡ Electricity', count: METERS_CONFIG.filter(m => m.category === 'electricity').length },
+            { id: 'gas', label: '🔥 Gas', count: METERS_CONFIG.filter(m => m.category === 'gas').length },
+            { id: 'heat', label: '🌡️ Heat', count: METERS_CONFIG.filter(m => m.category === 'heat').length },
+            { id: 'water', label: '💧 Water', count: METERS_CONFIG.filter(m => m.category === 'water').length },
+            { id: 'solar', label: '☀️ Solar', count: METERS_CONFIG.filter(m => m.category === 'solar').length },
+            { id: 'virtual', label: '🔮 Virtual', count: METERS_CONFIG.filter(m => m.category === 'virtual').length },
+          ]}
+          selectedHousehold={selectedHousehold}
+          onHouseholdChange={handleHouseholdSelect}
+          households={householdConfig.households.map(h => ({
+            id: h.id,
+            name: h.name,
+            color: h.color,
+          }))}
+          selectedMeters={selectedMeters}
+          onMetersChange={setSelectedMeters}
+          availableMeters={METERS_CONFIG.map(m => ({
+            id: m.id,
+            name: m.name,
+            category: m.category,
+          }))}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+        />
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -645,98 +468,61 @@ export default function Home() {
 
             {/* Raw Meter View */}
             {viewMode === 'raw' && (
-              <div className="space-y-8">
-                {/* All Meters Combined Chart */}
+              <div className="space-y-6">
+                {/* Individual meter charts */}
                 {(() => {
                   const meterColors = [
-                    '#3b82f6', // blue
-                    '#ef4444', // red
-                    '#10b981', // green
-                    '#f59e0b', // amber
-                    '#8b5cf6', // violet
-                    '#ec4899', // pink
-                    '#06b6d4', // cyan
-                    '#f97316', // orange
-                    '#84cc16', // lime
-                    '#6366f1', // indigo
+                    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+                    '#ec4899', '#06b6d4', '#f97316', '#84cc16', '#6366f1',
                   ];
 
-                  const metersData = selectedMeters
-                    .map((meterId, index) => {
-                      const config = METERS_CONFIG.find((m) => m.id === meterId);
-                      if (!config) return null;
+                  if (selectedMeters.length === 0) {
+                    return (
+                      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                        <p className="text-gray-500 text-lg">
+                          No meters selected. Please select meters from the filter panel above.
+                        </p>
+                      </div>
+                    );
+                  }
 
-                      return {
-                        id: meterId,
-                        name: config.name,
-                        unit: config.unit,
-                        color: meterColors[index % meterColors.length],
-                        rawReadings: rawMeterData[meterId] || [],
-                        interpolatedReadings: interpolatedMeterData[meterId] || [],
-                      };
-                    })
-                    .filter((m): m is NonNullable<typeof m> => m !== null);
+                  return selectedMeters.map((meterId, index) => {
+                    const config = METERS_CONFIG.find((m) => m.id === meterId);
+                    if (!config) return null;
 
-                  return (
-                    <>
-                      {metersData.length > 0 && (
-                        <AllMetersRawChart
-                          meters={metersData}
-                          title="All Selected Meters - Raw Points & Interpolated Lines"
-                        />
-                      )}
-
-                      {/* Individual meter charts by category */}
-                      {Object.entries(metersByCategory).map(([category, meters]) => {
-                        const selectedInCategory = meters.filter((m) => selectedMeters.includes(m.id));
-                        if (selectedInCategory.length === 0) return null;
-
-                        return (
-                          <div key={category}>
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4 capitalize">
-                              {category === 'electricity' && '⚡ Electricity Meters'}
-                              {category === 'gas' && '🔥 Gas Meters'}
-                              {category === 'heat' && '🌡️ Heat Meters'}
-                              {category === 'water' && '💧 Water Meters'}
-                              {category === 'solar' && '☀️ Solar Meters'}
-                              {category === 'virtual' && '🔮 Virtual Meters'}
-                            </h2>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                              {selectedInCategory.map((meter) => (
-                                <MeterReadingsChart
-                                  key={meter.id}
-                                  rawReadings={rawMeterData[meter.id] || []}
-                                  interpolatedReadings={interpolatedMeterData[meter.id] || []}
-                                  meterId={meter.id}
-                                  unit={meter.unit}
-                                  title={meter.name}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  );
+                    return (
+                      <IndividualMeterChart
+                        key={meterId}
+                        meterId={meterId}
+                        meterName={config.name}
+                        unit={config.unit}
+                        rawData={rawMeterData[meterId] || []}
+                        interpolatedData={interpolatedMeterData[meterId] || []}
+                        color={meterColors[index % meterColors.length]}
+                      />
+                    );
+                  });
                 })()}
 
                 {/* Info Section for Raw View */}
-                <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                    About Raw Meter Readings
-                  </h3>
-                  <div className="text-blue-800 space-y-2">
-                    <p>
-                      This view displays the actual cumulative meter readings directly from your sensors.
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 mt-3">
-                      <li><strong>Raw readings:</strong> Actual sensor values as points (may have gaps)</li>
-                      <li><strong>Interpolated readings:</strong> Daily interpolated values as smooth lines</li>
-                      <li><strong>Cumulative values:</strong> Shows total consumption since meter installation</li>
-                      <li><strong>Data validation:</strong> Use this view to spot anomalies or sensor issues</li>
-                    </ul>
+                {selectedMeters.length > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900 rounded-lg border border-blue-200 dark:border-blue-700 p-6">
+                    <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                      About Raw Meter Readings
+                    </h3>
+                    <div className="text-blue-800 dark:text-blue-200 space-y-2">
+                      <p>
+                        This view displays the actual cumulative meter readings directly from your sensors.
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 mt-3">
+                        <li><strong>Raw readings (points):</strong> Actual sensor values as scatter points - may have gaps or irregular timing</li>
+                        <li><strong>Interpolated data (line):</strong> Daily interpolated values as smooth lines for trend analysis</li>
+                        <li><strong>Cumulative values:</strong> Shows total consumption since meter installation</li>
+                        <li><strong>Data validation:</strong> Use this view to spot anomalies, sensor issues, or data gaps</li>
+                      </ul>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
