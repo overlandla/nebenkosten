@@ -159,29 +159,29 @@ export default function SettingsPage() {
   const hasValidationErrors = Object.values(allocationValidation).some((v) => !v.valid)
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-700 dark:to-purple-800 shadow-lg border-b border-purple-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors">
+              <Link href="/" className="flex items-center gap-2 text-purple-100 hover:text-white transition-colors">
                 <Home className="h-5 w-5" />
                 Dashboard
               </Link>
-              <Separator orientation="vertical" className="h-6" />
+              <Separator orientation="vertical" className="h-6 bg-white/20" />
               <div className="flex items-center gap-2">
-                <SettingsIcon className="h-5 w-5" />
-                <h1 className="text-2xl font-bold">Settings</h1>
+                <SettingsIcon className="h-5 w-5 text-white" />
+                <h1 className="text-2xl font-bold text-white">Settings</h1>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleExport}>
+              <Button variant="secondary" size="sm" onClick={handleExport} className="bg-white/10 hover:bg-white/20 text-white border-white/20">
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="secondary" size="sm" asChild className="bg-white/10 hover:bg-white/20 text-white border-white/20">
                 <label className="cursor-pointer">
                   <Upload className="h-4 w-4 mr-2" />
                   Import
@@ -193,11 +193,11 @@ export default function SettingsPage() {
                   />
                 </label>
               </Button>
-              <Button variant="outline" size="sm" onClick={handleReset}>
+              <Button variant="secondary" size="sm" onClick={handleReset} className="bg-white/10 hover:bg-white/20 text-white border-white/20">
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
+              <Button size="sm" onClick={handleSave} disabled={saving} className="bg-white text-purple-700 hover:bg-white/90">
                 <Save className="h-4 w-4 mr-2" />
                 {saving ? 'Saving...' : 'Save'}
               </Button>
@@ -224,13 +224,13 @@ export default function SettingsPage() {
           <TabsContent value="households" className="mt-6 space-y-6">
             {/* Validation Summary */}
             {hasValidationErrors && (
-              <Card className="border-red-200 bg-red-50">
+              <Card className="border-red-300 dark:border-red-700 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30 shadow-lg">
                 <CardHeader>
-                  <CardTitle className="text-red-700 flex items-center gap-2">
+                  <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
                     <AlertCircle className="h-5 w-5" />
                     Cost Allocation Errors
                   </CardTitle>
-                  <CardDescription className="text-red-600">
+                  <CardDescription className="text-red-600 dark:text-red-400">
                     The following shared utilities have invalid allocations (must sum to 100%):
                   </CardDescription>
                 </CardHeader>
@@ -239,14 +239,14 @@ export default function SettingsPage() {
                     {Object.entries(allocationValidation).map(([key, result]) => (
                       <div
                         key={key}
-                        className={`p-3 rounded-md ${
+                        className={`p-3 rounded-lg shadow-sm ${
                           result.valid
-                            ? 'bg-green-100 border border-green-200'
-                            : 'bg-red-100 border border-red-200'
+                            ? 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700'
+                            : 'bg-red-100 dark:bg-red-900/50 border border-red-300 dark:border-red-700'
                         }`}
                       >
                         <div className="text-sm font-medium capitalize">{key}</div>
-                        <div className={`text-lg font-bold ${result.valid ? 'text-green-700' : 'text-red-700'}`}>
+                        <div className={`text-lg font-bold ${result.valid ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                           {result.total.toFixed(1)}%
                         </div>
                       </div>
@@ -259,19 +259,19 @@ export default function SettingsPage() {
             {/* Add Household Button */}
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-semibold">Manage Households</h2>
-                <p className="text-sm text-neutral-500">
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Manage Households</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Configure households and their cost allocations
                 </p>
               </div>
-              <Button onClick={handleAddHousehold}>
+              <Button onClick={handleAddHousehold} className="bg-purple-600 hover:bg-purple-700 text-white">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Household
               </Button>
             </div>
 
             {/* Households List */}
-            <Card>
+            <Card className="shadow-md border-slate-200 dark:border-slate-700">
               <CardContent className="pt-6">
                 <Accordion type="single" collapsible className="w-full">
                   {config.households.map((household) => (
@@ -362,10 +362,10 @@ export default function SettingsPage() {
 
           {/* Prices Tab */}
           <TabsContent value="prices" className="mt-6">
-            <Card>
+            <Card className="shadow-md border-slate-200 dark:border-slate-700">
               <CardHeader>
-                <CardTitle>Utility Price Management</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-slate-900 dark:text-slate-100">Utility Price Management</CardTitle>
+                <CardDescription className="text-slate-600 dark:text-slate-400">
                   Configure pricing for electricity, gas, water, and heat
                 </CardDescription>
               </CardHeader>
