@@ -23,6 +23,47 @@ interface AllMetersRawChartProps {
   title?: string;
 }
 
+// Custom tooltip to show all meter values at a timestamp
+function CustomTooltip({ active, payload, meters }: any) {
+  if (!active || !payload || !payload.length) return null;
+
+  const timestamp = payload[0]?.payload?.timestamp;
+  if (!timestamp) return null;
+
+  return (
+    <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg max-w-xs">
+      <p className="font-semibold text-sm mb-2">
+        {format(new Date(timestamp), 'MMM d, yyyy HH:mm')}
+      </p>
+      <div className="space-y-1">
+        {payload.map((entry: any, index: number) => {
+          const meterId = entry.dataKey.replace('_raw', '').replace('_interpolated', '');
+          const meter = meters.find((m: MeterData) => m.id === meterId);
+          const isRaw = entry.dataKey.includes('_raw');
+
+          if (!meter || entry.value === undefined) return null;
+
+          return (
+            <div key={index} className="text-xs flex items-center gap-2">
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="font-medium">{meter.name}</span>
+              <span className="text-gray-600">
+                ({isRaw ? 'Raw' : 'Interp'}):
+              </span>
+              <span className="font-semibold">
+                {entry.value.toFixed(2)} {meter.unit}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function AllMetersRawChart({
   meters,
   title = 'All Meters - Raw and Interpolated Readings',
@@ -65,47 +106,6 @@ export default function AllMetersRawChart({
 
   const chartHeight = isMobile ? 400 : 600;
 
-  // Custom tooltip to show all meter values at a timestamp
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (!active || !payload || !payload.length) return null;
-
-    const timestamp = payload[0]?.payload?.timestamp;
-    if (!timestamp) return null;
-
-    return (
-      <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg max-w-xs">
-        <p className="font-semibold text-sm mb-2">
-          {format(new Date(timestamp), 'MMM d, yyyy HH:mm')}
-        </p>
-        <div className="space-y-1">
-          {payload.map((entry: any, index: number) => {
-            const meterId = entry.dataKey.replace('_raw', '').replace('_interpolated', '');
-            const meter = meters.find(m => m.id === meterId);
-            const isRaw = entry.dataKey.includes('_raw');
-
-            if (!meter || entry.value === undefined) return null;
-
-            return (
-              <div key={index} className="text-xs flex items-center gap-2">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span className="font-medium">{meter.name}</span>
-                <span className="text-gray-600">
-                  ({isRaw ? 'Raw' : 'Interp'}):
-                </span>
-                <span className="font-semibold">
-                  {entry.value.toFixed(2)} {meter.unit}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
@@ -135,7 +135,7 @@ export default function AllMetersRawChart({
             stroke="#6b7280"
             label={{ value: 'Reading Value', angle: -90, position: 'insideLeft' }}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip meters={meters} />} />
           <Legend
             wrapperStyle={{ paddingTop: '20px' }}
             iconType="line"
