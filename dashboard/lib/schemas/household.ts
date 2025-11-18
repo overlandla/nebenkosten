@@ -18,13 +18,13 @@ export const householdSchema = z.object({
     heat: z.array(z.string()).optional(),
     solar: z.array(z.string()).optional(),
     virtual: z.array(z.string()).optional(),
-  }).optional().default({}),
+  }).default({}),
   costAllocation: z.object({
     sharedElectricity: z.number().min(0).max(100).optional(),
     sharedGas: z.number().min(0).max(100).optional(),
     sharedWater: z.number().min(0).max(100).optional(),
     sharedHeat: z.number().min(0).max(100).optional(),
-  }).optional().default({}),
+  }).optional(),
   description: z.string().optional(),
 })
 
