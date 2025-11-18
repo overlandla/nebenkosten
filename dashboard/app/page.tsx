@@ -19,7 +19,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { getHouseholdMeters } from '@/types/household';
 import type { MeterReading, WaterTemperature, MeterConfig } from '@/types/meter';
 import {
-  Home,
+  Home as HomeIcon,
   DollarSign,
   Settings,
   Zap,
@@ -331,7 +331,7 @@ export default function Home() {
             <div className="flex gap-2">
               <Button variant="outline" size={isMobile ? 'icon' : 'default'} asChild>
                 <Link href="/household-overview" title="Household Overview">
-                  <Home className="h-4 w-4" />
+                  <HomeIcon className="h-4 w-4" />
                   {!isMobile && <span className="ml-2">Annual Overview</span>}
                 </Link>
               </Button>

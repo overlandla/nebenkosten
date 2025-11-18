@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 .PHONY: help install-dashboard update-dashboard configure-dashboard dashboard-connection-test install-dagster update-dagster
 
 help:
@@ -108,12 +110,13 @@ update-dashboard:
 	@echo "[INFO] Installing dependencies..."
 	@cd /opt/utility-meter-dashboard && npm install >/dev/null 2>&1 || { echo "[ERROR] npm install failed"; exit 1; }
 	@echo "[INFO] Building dashboard..."
-	@cd /opt/utility-meter-dashboard && npm run build 2>&1 | tee /tmp/dashboard-build.log | grep -E "(error|Error|ERROR|✓|✗)" || true
-	@if [ $${PIPESTATUS[0]} -ne 0 ]; then \
-		echo "[ERROR] Build failed. Check /tmp/dashboard-build.log for details"; \
-		tail -50 /tmp/dashboard-build.log; \
-		exit 1; \
-	fi
+	@cd /opt/utility-meter-dashboard && \
+		npm run build 2>&1 | tee /tmp/dashboard-build.log | grep -E "(error|Error|ERROR|✓|✗)" || true; \
+		if [ $${PIPESTATUS[0]} -ne 0 ]; then \
+			echo "[ERROR] Build failed. Check /tmp/dashboard-build.log for details"; \
+			tail -50 /tmp/dashboard-build.log; \
+			exit 1; \
+		fi
 	@echo "[INFO] Starting service..."
 	@systemctl start utility-meter-dashboard
 	@sleep 2

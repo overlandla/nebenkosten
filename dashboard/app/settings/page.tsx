@@ -302,7 +302,7 @@ export default function SettingsPage() {
                             <h4 className="text-sm font-semibold mb-2">Assigned Meters</h4>
                             <div className="flex flex-wrap gap-2">
                               {Object.entries(household.meters).map(([category, meters]) =>
-                                meters?.map((meter) => (
+                                meters?.map((meter: string) => (
                                   <Badge key={meter} variant="outline">
                                     {meter}
                                   </Badge>
