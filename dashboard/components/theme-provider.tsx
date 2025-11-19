@@ -124,8 +124,14 @@ export function ThemeProvider({
 export const useTheme = () => {
   const context = React.useContext(ThemeProviderContext)
 
-  if (context === undefined)
-    throw new Error('useTheme must be used within a ThemeProvider')
+  if (context === undefined) {
+    // Return default values for SSR
+    return {
+      theme: 'system' as Theme,
+      setTheme: () => {},
+      actualTheme: 'light' as 'light' | 'dark',
+    }
+  }
 
   return context
 }
