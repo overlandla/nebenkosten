@@ -3,6 +3,7 @@
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 import { format } from 'date-fns';
 import useMediaQuery from '@/hooks/useMediaQuery';
+import { useTheme } from '@/components/theme-provider';
 
 export interface CostData {
   timestamp: string;
@@ -24,6 +25,8 @@ export default function CostBreakdownChart({
   showConsumption = true,
 }: CostBreakdownChartProps) {
   const isMobile = useMediaQuery('(max-width: 640px)');
+  const { actualTheme } = useTheme();
+  const isDark = actualTheme === 'dark';
 
   const chartData = data
     .map((item) => ({
@@ -43,22 +46,27 @@ export default function CostBreakdownChart({
   const xAxisAngle = isMobile ? -90 : -45;
   const xAxisHeight = isMobile ? 100 : 80;
 
+  const textColor = isDark ? '#a3a3a3' : '#525252';
+  const gridColor = isDark ? '#404040' : '#e5e5e5';
+  const tooltipBg = isDark ? 'rgba(10, 10, 10, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+  const tooltipBorder = isDark ? '#404040' : '#e5e5e5';
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+    <div className="bg-white dark:bg-neutral-950 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">{title}</h3>
         <div className="flex items-center justify-between mt-2">
           <div>
-            <p className="text-sm text-neutral-600">
-              Total Cost: <span className="font-bold text-green-600">€{totalCost.toFixed(2)}</span>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              Total Cost: <span className="font-bold text-green-600 dark:text-green-400">€{totalCost.toFixed(2)}</span>
             </p>
             {showConsumption && (
-              <p className="text-sm text-neutral-600">
-                Total Consumption: <span className="font-bold text-blue-600">{totalConsumption.toFixed(2)} kWh</span>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                Total Consumption: <span className="font-bold text-blue-600 dark:text-blue-400">{totalConsumption.toFixed(2)} kWh</span>
               </p>
             )}
-            <p className="text-sm text-neutral-600">
-              Avg Price: <span className="font-bold text-orange-600">€{avgPrice.toFixed(4)}/kWh</span>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              Avg Price: <span className="font-bold text-orange-600 dark:text-orange-400">€{avgPrice.toFixed(4)}/kWh</span>
             </p>
           </div>
         </div>
@@ -66,10 +74,10 @@ export default function CostBreakdownChart({
 
       <ResponsiveContainer width="100%" height={chartHeight}>
         <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
           <XAxis
             dataKey="formattedDate"
-            stroke="#6b7280"
+            stroke={textColor}
             angle={xAxisAngle}
             textAnchor="end"
             height={xAxisHeight}
@@ -77,15 +85,15 @@ export default function CostBreakdownChart({
           />
           <YAxis
             yAxisId="left"
-            stroke="#6b7280"
-            label={{ value: '€', angle: -90, position: 'insideLeft' }}
+            stroke={textColor}
+            label={{ value: '€', angle: -90, position: 'insideLeft', style: { fill: textColor } }}
           />
           {showConsumption && (
             <YAxis
               yAxisId="right"
               orientation="right"
-              stroke="#6b7280"
-              label={{ value: 'kWh', angle: 90, position: 'insideRight' }}
+              stroke={textColor}
+              label={{ value: 'kWh', angle: 90, position: 'insideRight', style: { fill: textColor } }}
             />
           )}
           <Tooltip
@@ -96,9 +104,13 @@ export default function CostBreakdownChart({
               return value;
             }}
             contentStyle={{
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              border: '1px solid #e5e7eb',
+              backgroundColor: tooltipBg,
+              border: `1px solid ${tooltipBorder}`,
               borderRadius: '6px',
+              color: isDark ? '#fafafa' : '#0a0a0a',
+            }}
+            labelStyle={{
+              color: isDark ? '#fafafa' : '#0a0a0a',
             }}
           />
           <Legend />

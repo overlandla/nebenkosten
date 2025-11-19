@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Providers } from "@/components/providers";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "Utility Meter Dashboard",
@@ -14,13 +15,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
-        <Providers>
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
-        </Providers>
+        <ThemeProvider defaultTheme="system" storageKey="nebenkosten-theme">
+          <Providers>
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

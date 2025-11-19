@@ -3,6 +3,7 @@
 import { ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import useMediaQuery from '@/hooks/useMediaQuery';
+import { useTheme } from '@/components/theme-provider';
 
 interface MeterReading {
   timestamp: string;
@@ -31,8 +32,8 @@ function CustomTooltip({ active, payload, meters }: any) {
   if (!timestamp) return null;
 
   return (
-    <div className="bg-white p-3 border border-neutral-300 rounded-lg shadow-lg max-w-xs">
-      <p className="font-semibold text-sm mb-2">
+    <div className="bg-white dark:bg-neutral-950 p-3 border border-neutral-300 dark:border-neutral-700 rounded-lg shadow-lg max-w-xs">
+      <p className="font-semibold text-sm mb-2 text-neutral-900 dark:text-neutral-50">
         {format(new Date(timestamp), 'MMM d, yyyy HH:mm')}
       </p>
       <div className="space-y-1">
@@ -44,13 +45,13 @@ function CustomTooltip({ active, payload, meters }: any) {
           if (!meter || entry.value === undefined) return null;
 
           return (
-            <div key={index} className="text-xs flex items-center gap-2">
+            <div key={index} className="text-xs flex items-center gap-2 text-neutral-900 dark:text-neutral-50">
               <div
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
               <span className="font-medium">{meter.name}</span>
-              <span className="text-neutral-600">
+              <span className="text-neutral-600 dark:text-neutral-400">
                 ({isRaw ? 'Raw' : 'Interp'}):
               </span>
               <span className="font-semibold">
@@ -69,6 +70,8 @@ export default function AllMetersRawChart({
   title = 'All Meters - Raw and Interpolated Readings',
 }: AllMetersRawChartProps) {
   const isMobile = useMediaQuery('(max-width: 640px)');
+  const { actualTheme } = useTheme();
+  const isDark = actualTheme === 'dark';
 
   // Combine all meter data into a single timeline
   const combinedData = new Map<string, any>();
@@ -106,9 +109,14 @@ export default function AllMetersRawChart({
 
   const chartHeight = isMobile ? 400 : 600;
 
+  const textColor = isDark ? '#a3a3a3' : '#525252';
+  const gridColor = isDark ? '#404040' : '#e5e5e5';
+  const tooltipBg = isDark ? 'rgba(10, 10, 10, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+  const tooltipBorder = isDark ? '#404040' : '#e5e5e5';
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
-      <h3 className="text-lg font-semibold text-neutral-900 mb-4">{title}</h3>
+    <div className="bg-white dark:bg-neutral-950 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 p-6">
+      <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 mb-4">{title}</h3>
 
       {/* Legend explanation */}
       <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
@@ -120,20 +128,20 @@ export default function AllMetersRawChart({
 
       <ResponsiveContainer width="100%" height={chartHeight}>
         <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
           <XAxis
             dataKey="timestamp"
             type="number"
             domain={['auto', 'auto']}
             tickFormatter={(timestamp) => format(new Date(timestamp), 'MMM d')}
-            stroke="#6b7280"
+            stroke={textColor}
             angle={isMobile ? -90 : -45}
             textAnchor="end"
             height={60}
           />
           <YAxis
-            stroke="#6b7280"
-            label={{ value: 'Reading Value', angle: -90, position: 'insideLeft' }}
+            stroke={textColor}
+            label={{ value: 'Reading Value', angle: -90, position: 'insideLeft', style: { fill: textColor } }}
           />
           <Tooltip content={<CustomTooltip meters={meters} />} />
           <Legend

@@ -14,6 +14,7 @@ import YearOverYearChart from '@/components/YearOverYearChart';
 import IndividualMeterChart from '@/components/IndividualMeterChart';
 import FilterPanel from '@/components/FilterPanel';
 import AggregationInfo from '@/components/AggregationInfo';
+import { ThemeSelector } from '@/components/theme-selector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getHouseholdMeters } from '@/types/household';
@@ -347,6 +348,7 @@ export default function Home() {
                   {!isMobile && <span className="ml-2">Settings</span>}
                 </Link>
               </Button>
+              <ThemeSelector />
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { format, parseISO } from 'date-fns';
 import useMediaQuery from '@/hooks/useMediaQuery';
 import type { MeterReading, FloorMeter, ChartMeterData } from '@/types/meter';
+import { useTheme } from '@/components/theme-provider';
 
 interface FloorComparisonChartProps {
   data: ChartMeterData;
@@ -27,6 +28,8 @@ export default function FloorComparisonChart({
   stacked = true,
 }: FloorComparisonChartProps) {
   const isMobile = useMediaQuery('(max-width: 640px)');
+  const { actualTheme } = useTheme();
+  const isDark = actualTheme === 'dark';
 
   // Combine all meter data into single timeline
   const combinedData: { [timestamp: string]: CombinedDataPoint } = {};
@@ -61,10 +64,15 @@ export default function FloorComparisonChart({
   const xAxisAngle = isMobile ? -90 : -45;
   const xAxisHeight = isMobile ? 100 : 80;
 
+  const textColor = isDark ? '#a3a3a3' : '#525252';
+  const gridColor = isDark ? '#404040' : '#e5e5e5';
+  const tooltipBg = isDark ? 'rgba(10, 10, 10, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+  const tooltipBorder = isDark ? '#404040' : '#e5e5e5';
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+    <div className="bg-white dark:bg-neutral-950 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 mb-4">{title}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
           {floorTotals.map(({ meter, total }) => (
             <div key={meter.id} className="bg-neutral-50 rounded p-3 border-l-4" style={{ borderColor: meter.color }}>
@@ -82,18 +90,18 @@ export default function FloorComparisonChart({
 
       <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
           <XAxis
             dataKey="formattedDate"
-            stroke="#6b7280"
+            stroke={textColor}
             angle={xAxisAngle}
             textAnchor="end"
             height={xAxisHeight}
             style={{ fontSize: isMobile ? '12px' : '14px' }}
           />
           <YAxis
-            stroke="#6b7280"
-            label={{ value: unit, angle: -90, position: 'insideLeft' }}
+            stroke={textColor}
+            label={{ value: unit, angle: -90, position: 'insideLeft', style: { fill: textColor } }}
           />
           <Tooltip
             formatter={(value: number, name: string) => {
@@ -101,9 +109,13 @@ export default function FloorComparisonChart({
               return [`${value.toFixed(2)} ${unit}`, meter?.name || name];
             }}
             contentStyle={{
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              border: '1px solid #e5e7eb',
+              backgroundColor: tooltipBg,
+              border: `1px solid ${tooltipBorder}`,
               borderRadius: '6px',
+              color: isDark ? '#fafafa' : '#0a0a0a',
+            }}
+            labelStyle={{
+              color: isDark ? '#fafafa' : '#0a0a0a',
             }}
           />
           <Legend />
