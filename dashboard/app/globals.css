@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  /* Geist/Vercel Minimalist Palette */
+  /* Geist/Vercel Minimalist Palette - Light Mode (Default) */
   --background: #ffffff;
   --foreground: #000000;
   --card: #ffffff;
@@ -36,31 +36,30 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #000000;
-    --foreground: #ffffff;
-    --card: #0a0a0a;
-    --card-foreground: #ffffff;
-    --primary: #ffffff;
-    --primary-foreground: #000000;
-    --secondary: #999999;
-    --secondary-foreground: #000000;
-    --accent: #1a1a1a;
-    --accent-foreground: #ffffff;
-    --muted: #1a1a1a;
-    --muted-foreground: #999999;
-    --border: #262626;
-    --input: #262626;
-    --ring: #ffffff;
+/* Dark mode - class-based for manual theme switching */
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0a;
+  --card-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #999999;
+  --secondary-foreground: #000000;
+  --accent: #1a1a1a;
+  --accent-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: #999999;
+  --border: #262626;
+  --input: #262626;
+  --ring: #ffffff;
 
-    /* Dark mode semantic colors */
-    --electricity: #fbbf24;
-    --gas: #f87171;
-    --water: #60a5fa;
-    --heat: #ef4444;
-    --solar: #fcd34d;
-  }
+  /* Dark mode semantic colors */
+  --electricity: #fbbf24;
+  --gas: #f87171;
+  --water: #60a5fa;
+  --heat: #ef4444;
+  --solar: #fcd34d;
 }
 
 body {

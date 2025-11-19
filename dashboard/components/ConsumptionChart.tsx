@@ -3,6 +3,7 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import useMediaQuery from '@/hooks/useMediaQuery';
+import { useTheme } from '@/components/theme-provider';
 import type { ConsumptionData } from '@/types/meter';
 
 interface ConsumptionChartProps {
@@ -21,7 +22,8 @@ export default function ConsumptionChart({
   color = '#3b82f6',
 }: ConsumptionChartProps) {
   const isMobile = useMediaQuery('(max-width: 640px)');
-  const isDark = useMediaQuery('(prefers-color-scheme: dark)');
+  const { actualTheme } = useTheme();
+  const isDark = actualTheme === 'dark';
 
   const chartData = data
     .map((item) => ({

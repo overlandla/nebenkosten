@@ -3,6 +3,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format, parseISO, getYear, getMonth } from 'date-fns';
 import useMediaQuery from '@/hooks/useMediaQuery';
+import { useTheme } from '@/components/theme-provider';
 
 interface MeterReading {
   timestamp: string;
@@ -25,6 +26,8 @@ export default function YearOverYearChart({
   title,
 }: YearOverYearChartProps) {
   const isMobile = useMediaQuery('(max-width: 640px)');
+  const { actualTheme } = useTheme();
+  const isDark = actualTheme === 'dark';
 
   // Group data by year and month
   const yearlyData: { [year: number]: { [month: number]: number } } = {};
@@ -84,10 +87,15 @@ export default function YearOverYearChart({
 
   const chartHeight = isMobile ? 300 : 400;
 
+  const textColor = isDark ? '#a3a3a3' : '#525252';
+  const gridColor = isDark ? '#404040' : '#e5e5e5';
+  const tooltipBg = isDark ? 'rgba(10, 10, 10, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+  const tooltipBorder = isDark ? '#404040' : '#e5e5e5';
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+    <div className="bg-white dark:bg-neutral-950 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-neutral-900">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 mb-4">
           {title || `Year-over-Year Comparison: ${meterName}`}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
@@ -104,11 +112,11 @@ export default function YearOverYearChart({
 
       <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis dataKey="month" stroke="#6b7280" />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+          <XAxis dataKey="month" stroke={textColor} />
           <YAxis
-            stroke="#6b7280"
-            label={{ value: unit, angle: -90, position: 'insideLeft' }}
+            stroke={textColor}
+            label={{ value: unit, angle: -90, position: 'insideLeft', style: { fill: textColor } }}
           />
           <Tooltip
             formatter={(value: number, name: string) => {
@@ -116,9 +124,13 @@ export default function YearOverYearChart({
               return [`${value.toFixed(2)} ${unit}`, year];
             }}
             contentStyle={{
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              border: '1px solid #e5e7eb',
+              backgroundColor: tooltipBg,
+              border: `1px solid ${tooltipBorder}`,
               borderRadius: '6px',
+              color: isDark ? '#fafafa' : '#0a0a0a',
+            }}
+            labelStyle={{
+              color: isDark ? '#fafafa' : '#0a0a0a',
             }}
           />
           <Legend
