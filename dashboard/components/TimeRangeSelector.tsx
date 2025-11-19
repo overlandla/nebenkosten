@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { subDays, subMonths, subYears, format } from 'date-fns';
 import useMediaQuery from '@/hooks/useMediaQuery';
+import { Button } from '@/components/ui/button';
 
 export interface TimeRange {
   start: Date;
@@ -55,37 +56,31 @@ export default function TimeRangeSelector({ onRangeChange, className = '' }: Tim
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${className}`}>
+    <div className={`bg-white dark:bg-neutral-950 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 p-4 ${className}`}>
       <div className="flex flex-wrap gap-2 mb-4">
         {PRESET_RANGES.map((preset) => (
-          <button
+          <Button
             key={preset.label}
             onClick={() => handlePresetClick(preset)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              selectedPreset === preset.label && !customMode
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            variant={selectedPreset === preset.label && !customMode ? 'default' : 'secondary'}
+            size="sm"
           >
             {preset.label}
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
           onClick={() => setCustomMode(!customMode)}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            customMode
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
+          variant={customMode ? 'default' : 'secondary'}
+          size="sm"
         >
           Custom Range
-        </button>
+        </Button>
       </div>
 
       {customMode && (
-        <div className={`p-4 bg-gray-50 rounded-md ${isMobile ? 'space-y-4' : 'flex items-end gap-4'}`}>
+        <div className={`p-4 bg-neutral-50 dark:bg-neutral-900 rounded-md ${isMobile ? 'space-y-4' : 'flex items-end gap-4'}`}>
           <div className="flex-1">
-            <label htmlFor="custom-start-date" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="custom-start-date" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
               Start Date
             </label>
             <input
@@ -93,11 +88,11 @@ export default function TimeRangeSelector({ onRangeChange, className = '' }: Tim
               type="date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 rounded-md focus:outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-neutral-300"
             />
           </div>
           <div className="flex-1">
-            <label htmlFor="custom-end-date" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="custom-end-date" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
               End Date
             </label>
             <input
@@ -105,15 +100,15 @@ export default function TimeRangeSelector({ onRangeChange, className = '' }: Tim
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 rounded-md focus:outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-neutral-300"
             />
           </div>
-          <button
+          <Button
             onClick={handleCustomApply}
-            className={`px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${isMobile ? 'w-full' : ''}`}
+            className={isMobile ? 'w-full' : ''}
           >
             Apply
-          </button>
+          </Button>
         </div>
       )}
     </div>

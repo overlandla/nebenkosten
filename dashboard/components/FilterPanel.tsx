@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Button } from '@/components/ui/button';
 
 interface FilterPanelProps {
   // View mode
@@ -81,18 +82,18 @@ export default function FilterPanel({
   });
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+    <div className="bg-white dark:bg-neutral-950 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 p-6 mb-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
         {/* View Mode Selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
             View Mode
           </label>
           <select
             value={viewMode}
             onChange={(e) => onViewModeChange(e.target.value as 'raw' | 'consumption')}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-neutral-300"
           >
             <option value="raw">Raw Meter Readings</option>
             <option value="consumption">Consumption Analysis</option>
@@ -101,13 +102,13 @@ export default function FilterPanel({
 
         {/* Household Selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
             Household
           </label>
           <select
             value={selectedHousehold || 'all'}
             onChange={(e) => onHouseholdChange(e.target.value === 'all' ? null : e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-neutral-300"
           >
             <option value="all">All Households</option>
             {households.map(household => (
@@ -120,13 +121,13 @@ export default function FilterPanel({
 
         {/* Category Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
             Category
           </label>
           <select
             value={selectedCategory}
             onChange={(e) => onCategoryChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-neutral-300"
           >
             {categories.map(cat => (
               <option key={cat.id} value={cat.id}>
@@ -138,12 +139,12 @@ export default function FilterPanel({
 
         {/* Meter Multi-Select */}
         <div className="relative" ref={dropdownRef}>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
             Meters
           </label>
           <button
             onClick={() => setMetersDropdownOpen(!metersDropdownOpen)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-left focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white flex justify-between items-center"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 rounded-md shadow-sm text-left focus:outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-neutral-300 flex justify-between items-center"
           >
             <span className="truncate">
               {selectedMeters.length === 0
@@ -161,61 +162,64 @@ export default function FilterPanel({
           </button>
 
           {metersDropdownOpen && (
-            <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-96 overflow-hidden flex flex-col">
+            <div className="absolute z-10 mt-1 w-full bg-white dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded-md shadow-lg max-h-96 overflow-hidden flex flex-col">
               {/* Search box */}
-              <div className="p-3 border-b border-gray-200 dark:border-gray-600">
+              <div className="p-3 border-b border-neutral-200 dark:border-neutral-800">
                 <input
                   type="text"
                   placeholder="Search meters..."
                   value={searchTerm}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-neutral-950 dark:focus:ring-neutral-300"
                 />
               </div>
 
               {/* Select/Clear all */}
-              <div className="p-2 border-b border-gray-200 dark:border-gray-600 flex gap-2">
-                <button
+              <div className="p-2 border-b border-neutral-200 dark:border-neutral-800 flex gap-2">
+                <Button
                   onClick={selectAllMeters}
-                  className="flex-1 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                  size="sm"
+                  className="flex-1"
                 >
                   Select All
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={clearAllMeters}
-                  className="flex-1 px-3 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+                  size="sm"
+                  variant="secondary"
+                  className="flex-1"
                 >
                   Clear All
-                </button>
+                </Button>
               </div>
 
               {/* Meter list */}
               <div className="overflow-y-auto flex-1">
                 {filteredMeters.length === 0 ? (
-                  <div className="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                  <div className="p-3 text-sm text-neutral-500 dark:text-neutral-400 text-center">
                     No meters found
                   </div>
                 ) : (
                   filteredMeters.map(meter => (
                     <label
                       key={meter.id}
-                      className="flex items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
+                      className="flex items-center px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer"
                     >
                       <input
                         type="checkbox"
                         checked={selectedMeters.includes(meter.id)}
                         onChange={() => toggleMeter(meter.id)}
-                        className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        className="mr-3 h-4 w-4 rounded border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-50 focus:ring-neutral-950 dark:focus:ring-neutral-300"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        <div className="text-sm font-medium text-neutral-900 dark:text-neutral-50 truncate">
                           {meter.name}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
                           {meter.id}
                         </div>
                       </div>
-                      <span className="ml-2 px-2 py-1 text-xs rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
+                      <span className="ml-2 px-2 py-1 text-xs rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
                         {meter.category}
                       </span>
                     </label>
@@ -229,16 +233,16 @@ export default function FilterPanel({
 
       {/* Active filters summary */}
       {(selectedHousehold || selectedCategory !== 'all' || selectedMeters.length > 0) && (
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800">
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Active filters:</span>
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Active filters:</span>
 
             {selectedHousehold && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
                 Household: {households.find(h => h.id === selectedHousehold)?.name}
                 <button
                   onClick={() => onHouseholdChange(null)}
-                  className="ml-2 hover:text-blue-900 dark:hover:text-blue-100"
+                  className="ml-2 hover:text-neutral-900 dark:hover:text-neutral-100"
                 >
                   ×
                 </button>
@@ -246,11 +250,11 @@ export default function FilterPanel({
             )}
 
             {selectedCategory !== 'all' && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
                 Category: {categories.find(c => c.id === selectedCategory)?.label}
                 <button
                   onClick={() => onCategoryChange('all')}
-                  className="ml-2 hover:text-green-900 dark:hover:text-green-100"
+                  className="ml-2 hover:text-neutral-900 dark:hover:text-neutral-100"
                 >
                   ×
                 </button>
@@ -258,11 +262,11 @@ export default function FilterPanel({
             )}
 
             {selectedMeters.length > 0 && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200">
                 {selectedMeters.length} meter{selectedMeters.length !== 1 ? 's' : ''} selected
                 <button
                   onClick={clearAllMeters}
-                  className="ml-2 hover:text-purple-900 dark:hover:text-purple-100"
+                  className="ml-2 hover:text-neutral-900 dark:hover:text-neutral-100"
                 >
                   ×
                 </button>

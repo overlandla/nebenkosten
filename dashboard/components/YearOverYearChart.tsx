@@ -85,15 +85,15 @@ export default function YearOverYearChart({
   const chartHeight = isMobile ? 300 : 400;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-semibold text-neutral-900">
           {title || `Year-over-Year Comparison: ${meterName}`}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
           {yearTotals.map(({ year, avg, color }) => (
-            <div key={year} className="bg-gray-50 rounded p-3 border-l-4" style={{ borderColor: color }}>
-              <p className="text-xs text-gray-600">Year {year}</p>
+            <div key={year} className="bg-neutral-50 rounded p-3 border-l-4" style={{ borderColor: color }}>
+              <p className="text-xs text-neutral-600">Year {year}</p>
               <p className="text-lg font-bold" style={{ color }}>
                 {avg.toFixed(2)} {unit}/mo
               </p>

@@ -62,17 +62,17 @@ export default function FloorComparisonChart({
   const xAxisHeight = isMobile ? 100 : 80;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <h3 className="text-lg font-semibold text-neutral-900">{title}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
           {floorTotals.map(({ meter, total }) => (
-            <div key={meter.id} className="bg-gray-50 rounded p-3 border-l-4" style={{ borderColor: meter.color }}>
-              <p className="text-xs text-gray-600">{meter.name}</p>
+            <div key={meter.id} className="bg-neutral-50 rounded p-3 border-l-4" style={{ borderColor: meter.color }}>
+              <p className="text-xs text-neutral-600">{meter.name}</p>
               <p className="text-lg font-bold" style={{ color: meter.color }}>
                 {total.toFixed(2)} {unit}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-neutral-500">
                 {grandTotal > 0 ? ((total / grandTotal) * 100).toFixed(1) : 0}% of total
               </p>
             </div>
@@ -120,10 +120,10 @@ export default function FloorComparisonChart({
       </ResponsiveContainer>
 
       {/* Total Summary */}
-      <div className="mt-4 bg-gray-100 rounded-lg p-4">
+      <div className="mt-4 bg-neutral-100 rounded-lg p-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">Total Consumption:</span>
-          <span className="text-xl font-bold text-gray-900">
+          <span className="text-sm font-medium text-neutral-700">Total Consumption:</span>
+          <span className="text-xl font-bold text-neutral-900">
             {grandTotal.toFixed(2)} {unit}
           </span>
         </div>
