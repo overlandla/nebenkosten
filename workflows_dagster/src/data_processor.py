@@ -739,8 +739,8 @@ class DataProcessor:
                             )
                         else:
                             logging.debug(
-                                f"Gap < 7 days, using linear extrapolation "
-                                f"(seasonal not needed)"
+                                "Gap < 7 days, using linear extrapolation "
+                                "(seasonal not needed)"
                             )
 
                         extrapolated_value = latest_value + total_estimated_consumption
