@@ -2,24 +2,21 @@
 Tests for interpolation validation and quality report assets
 """
 
-import pandas as pd
-import pytest
-from unittest.mock import Mock
-
-# Import Dagster testing utilities
-from dagster import build_asset_context
-
-# Import the functions we want to test
 import sys
 from pathlib import Path
+from unittest.mock import Mock
+
+import pandas as pd
+import pytest
+from dagster import build_asset_context
 
 # Add workflows_dagster to path
 workflows_dagster_path = Path(__file__).parent.parent.parent / "workflows_dagster"
 sys.path.insert(0, str(workflows_dagster_path))
 
 from dagster_project.assets.analytics_assets import (
-    interpolation_validation,
     interpolation_quality_report,
+    interpolation_validation,
 )
 
 
