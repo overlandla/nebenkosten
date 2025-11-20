@@ -270,9 +270,7 @@ class TestDataProcessorIntegration:
         assert mock_influx_client_with_data.fetch_all_meter_data.call_count == 1
         pd.testing.assert_frame_equal(result1, result2)
 
-    def test_missing_installation_date_raises_error(
-        self, mock_influx_client_with_data
-    ):
+    def test_missing_installation_date_raises_error(self, mock_influx_client_with_data):
         """Test that missing installation_date raises ValueError"""
         processor = DataProcessor(mock_influx_client_with_data)
 
@@ -290,13 +288,24 @@ class TestDataProcessorIntegration:
         import tempfile
         import yaml
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             patterns = {
                 "patterns": {
                     "test_meter": {
-                        "monthly_percentages": [10, 10, 10, 8, 7, 6, 6, 6, 7, 8, 11, 11],
+                        "monthly_percentages": [
+                            10,
+                            10,
+                            10,
+                            8,
+                            7,
+                            6,
+                            6,
+                            6,
+                            7,
+                            8,
+                            11,
+                            11,
+                        ],
                         "description": "Test pattern",
                     }
                 }
@@ -305,7 +314,9 @@ class TestDataProcessorIntegration:
             temp_path = f.name
 
         try:
-            processor = DataProcessor(mock_influx_client, seasonal_patterns_path=temp_path)
+            processor = DataProcessor(
+                mock_influx_client, seasonal_patterns_path=temp_path
+            )
 
             assert "test_meter" in processor.seasonal_patterns
             assert len(processor.seasonal_patterns["test_meter"]) == 12
@@ -313,6 +324,7 @@ class TestDataProcessorIntegration:
             assert abs(sum(processor.seasonal_patterns["test_meter"]) - 100.0) < 0.01
         finally:
             import os
+
             os.unlink(temp_path)
 
     def test_seasonal_distribution(self, mock_influx_client):
@@ -321,13 +333,24 @@ class TestDataProcessorIntegration:
         import tempfile
         import yaml
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             patterns = {
                 "patterns": {
                     "test_meter": {
-                        "monthly_percentages": [15, 12, 10, 8, 5, 4, 4, 4, 5, 8, 12, 13],
+                        "monthly_percentages": [
+                            15,
+                            12,
+                            10,
+                            8,
+                            5,
+                            4,
+                            4,
+                            4,
+                            5,
+                            8,
+                            12,
+                            13,
+                        ],
                         "description": "Winter-heavy pattern",
                     }
                 }
@@ -336,7 +359,9 @@ class TestDataProcessorIntegration:
             temp_path = f.name
 
         try:
-            processor = DataProcessor(mock_influx_client, seasonal_patterns_path=temp_path)
+            processor = DataProcessor(
+                mock_influx_client, seasonal_patterns_path=temp_path
+            )
 
             # Test distribution for January (should be higher than June)
             result = processor._distribute_consumption_by_seasonal_pattern(
@@ -356,23 +381,33 @@ class TestDataProcessorIntegration:
             assert abs(result["value"].iloc[-1] - 100.0) < 0.01
         finally:
             import os
+
             os.unlink(temp_path)
 
-    def test_forward_extrapolation_with_seasonal_pattern(
-        self, mock_influx_client
-    ):
+    def test_forward_extrapolation_with_seasonal_pattern(self, mock_influx_client):
         """Test that forward extrapolation uses seasonal patterns for long gaps"""
         import tempfile
         import yaml
 
         # Create seasonal pattern
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             patterns = {
                 "patterns": {
                     "test_meter": {
-                        "monthly_percentages": [10, 10, 10, 8, 7, 6, 6, 6, 7, 8, 11, 11],
+                        "monthly_percentages": [
+                            10,
+                            10,
+                            10,
+                            8,
+                            7,
+                            6,
+                            6,
+                            6,
+                            7,
+                            8,
+                            11,
+                            11,
+                        ],
                         "description": "Test pattern",
                     }
                 }
@@ -383,14 +418,18 @@ class TestDataProcessorIntegration:
         try:
             # Mock fetch to return data ending 30 days ago
             def mock_fetch(entity_id, start_date=None):
-                timestamps = pd.date_range("2024-01-01", "2024-01-10", freq="2D", tz="UTC")
+                timestamps = pd.date_range(
+                    "2024-01-01", "2024-01-10", freq="2D", tz="UTC"
+                )
                 values = [100 + 2 * i for i in range(len(timestamps))]
                 return pd.DataFrame({"timestamp": timestamps, "value": values})
 
             mock_influx_client.fetch_all_meter_data = Mock(side_effect=mock_fetch)
             mock_influx_client.meter_data_cache = {}
 
-            processor = DataProcessor(mock_influx_client, seasonal_patterns_path=temp_path)
+            processor = DataProcessor(
+                mock_influx_client, seasonal_patterns_path=temp_path
+            )
 
             result = processor.create_standardized_daily_series(
                 "test_meter",
@@ -406,6 +445,7 @@ class TestDataProcessorIntegration:
             assert len(result) > 10  # More than just raw data points
         finally:
             import os
+
             os.unlink(temp_path)
 
 
