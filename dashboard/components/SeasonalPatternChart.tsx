@@ -77,8 +77,8 @@ export default function SeasonalPatternChart({
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 mb-4">{title}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-3">
           {totals.map(({ meter, avg }) => (
-            <div key={meter.id} className="bg-neutral-50 rounded p-3">
-              <p className="text-xs text-neutral-600">{meter.name}</p>
+            <div key={meter.id} className="bg-muted dark:bg-accent rounded p-3">
+              <p className="text-xs text-muted-foreground">{meter.name}</p>
               <p className="text-lg font-bold" style={{ color: meter.color }}>
                 {avg.toFixed(2)} {meter.unit}/mo
               </p>
@@ -137,20 +137,20 @@ export default function SeasonalPatternChart({
       {/* Season Indicators */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-4 md:gap-6 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-200 rounded"></div>
-          <span className="text-neutral-600">Spring (Mar-May)</span>
+          <div className="w-4 h-4 bg-green-200 dark:bg-green-700 rounded"></div>
+          <span className="text-muted-foreground">Spring (Mar-May)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-yellow-200 rounded"></div>
-          <span className="text-neutral-600">Summer (Jun-Aug)</span>
+          <div className="w-4 h-4 bg-yellow-200 dark:bg-yellow-700 rounded"></div>
+          <span className="text-muted-foreground">Summer (Jun-Aug)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-200 rounded"></div>
-          <span className="text-neutral-600">Fall (Sep-Nov)</span>
+          <div className="w-4 h-4 bg-orange-200 dark:bg-orange-700 rounded"></div>
+          <span className="text-muted-foreground">Fall (Sep-Nov)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-blue-200 rounded"></div>
-          <span className="text-neutral-600">Winter (Dec-Feb)</span>
+          <div className="w-4 h-4 bg-blue-200 dark:bg-blue-700 rounded"></div>
+          <span className="text-muted-foreground">Winter (Dec-Feb)</span>
         </div>
       </div>
     </div>

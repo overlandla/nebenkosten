@@ -26,11 +26,11 @@ export default function AggregationInfo({ metadata, className = '' }: Aggregatio
   if (!isAggregated) return null;
 
   return (
-    <div className={`bg-blue-50 border border-blue-200 rounded-lg p-4 ${className}`}>
+    <div className={`bg-muted dark:bg-accent border border-border rounded-lg p-4 ${className}`}>
       <div className="flex items-start space-x-3">
         <div className="flex-shrink-0">
           <svg
-            className="h-5 w-5 text-blue-600"
+            className="h-5 w-5 text-blue-600 dark:text-blue-400"
             fill="currentColor"
             viewBox="0 0 20 20"
           >
@@ -42,22 +42,22 @@ export default function AggregationInfo({ metadata, className = '' }: Aggregatio
           </svg>
         </div>
         <div className="flex-1">
-          <h3 className="text-sm font-semibold text-blue-900 mb-1">
+          <h3 className="text-sm font-semibold text-foreground mb-1">
             Data Sampling Active
           </h3>
-          <p className="text-sm text-blue-800">
+          <p className="text-sm text-muted-foreground">
             <strong>{metadata.aggregation}</strong> — To optimize performance for this time range,
             data is being sampled with a <strong>{metadata.aggregationWindow}</strong> window.
             Showing {metadata.actualPoints.toLocaleString()} data points
             {metadata.estimatedPoints > 0 && ` (estimated ~${metadata.estimatedPoints.toLocaleString()})`}.
           </p>
           {metadata.aggregationWindow.includes('h') && (
-            <p className="text-xs text-blue-700 mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               💡 Tip: For more granular data, select a shorter time range (e.g., last 7 days).
             </p>
           )}
           {(metadata.aggregationWindow.includes('d') || metadata.aggregationWindow.includes('w')) && (
-            <p className="text-xs text-blue-700 mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               💡 Tip: Shorter time ranges will show more detailed data with higher resolution.
             </p>
           )}

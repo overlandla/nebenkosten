@@ -100,8 +100,8 @@ export default function YearOverYearChart({
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
           {yearTotals.map(({ year, avg, color }) => (
-            <div key={year} className="bg-neutral-50 rounded p-3 border-l-4" style={{ borderColor: color }}>
-              <p className="text-xs text-neutral-600">Year {year}</p>
+            <div key={year} className="bg-muted dark:bg-accent rounded p-3 border-l-4" style={{ borderColor: color }}>
+              <p className="text-xs text-muted-foreground">Year {year}</p>
               <p className="text-lg font-bold" style={{ color }}>
                 {avg.toFixed(2)} {unit}/mo
               </p>
@@ -153,8 +153,8 @@ export default function YearOverYearChart({
 
       {/* Year Comparison Summary */}
       {years.length >= 2 && (
-        <div className="mt-4 bg-blue-50 rounded-lg p-4 border border-blue-200">
-          <p className="text-sm text-blue-900">
+        <div className="mt-4 bg-muted dark:bg-accent rounded-lg p-4 border border-border">
+          <p className="text-sm text-foreground">
             <strong>Year-over-Year Change:</strong>{' '}
             {(() => {
               const currentYear = years[years.length - 1];
@@ -165,7 +165,7 @@ export default function YearOverYearChart({
               const isIncrease = change > 0;
 
               return (
-                <span className={isIncrease ? 'text-red-700' : 'text-green-700'}>
+                <span className={isIncrease ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
                   {isIncrease ? '↑' : '↓'} {Math.abs(change).toFixed(1)}% from {previousYear} to {currentYear}
                 </span>
               );

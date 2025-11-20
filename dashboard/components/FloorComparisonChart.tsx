@@ -75,12 +75,12 @@ export default function FloorComparisonChart({
         <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 mb-4">{title}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
           {floorTotals.map(({ meter, total }) => (
-            <div key={meter.id} className="bg-neutral-50 rounded p-3 border-l-4" style={{ borderColor: meter.color }}>
-              <p className="text-xs text-neutral-600">{meter.name}</p>
+            <div key={meter.id} className="bg-muted dark:bg-accent rounded p-3 border-l-4" style={{ borderColor: meter.color }}>
+              <p className="text-xs text-muted-foreground">{meter.name}</p>
               <p className="text-lg font-bold" style={{ color: meter.color }}>
                 {total.toFixed(2)} {unit}
               </p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-muted-foreground">
                 {grandTotal > 0 ? ((total / grandTotal) * 100).toFixed(1) : 0}% of total
               </p>
             </div>

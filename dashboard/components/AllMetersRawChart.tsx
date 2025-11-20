@@ -119,8 +119,8 @@ export default function AllMetersRawChart({
       <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 mb-4">{title}</h3>
 
       {/* Legend explanation */}
-      <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
-        <p className="text-sm text-blue-800">
+      <div className="mb-4 p-3 bg-muted dark:bg-accent rounded border border-border">
+        <p className="text-sm text-muted-foreground">
           <strong>Chart Legend:</strong> Points represent raw meter readings, lines show interpolated daily values.
           Each meter has a unique color for both raw points and interpolated lines.
         </p>
@@ -181,7 +181,7 @@ export default function AllMetersRawChart({
         {meters.map((meter) => (
           <div
             key={meter.id}
-            className="flex items-center gap-2 p-2 rounded bg-neutral-50"
+            className="flex items-center gap-2 p-2 rounded bg-muted dark:bg-accent"
           >
             <div
               className="w-4 h-4 rounded-full flex-shrink-0"
