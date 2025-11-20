@@ -5,10 +5,12 @@ Handles interpolation of sparse meter readings to create standardized time serie
 
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import yaml
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 
@@ -23,13 +25,16 @@ class DataProcessor:
     - Interpolate sparse meter readings to daily values
     - Handle meter installation/deinstallation dates
     - Apply backward/forward extrapolation when needed
+    - Use seasonal patterns for intelligent gap filling
     - Aggregate daily data to monthly frequency
+    - Track interpolation quality and metadata
     - Cache results for performance
 
     Interpolation Methods:
-    - Time-based linear interpolation for meters with frequent readings
-    - Regression-based extrapolation for sparse data
-    - Seasonal-aware interpolation for heating/cooling meters (optional)
+    - Linear interpolation for short gaps (<7 days)
+    - Seasonal-aware interpolation for longer gaps (≥7 days)
+    - Regression-based extrapolation with seasonal distribution
+    - Always preserves exact raw reading values at their timestamps
     """
 
     def __init__(
@@ -38,6 +43,7 @@ class DataProcessor:
         high_freq_threshold_medium: int = 100,
         high_freq_threshold_very: int = 1000,
         target_reduction_points: int = 50,
+        seasonal_patterns_path: Optional[str] = None,
     ):
         """
         Initialize DataProcessor
@@ -47,14 +53,112 @@ class DataProcessor:
             high_freq_threshold_medium: Point count above which to apply medium reduction
             high_freq_threshold_very: Point count above which to apply aggressive reduction
             target_reduction_points: Target number of points after reduction
+            seasonal_patterns_path: Path to seasonal_patterns.yaml file (optional)
         """
         self.influx_client = influx_client
         self.interpolated_series_cache = {}
+        self.interpolation_metadata = {}  # Track interpolation quality metrics
 
         # Data reduction thresholds
         self.high_freq_threshold_medium = high_freq_threshold_medium
         self.high_freq_threshold_very = high_freq_threshold_very
         self.target_reduction_points = target_reduction_points
+
+        # Load seasonal patterns
+        self.seasonal_patterns = self._load_seasonal_patterns(seasonal_patterns_path)
+        if self.seasonal_patterns:
+            logging.info(
+                f"Loaded seasonal patterns for {len(self.seasonal_patterns)} meters"
+            )
+        else:
+            logging.warning("No seasonal patterns loaded - using linear interpolation only")
+
+    def _load_seasonal_patterns(
+        self, seasonal_patterns_path: Optional[str] = None
+    ) -> Dict[str, List[float]]:
+        """
+        Load seasonal consumption patterns from YAML configuration
+
+        Args:
+            seasonal_patterns_path: Path to seasonal_patterns.yaml (optional)
+                                   If None, attempts to find it in ../config/
+
+        Returns:
+            Dictionary mapping meter_id to list of 12 monthly percentages
+            {
+                'gas_zahler': [15.1, 12.0, 12.5, 8.1, 3.5, 3.2, ...],
+                'eg_strom': [12.5, 11.0, 10.0, 8.5, 6.5, 5.0, ...],
+                ...
+            }
+
+        Notes:
+            - Monthly percentages must sum to ~100% (validates with 0.5% tolerance)
+            - Returns empty dict if file not found or invalid
+        """
+        try:
+            if seasonal_patterns_path is None:
+                # Try to find config directory relative to this file
+                current_file = Path(__file__)
+                config_path = current_file.parent.parent.parent / "config" / "seasonal_patterns.yaml"
+
+                if not config_path.exists():
+                    # Alternative: try from workflows_dagster root
+                    config_path = current_file.parent.parent / "config" / "seasonal_patterns.yaml"
+
+                if not config_path.exists():
+                    logging.info("Seasonal patterns file not found, using default path")
+                    return {}
+
+                seasonal_patterns_path = str(config_path)
+
+            logging.info(f"Loading seasonal patterns from {seasonal_patterns_path}")
+
+            with open(seasonal_patterns_path, 'r') as f:
+                data = yaml.safe_load(f)
+
+            if not data or 'patterns' not in data:
+                logging.warning("No 'patterns' key found in seasonal_patterns.yaml")
+                return {}
+
+            patterns = {}
+            for meter_id, config in data['patterns'].items():
+                if 'monthly_percentages' not in config:
+                    logging.warning(f"No monthly_percentages for {meter_id}, skipping")
+                    continue
+
+                percentages = config['monthly_percentages']
+
+                if len(percentages) != 12:
+                    logging.error(
+                        f"Invalid pattern for {meter_id}: expected 12 months, "
+                        f"got {len(percentages)}"
+                    )
+                    continue
+
+                total = sum(percentages)
+                if abs(total - 100.0) > 0.5:  # Tolerance of 0.5%
+                    logging.warning(
+                        f"Pattern for {meter_id} doesn't sum to 100% (sum={total:.2f})"
+                    )
+
+                # Normalize to ensure exact 100%
+                normalized = [p / total * 100.0 for p in percentages]
+                patterns[meter_id] = normalized
+
+                logging.debug(
+                    f"Loaded pattern for {meter_id}: "
+                    f"{config.get('description', 'no description')}"
+                )
+
+            logging.info(f"Successfully loaded {len(patterns)} seasonal patterns")
+            return patterns
+
+        except FileNotFoundError:
+            logging.warning(f"Seasonal patterns file not found: {seasonal_patterns_path}")
+            return {}
+        except Exception as e:
+            logging.error(f"Error loading seasonal patterns: {e}")
+            return {}
 
     def estimate_consumption_rate(
         self, raw_data: pd.DataFrame
@@ -271,6 +375,98 @@ class DataProcessor:
 
         return reduced_data
 
+    def _distribute_consumption_by_seasonal_pattern(
+        self,
+        start_timestamp: pd.Timestamp,
+        end_timestamp: pd.Timestamp,
+        total_consumption: float,
+        seasonal_pattern: List[float],
+        start_value: float = 0.0,
+    ) -> pd.DataFrame:
+        """
+        Distribute consumption across time period using seasonal pattern
+
+        Uses monthly percentages to intelligently distribute estimated consumption
+        instead of assuming constant rate. This is crucial for heating/cooling meters
+        with strong seasonal variation.
+
+        Args:
+            start_timestamp: Start of period to fill
+            end_timestamp: End of period to fill
+            total_consumption: Total consumption to distribute (e.g., 1000 kWh)
+            seasonal_pattern: List of 12 monthly percentages (must sum to 100)
+            start_value: Cumulative meter reading at start
+
+        Returns:
+            DataFrame with daily timestamps and cumulative values distributed
+            according to seasonal pattern
+
+        Example:
+            For gas heating in winter: higher daily consumption in Jan/Feb/Dec
+            For solar in summer: higher daily consumption in Jun/Jul/Aug
+
+        Algorithm:
+            1. Generate daily date range
+            2. For each day, determine its month
+            3. Assign that month's percentage share
+            4. Normalize daily shares within the actual time period
+            5. Calculate cumulative sum for meter reading values
+        """
+        if len(seasonal_pattern) != 12:
+            raise ValueError(
+                f"Seasonal pattern must have 12 months, got {len(seasonal_pattern)}"
+            )
+
+        if abs(sum(seasonal_pattern) - 100.0) > 0.5:
+            logging.warning(
+                f"Seasonal pattern doesn't sum to 100% (sum={sum(seasonal_pattern):.2f})"
+            )
+
+        # Generate daily date range
+        date_range = pd.date_range(
+            start=start_timestamp, end=end_timestamp, freq="D", tz="UTC"
+        )
+
+        if len(date_range) == 0:
+            return pd.DataFrame(columns=["timestamp", "value"])
+
+        # Create DataFrame with dates
+        df = pd.DataFrame({"timestamp": date_range})
+
+        # Assign monthly percentage to each day based on its month (0=Jan, 11=Dec)
+        df["month"] = df["timestamp"].dt.month - 1  # Convert to 0-indexed
+        df["monthly_pct"] = df["month"].apply(lambda m: seasonal_pattern[m])
+
+        # Calculate days in each month for this specific period
+        days_per_month = df.groupby("month").size()
+
+        # Calculate daily consumption rate for each month
+        # Daily rate = (monthly_pct / days_in_that_month_in_period)
+        df["daily_pct"] = df.apply(
+            lambda row: row["monthly_pct"] / days_per_month[row["month"]], axis=1
+        )
+
+        # Normalize to ensure sum equals 100% over the actual period
+        total_daily_pct = df["daily_pct"].sum()
+        df["daily_pct_normalized"] = (df["daily_pct"] / total_daily_pct) * 100.0
+
+        # Calculate daily consumption amounts
+        df["daily_consumption"] = (df["daily_pct_normalized"] / 100.0) * total_consumption
+
+        # Calculate cumulative meter reading values
+        df["value"] = start_value + df["daily_consumption"].cumsum()
+
+        # Return only timestamp and value columns
+        result = df[["timestamp", "value"]].copy()
+
+        logging.debug(
+            f"Distributed {total_consumption:.2f} units over {len(date_range)} days "
+            f"using seasonal pattern (start={start_value:.2f}, "
+            f"end={result['value'].iloc[-1]:.2f})"
+        )
+
+        return result
+
     def create_standardized_daily_series(
         self,
         entity_id: str,
@@ -319,6 +515,19 @@ class DataProcessor:
         if cache_key in self.interpolated_series_cache:
             return self.interpolated_series_cache[cache_key]
 
+        # Explicit installation date validation
+        if installation_date is None:
+            logging.error(
+                f"VALIDATION FAILED: Meter {entity_id} is missing installation_date. "
+                f"This is REQUIRED for accurate interpolation and extrapolation. "
+                f"Please add installation_date to config/meters.yaml for {entity_id}."
+            )
+            raise ValueError(
+                f"Meter {entity_id} missing required installation_date in configuration"
+            )
+
+        logging.info(f"✓ Validated installation_date for {entity_id}: {installation_date}")
+
         # Get raw data
         raw_data = self.influx_client.fetch_all_meter_data(entity_id)
 
@@ -336,9 +545,7 @@ class DataProcessor:
         start_ts = pd.Timestamp(start_date, tz="UTC")
         end_ts = pd.Timestamp(end_date, tz="UTC")
 
-        installation_ts = (
-            pd.Timestamp(installation_date, tz="UTC") if installation_date else start_ts
-        )
+        installation_ts = pd.Timestamp(installation_date, tz="UTC")
 
         effective_end = (
             pd.Timestamp(deinstallation_date, tz="UTC")
@@ -432,14 +639,16 @@ class DataProcessor:
                 raw_data = pd.concat([start_row, raw_data], ignore_index=True)
                 logging.debug("Single data point - assuming meter started at 0")
 
-        # Forward extrapolation if needed
+        # Forward extrapolation if needed (extends to today())
         latest_data = raw_data.iloc[-1]
         latest_timestamp = latest_data["timestamp"]
         latest_value = latest_data["value"]
 
         if latest_timestamp < effective_end:
-            logging.debug(
-                f"Need forward extrapolation from {latest_timestamp} to {effective_end}"
+            days_forward = (effective_end - latest_timestamp).total_seconds() / (24 * 3600)
+            logging.info(
+                f"Forward extrapolation needed: {latest_timestamp.date()} → "
+                f"{effective_end.date()} ({days_forward:.0f} days)"
             )
 
             if len(raw_data) >= 2:
@@ -448,38 +657,93 @@ class DataProcessor:
                 )
 
                 logging.debug(
-                    f"Forward extrapolation rate: {rate_per_day:.4f} units/day "
-                    f"using {method}"
+                    f"Estimated consumption rate: {rate_per_day:.4f} units/day "
+                    f"(method={method}, R²={r_squared:.3f})"
                 )
 
                 if rate_per_day > 0:
-                    days_forward = (
-                        effective_end - latest_timestamp
-                    ).total_seconds() / (24 * 3600)
-                    extrapolated_value = latest_value + (rate_per_day * days_forward)
+                    total_estimated_consumption = rate_per_day * days_forward
 
-                    end_row = pd.DataFrame(
-                        {"timestamp": [effective_end], "value": [extrapolated_value]}
-                    )
-                    raw_data = pd.concat([raw_data, end_row], ignore_index=True)
+                    # Check if seasonal pattern is available for this meter
+                    seasonal_pattern = self.seasonal_patterns.get(entity_id)
 
-                    logging.debug(
-                        f"Added forward extrapolation: {effective_end} = {extrapolated_value:.2f}"
-                    )
+                    if seasonal_pattern and days_forward >= 7:
+                        # Use seasonal-aware extrapolation for gaps ≥7 days
+                        logging.info(
+                            f"✓ Using seasonal pattern for {entity_id} "
+                            f"(extrapolating {days_forward:.0f} days)"
+                        )
+
+                        extrapolated_series = self._distribute_consumption_by_seasonal_pattern(
+                            start_timestamp=latest_timestamp,
+                            end_timestamp=effective_end,
+                            total_consumption=total_estimated_consumption,
+                            seasonal_pattern=seasonal_pattern,
+                            start_value=latest_value,
+                        )
+
+                        # Add all extrapolated points to raw_data
+                        # Skip the first row since it duplicates latest_timestamp
+                        if len(extrapolated_series) > 1:
+                            extrapolated_series_to_add = extrapolated_series.iloc[1:]
+                            raw_data = pd.concat(
+                                [raw_data, extrapolated_series_to_add], ignore_index=True
+                            )
+
+                            logging.info(
+                                f"Added {len(extrapolated_series_to_add)} seasonally-distributed "
+                                f"points (final value: {extrapolated_series['value'].iloc[-1]:.2f})"
+                            )
+                        else:
+                            # Fallback to simple extrapolation if seasonal distribution failed
+                            extrapolated_value = latest_value + total_estimated_consumption
+                            end_row = pd.DataFrame(
+                                {"timestamp": [effective_end], "value": [extrapolated_value]}
+                            )
+                            raw_data = pd.concat([raw_data, end_row], ignore_index=True)
+                            logging.warning(
+                                "Seasonal distribution produced insufficient points, "
+                                "using linear extrapolation"
+                            )
+
+                    else:
+                        # Linear extrapolation (no seasonal pattern or short gap)
+                        if seasonal_pattern is None:
+                            logging.info(
+                                f"No seasonal pattern available for {entity_id}, "
+                                f"using linear extrapolation"
+                            )
+                        else:
+                            logging.debug(
+                                f"Gap < 7 days, using linear extrapolation "
+                                f"(seasonal not needed)"
+                            )
+
+                        extrapolated_value = latest_value + total_estimated_consumption
+
+                        end_row = pd.DataFrame(
+                            {"timestamp": [effective_end], "value": [extrapolated_value]}
+                        )
+                        raw_data = pd.concat([raw_data, end_row], ignore_index=True)
+
+                        logging.debug(
+                            f"Added linear extrapolation: {effective_end.date()} = "
+                            f"{extrapolated_value:.2f}"
+                        )
                 else:
-                    # Constant value forward
+                    # Zero consumption rate - constant value forward
                     end_row = pd.DataFrame(
                         {"timestamp": [effective_end], "value": [latest_value]}
                     )
                     raw_data = pd.concat([raw_data, end_row], ignore_index=True)
-                    logging.debug("Zero rate - extending with constant value")
+                    logging.debug("Zero consumption rate - extending with constant value")
             else:
-                # Only one point - extend with constant value
+                # Only one data point - extend with constant value
                 end_row = pd.DataFrame(
                     {"timestamp": [effective_end], "value": [latest_value]}
                 )
                 raw_data = pd.concat([raw_data, end_row], ignore_index=True)
-                logging.debug("Single point - extending with constant value")
+                logging.debug("Single data point - extending with constant value")
 
         # Create daily timestamp range
         daily_range = pd.date_range(

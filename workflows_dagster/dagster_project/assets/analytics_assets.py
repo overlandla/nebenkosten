@@ -259,7 +259,15 @@ def interpolated_meter_series(
     # Pre-populate cache with raw data
     influx_client.meter_data_cache = raw_meter_data.copy()
 
-    data_processor = DataProcessor(influx_client)
+    # Get path to seasonal patterns configuration
+    config_dir = Path(__file__).parent.parent.parent.parent / "config"
+    seasonal_patterns_path = config_dir / "seasonal_patterns.yaml"
+
+    logger.info(f"Using seasonal patterns from: {seasonal_patterns_path}")
+
+    data_processor = DataProcessor(
+        influx_client, seasonal_patterns_path=str(seasonal_patterns_path)
+    )
 
     daily_readings = {}
     monthly_readings = {}
@@ -339,6 +347,275 @@ def interpolated_meter_series(
             },
         ),
     )
+
+
+# =============================================================================
+# INTERPOLATION VALIDATION & QUALITY
+# =============================================================================
+
+
+@asset(
+    group_name="validation",
+    compute_kind="python",
+    description="Validate that interpolated values match raw readings at all raw timestamps",
+)
+def interpolation_validation(
+    context: AssetExecutionContext,
+    daily_interpolated_series: Dict[str, pd.DataFrame],
+    raw_meter_data: Dict[str, pd.DataFrame],
+) -> Dict[str, Dict]:
+    """
+    Validate that interpolated values exactly match raw readings
+
+    This is a critical validation step ensuring our interpolation preserves
+    the exact values of all raw meter readings at their timestamps.
+
+    For each meter, checks:
+    - All raw reading timestamps exist in interpolated series
+    - Values match within tolerance (0.01 units)
+    - No raw readings were modified during interpolation
+
+    Args:
+        daily_interpolated_series: Interpolated daily readings
+        raw_meter_data: Original raw meter readings
+
+    Returns:
+        Dictionary of validation results per meter:
+        {
+            'gas_zahler': {
+                'all_match': True,
+                'validated_points': 150,
+                'max_deviation': 0.0,
+                'avg_deviation': 0.0,
+                'mismatches': []
+            },
+            ...
+        }
+
+    Raises:
+        ValueError: If any meter has interpolated values that don't match raw readings
+    """
+    logger = context.log
+    logger.info("Validating interpolated values match raw meter readings")
+
+    validation_results = {}
+    all_passed = True
+
+    for meter_id in daily_interpolated_series.keys():
+        if meter_id not in raw_meter_data:
+            logger.warning(f"Meter {meter_id} in interpolated but not in raw data")
+            continue
+
+        raw_df = raw_meter_data[meter_id]
+        interpolated_df = daily_interpolated_series[meter_id]
+
+        if raw_df.empty or interpolated_df.empty:
+            logger.debug(f"Skipping validation for {meter_id}: empty data")
+            validation_results[meter_id] = {
+                "all_match": True,
+                "validated_points": 0,
+                "max_deviation": 0.0,
+                "avg_deviation": 0.0,
+                "mismatches": [],
+            }
+            continue
+
+        # Merge on timestamp to find matching points
+        merged = pd.merge(
+            raw_df,
+            interpolated_df,
+            on="timestamp",
+            how="inner",
+            suffixes=("_raw", "_interpolated"),
+        )
+
+        if len(merged) == 0:
+            logger.warning(
+                f"No matching timestamps found for {meter_id} "
+                f"(raw: {len(raw_df)}, interpolated: {len(interpolated_df)})"
+            )
+            validation_results[meter_id] = {
+                "all_match": False,
+                "validated_points": 0,
+                "max_deviation": None,
+                "avg_deviation": None,
+                "mismatches": ["No matching timestamps"],
+            }
+            all_passed = False
+            continue
+
+        # Calculate deviations
+        merged["deviation"] = abs(merged["value_raw"] - merged["value_interpolated"])
+        max_deviation = merged["deviation"].max()
+        avg_deviation = merged["deviation"].mean()
+
+        # Check for mismatches (tolerance: 0.01 units)
+        tolerance = 0.01
+        mismatches_df = merged[merged["deviation"] > tolerance]
+        mismatches = []
+
+        if len(mismatches_df) > 0:
+            all_passed = False
+            for _, row in mismatches_df.head(10).iterrows():  # Limit to first 10
+                mismatches.append({
+                    "timestamp": str(row["timestamp"]),
+                    "raw_value": float(row["value_raw"]),
+                    "interpolated_value": float(row["value_interpolated"]),
+                    "deviation": float(row["deviation"]),
+                })
+
+            logger.error(
+                f"❌ VALIDATION FAILED for {meter_id}: "
+                f"{len(mismatches_df)} mismatches found! "
+                f"Max deviation: {max_deviation:.4f}"
+            )
+        else:
+            logger.info(
+                f"✓ VALIDATED {meter_id}: All {len(merged)} raw readings match "
+                f"(max deviation: {max_deviation:.6f})"
+            )
+
+        validation_results[meter_id] = {
+            "all_match": len(mismatches) == 0,
+            "validated_points": int(len(merged)),
+            "max_deviation": float(max_deviation),
+            "avg_deviation": float(avg_deviation),
+            "mismatches": mismatches,
+        }
+
+    if not all_passed:
+        failed_meters = [m for m, r in validation_results.items() if not r["all_match"]]
+        raise ValueError(
+            f"Interpolation validation FAILED for {len(failed_meters)} meters: "
+            f"{', '.join(failed_meters)}. Interpolated values must exactly match "
+            f"raw readings at their timestamps!"
+        )
+
+    logger.info(f"✓ All {len(validation_results)} meters passed validation")
+    return validation_results
+
+
+@asset(
+    group_name="validation",
+    compute_kind="python",
+    description="Generate comprehensive interpolation quality metrics",
+)
+def interpolation_quality_report(
+    context: AssetExecutionContext,
+    daily_interpolated_series: Dict[str, pd.DataFrame],
+    raw_meter_data: Dict[str, pd.DataFrame],
+    config: ConfigResource,
+) -> pd.DataFrame:
+    """
+    Generate comprehensive interpolation quality report
+
+    Analyzes the quality and characteristics of interpolation for each meter:
+    - Gap analysis (size, frequency)
+    - Extrapolation extent (forward, backward)
+    - Data coverage ratios
+    - Interpolation vs actual readings
+
+    Args:
+        daily_interpolated_series: Interpolated daily readings
+        raw_meter_data: Original raw meter readings
+        config: Configuration resource (for dates)
+
+    Returns:
+        DataFrame with quality metrics per meter:
+        - meter_id
+        - total_days
+        - raw_readings_count
+        - interpolated_days_count
+        - largest_gap_days
+        - avg_gap_size_days
+        - extrapolation_forward_days
+        - extrapolation_backward_days
+        - raw_data_coverage_pct
+        - first_reading_date
+        - last_reading_date
+        - interpolation_end_date
+    """
+    logger = context.log
+    logger.info("Generating interpolation quality report")
+
+    cfg = config.load_config()
+    start_year = cfg.get("start_year", 2020)
+    analysis_start = pd.Timestamp(f"{start_year}-01-01", tz="UTC")
+    analysis_end = pd.Timestamp(datetime.now().strftime("%Y-%m-%d"), tz="UTC")
+
+    report_rows = []
+
+    for meter_id in sorted(daily_interpolated_series.keys()):
+        raw_df = raw_meter_data.get(meter_id, pd.DataFrame())
+        interpolated_df = daily_interpolated_series.get(meter_id, pd.DataFrame())
+
+        if raw_df.empty or interpolated_df.empty:
+            logger.debug(f"Skipping {meter_id}: empty data")
+            continue
+
+        # Basic counts
+        raw_count = len(raw_df)
+        interpolated_count = len(interpolated_df)
+        total_days = (analysis_end - analysis_start).days + 1
+
+        # Date ranges
+        first_reading = raw_df["timestamp"].min()
+        last_reading = raw_df["timestamp"].max()
+        interpolation_end = interpolated_df["timestamp"].max()
+
+        # Calculate gaps between consecutive raw readings
+        raw_sorted = raw_df.sort_values("timestamp").reset_index(drop=True)
+        if len(raw_sorted) > 1:
+            raw_sorted["time_diff"] = raw_sorted["timestamp"].diff()
+            raw_sorted["gap_days"] = raw_sorted["time_diff"].dt.total_seconds() / (24 * 3600)
+
+            # Filter to actual gaps (> 1 day)
+            gaps = raw_sorted[raw_sorted["gap_days"] > 1]["gap_days"]
+            if len(gaps) > 0:
+                largest_gap = gaps.max()
+                avg_gap = gaps.mean()
+            else:
+                largest_gap = 0.0
+                avg_gap = 0.0
+        else:
+            largest_gap = 0.0
+            avg_gap = 0.0
+
+        # Extrapolation distances
+        backward_extrap_days = (first_reading - analysis_start).days
+        forward_extrap_days = (analysis_end - last_reading).days
+
+        # Coverage ratio
+        coverage_pct = (raw_count / total_days) * 100 if total_days > 0 else 0.0
+
+        report_rows.append({
+            "meter_id": meter_id,
+            "total_days": total_days,
+            "raw_readings_count": raw_count,
+            "interpolated_days_count": interpolated_count,
+            "largest_gap_days": round(largest_gap, 1),
+            "avg_gap_size_days": round(avg_gap, 1),
+            "extrapolation_backward_days": max(0, backward_extrap_days),
+            "extrapolation_forward_days": max(0, forward_extrap_days),
+            "raw_data_coverage_pct": round(coverage_pct, 2),
+            "first_reading_date": first_reading.strftime("%Y-%m-%d"),
+            "last_reading_date": last_reading.strftime("%Y-%m-%d"),
+            "interpolation_end_date": interpolation_end.strftime("%Y-%m-%d"),
+        })
+
+    report_df = pd.DataFrame(report_rows)
+
+    if not report_df.empty:
+        logger.info(
+            f"Generated quality report for {len(report_df)} meters:\n"
+            f"  Avg raw readings per meter: {report_df['raw_readings_count'].mean():.0f}\n"
+            f"  Avg largest gap: {report_df['largest_gap_days'].mean():.1f} days\n"
+            f"  Avg forward extrapolation: {report_df['extrapolation_forward_days'].mean():.0f} days"
+        )
+    else:
+        logger.warning("Quality report is empty")
+
+    return report_df
 
 
 # =============================================================================

@@ -262,3 +262,102 @@ def _create_anomaly_points(df: pd.DataFrame, meter_id: str) -> list:
         points.append(point)
 
     return points
+
+
+@asset(
+    group_name="maintenance",
+    compute_kind="influxdb",
+    description="DESTRUCTIVE: Wipe all processed data from InfluxDB (use with caution)",
+)
+def wipe_processed_data(
+    context: AssetExecutionContext,
+    influxdb: InfluxDBResource,
+) -> MaterializeResult:
+    """
+    Wipe all processed data from InfluxDB processed bucket
+
+    ⚠️  DESTRUCTIVE OPERATION ⚠️
+    This permanently deletes all data in the processed bucket including:
+    - meter_interpolated_daily
+    - meter_interpolated_monthly
+    - meter_consumption
+    - meter_anomaly
+
+    Use this when you want to start fresh with new improved analytics.
+
+    This does NOT affect the raw data bucket - raw meter readings are preserved.
+
+    Args:
+        context: Dagster execution context
+        influxdb: InfluxDB resource
+
+    Returns:
+        MaterializeResult with measurements deleted
+
+    Example usage:
+        dagster asset materialize -m workflows_dagster -s wipe_processed_data
+    """
+    logger = context.log
+
+    logger.warning("=" * 80)
+    logger.warning("⚠️  STARTING DESTRUCTIVE OPERATION: WIPING PROCESSED DATA")
+    logger.warning("=" * 80)
+
+    measurements_to_delete = [
+        "meter_interpolated_daily",
+        "meter_interpolated_monthly",
+        "meter_consumption",
+        "meter_anomaly",
+    ]
+
+    deleted_measurements = []
+
+    try:
+        with influxdb.get_client() as client:
+            delete_api = client.delete_api()
+
+            # Delete all data from the start of time to now for each measurement
+            start = "1970-01-01T00:00:00Z"
+            stop = "2099-12-31T23:59:59Z"
+
+            for measurement in measurements_to_delete:
+                try:
+                    logger.info(f"Deleting measurement: {measurement}")
+
+                    # Delete using predicate: _measurement="measurement_name"
+                    delete_api.delete(
+                        start=start,
+                        stop=stop,
+                        predicate=f'_measurement="{measurement}"',
+                        bucket=influxdb.bucket_processed,
+                        org=influxdb.org,
+                    )
+
+                    deleted_measurements.append(measurement)
+                    logger.info(f"✓ Successfully deleted {measurement}")
+
+                except Exception as e:
+                    logger.error(f"Failed to delete {measurement}: {e}")
+                    # Continue with other measurements even if one fails
+                    continue
+
+        logger.warning("=" * 80)
+        logger.warning(
+            f"✓ WIPE COMPLETE: Deleted {len(deleted_measurements)} measurements"
+        )
+        logger.warning(f"  Deleted: {', '.join(deleted_measurements)}")
+        logger.warning("  You can now re-run the analytics pipeline with improved interpolation")
+        logger.warning("=" * 80)
+
+        return MaterializeResult(
+            metadata={
+                "measurements_deleted": len(deleted_measurements),
+                "deleted_list": ", ".join(deleted_measurements),
+                "bucket": influxdb.bucket_processed,
+                "warning": "⚠️ DESTRUCTIVE operation completed",
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to wipe processed data: {e}")
+        raise

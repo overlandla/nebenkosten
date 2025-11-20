@@ -77,12 +77,14 @@ meters:
   - meter_id: "strom_1LOG0007013695_NT"
     type: "physical"
     output_unit: "kWh"
+    installation_date: "2020-01-01"
     deinstallation_date: "2024-11-26"
     description: "Old electricity meter - night tariff"
 
   - meter_id: "strom_1LOG0007013695_HT"
     type: "physical"
     output_unit: "kWh"
+    installation_date: "2020-01-01"
     deinstallation_date: "2024-11-26"
     description: "Old electricity meter - high tariff"
 
