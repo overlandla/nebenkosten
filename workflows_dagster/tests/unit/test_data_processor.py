@@ -2,7 +2,9 @@
 Unit tests for DataProcessor
 """
 
+import os
 import sys
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, Mock
@@ -10,6 +12,7 @@ from unittest.mock import MagicMock, Mock
 import numpy as np
 import pandas as pd
 import pytest
+import yaml
 
 # Add src to path
 workflows_path = Path(__file__).parent.parent.parent
@@ -285,9 +288,6 @@ class TestDataProcessorIntegration:
     def test_seasonal_pattern_loading(self, mock_influx_client):
         """Test that seasonal patterns are loaded correctly"""
         # Create a temporary seasonal patterns file
-        import tempfile
-        import yaml
-
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             patterns = {
                 "patterns": {
@@ -323,16 +323,11 @@ class TestDataProcessorIntegration:
             # Should normalize to 100%
             assert abs(sum(processor.seasonal_patterns["test_meter"]) - 100.0) < 0.01
         finally:
-            import os
-
             os.unlink(temp_path)
 
     def test_seasonal_distribution(self, mock_influx_client):
         """Test seasonal consumption distribution"""
         # Create seasonal pattern (winter-heavy)
-        import tempfile
-        import yaml
-
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             patterns = {
                 "patterns": {
@@ -380,15 +375,10 @@ class TestDataProcessorIntegration:
             # Final value should equal total consumption
             assert abs(result["value"].iloc[-1] - 100.0) < 0.01
         finally:
-            import os
-
             os.unlink(temp_path)
 
     def test_forward_extrapolation_with_seasonal_pattern(self, mock_influx_client):
         """Test that forward extrapolation uses seasonal patterns for long gaps"""
-        import tempfile
-        import yaml
-
         # Create seasonal pattern
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             patterns = {
@@ -444,8 +434,6 @@ class TestDataProcessorIntegration:
             # Should use seasonal pattern for forward extrapolation
             assert len(result) > 10  # More than just raw data points
         finally:
-            import os
-
             os.unlink(temp_path)
 
 
