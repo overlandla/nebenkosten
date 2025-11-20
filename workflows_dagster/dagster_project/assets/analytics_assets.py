@@ -457,12 +457,14 @@ def interpolation_validation(
         if len(mismatches_df) > 0:
             all_passed = False
             for _, row in mismatches_df.head(10).iterrows():  # Limit to first 10
-                mismatches.append({
-                    "timestamp": str(row["timestamp"]),
-                    "raw_value": float(row["value_raw"]),
-                    "interpolated_value": float(row["value_interpolated"]),
-                    "deviation": float(row["deviation"]),
-                })
+                mismatches.append(
+                    {
+                        "timestamp": str(row["timestamp"]),
+                        "raw_value": float(row["value_raw"]),
+                        "interpolated_value": float(row["value_interpolated"]),
+                        "deviation": float(row["deviation"]),
+                    }
+                )
 
             logger.error(
                 f"❌ VALIDATION FAILED for {meter_id}: "
@@ -567,7 +569,9 @@ def interpolation_quality_report(
         raw_sorted = raw_df.sort_values("timestamp").reset_index(drop=True)
         if len(raw_sorted) > 1:
             raw_sorted["time_diff"] = raw_sorted["timestamp"].diff()
-            raw_sorted["gap_days"] = raw_sorted["time_diff"].dt.total_seconds() / (24 * 3600)
+            raw_sorted["gap_days"] = raw_sorted["time_diff"].dt.total_seconds() / (
+                24 * 3600
+            )
 
             # Filter to actual gaps (> 1 day)
             gaps = raw_sorted[raw_sorted["gap_days"] > 1]["gap_days"]
@@ -588,20 +592,22 @@ def interpolation_quality_report(
         # Coverage ratio
         coverage_pct = (raw_count / total_days) * 100 if total_days > 0 else 0.0
 
-        report_rows.append({
-            "meter_id": meter_id,
-            "total_days": total_days,
-            "raw_readings_count": raw_count,
-            "interpolated_days_count": interpolated_count,
-            "largest_gap_days": round(largest_gap, 1),
-            "avg_gap_size_days": round(avg_gap, 1),
-            "extrapolation_backward_days": max(0, backward_extrap_days),
-            "extrapolation_forward_days": max(0, forward_extrap_days),
-            "raw_data_coverage_pct": round(coverage_pct, 2),
-            "first_reading_date": first_reading.strftime("%Y-%m-%d"),
-            "last_reading_date": last_reading.strftime("%Y-%m-%d"),
-            "interpolation_end_date": interpolation_end.strftime("%Y-%m-%d"),
-        })
+        report_rows.append(
+            {
+                "meter_id": meter_id,
+                "total_days": total_days,
+                "raw_readings_count": raw_count,
+                "interpolated_days_count": interpolated_count,
+                "largest_gap_days": round(largest_gap, 1),
+                "avg_gap_size_days": round(avg_gap, 1),
+                "extrapolation_backward_days": max(0, backward_extrap_days),
+                "extrapolation_forward_days": max(0, forward_extrap_days),
+                "raw_data_coverage_pct": round(coverage_pct, 2),
+                "first_reading_date": first_reading.strftime("%Y-%m-%d"),
+                "last_reading_date": last_reading.strftime("%Y-%m-%d"),
+                "interpolation_end_date": interpolation_end.strftime("%Y-%m-%d"),
+            }
+        )
 
     report_df = pd.DataFrame(report_rows)
 

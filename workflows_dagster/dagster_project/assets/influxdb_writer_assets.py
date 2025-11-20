@@ -346,7 +346,9 @@ def wipe_processed_data(
             f"✓ WIPE COMPLETE: Deleted {len(deleted_measurements)} measurements"
         )
         logger.warning(f"  Deleted: {', '.join(deleted_measurements)}")
-        logger.warning("  You can now re-run the analytics pipeline with improved interpolation")
+        logger.warning(
+            "  You can now re-run the analytics pipeline with improved interpolation"
+        )
         logger.warning("=" * 80)
 
         return MaterializeResult(

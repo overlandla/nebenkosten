@@ -71,7 +71,9 @@ class DataProcessor:
                 f"Loaded seasonal patterns for {len(self.seasonal_patterns)} meters"
             )
         else:
-            logging.warning("No seasonal patterns loaded - using linear interpolation only")
+            logging.warning(
+                "No seasonal patterns loaded - using linear interpolation only"
+            )
 
     def _load_seasonal_patterns(
         self, seasonal_patterns_path: Optional[str] = None
@@ -99,11 +101,17 @@ class DataProcessor:
             if seasonal_patterns_path is None:
                 # Try to find config directory relative to this file
                 current_file = Path(__file__)
-                config_path = current_file.parent.parent.parent / "config" / "seasonal_patterns.yaml"
+                config_path = (
+                    current_file.parent.parent.parent
+                    / "config"
+                    / "seasonal_patterns.yaml"
+                )
 
                 if not config_path.exists():
                     # Alternative: try from workflows_dagster root
-                    config_path = current_file.parent.parent / "config" / "seasonal_patterns.yaml"
+                    config_path = (
+                        current_file.parent.parent / "config" / "seasonal_patterns.yaml"
+                    )
 
                 if not config_path.exists():
                     logging.info("Seasonal patterns file not found, using default path")
@@ -113,20 +121,20 @@ class DataProcessor:
 
             logging.info(f"Loading seasonal patterns from {seasonal_patterns_path}")
 
-            with open(seasonal_patterns_path, 'r') as f:
+            with open(seasonal_patterns_path, "r") as f:
                 data = yaml.safe_load(f)
 
-            if not data or 'patterns' not in data:
+            if not data or "patterns" not in data:
                 logging.warning("No 'patterns' key found in seasonal_patterns.yaml")
                 return {}
 
             patterns = {}
-            for meter_id, config in data['patterns'].items():
-                if 'monthly_percentages' not in config:
+            for meter_id, config in data["patterns"].items():
+                if "monthly_percentages" not in config:
                     logging.warning(f"No monthly_percentages for {meter_id}, skipping")
                     continue
 
-                percentages = config['monthly_percentages']
+                percentages = config["monthly_percentages"]
 
                 if len(percentages) != 12:
                     logging.error(
@@ -154,7 +162,9 @@ class DataProcessor:
             return patterns
 
         except FileNotFoundError:
-            logging.warning(f"Seasonal patterns file not found: {seasonal_patterns_path}")
+            logging.warning(
+                f"Seasonal patterns file not found: {seasonal_patterns_path}"
+            )
             return {}
         except Exception as e:
             logging.error(f"Error loading seasonal patterns: {e}")
@@ -451,7 +461,9 @@ class DataProcessor:
         df["daily_pct_normalized"] = (df["daily_pct"] / total_daily_pct) * 100.0
 
         # Calculate daily consumption amounts
-        df["daily_consumption"] = (df["daily_pct_normalized"] / 100.0) * total_consumption
+        df["daily_consumption"] = (
+            df["daily_pct_normalized"] / 100.0
+        ) * total_consumption
 
         # Calculate cumulative meter reading values
         df["value"] = start_value + df["daily_consumption"].cumsum()
@@ -526,7 +538,9 @@ class DataProcessor:
                 f"Meter {entity_id} missing required installation_date in configuration"
             )
 
-        logging.info(f"✓ Validated installation_date for {entity_id}: {installation_date}")
+        logging.info(
+            f"✓ Validated installation_date for {entity_id}: {installation_date}"
+        )
 
         # Get raw data
         raw_data = self.influx_client.fetch_all_meter_data(entity_id)
@@ -645,7 +659,9 @@ class DataProcessor:
         latest_value = latest_data["value"]
 
         if latest_timestamp < effective_end:
-            days_forward = (effective_end - latest_timestamp).total_seconds() / (24 * 3600)
+            days_forward = (effective_end - latest_timestamp).total_seconds() / (
+                24 * 3600
+            )
             logging.info(
                 f"Forward extrapolation needed: {latest_timestamp.date()} → "
                 f"{effective_end.date()} ({days_forward:.0f} days)"
@@ -674,12 +690,14 @@ class DataProcessor:
                             f"(extrapolating {days_forward:.0f} days)"
                         )
 
-                        extrapolated_series = self._distribute_consumption_by_seasonal_pattern(
-                            start_timestamp=latest_timestamp,
-                            end_timestamp=effective_end,
-                            total_consumption=total_estimated_consumption,
-                            seasonal_pattern=seasonal_pattern,
-                            start_value=latest_value,
+                        extrapolated_series = (
+                            self._distribute_consumption_by_seasonal_pattern(
+                                start_timestamp=latest_timestamp,
+                                end_timestamp=effective_end,
+                                total_consumption=total_estimated_consumption,
+                                seasonal_pattern=seasonal_pattern,
+                                start_value=latest_value,
+                            )
                         )
 
                         # Add all extrapolated points to raw_data
@@ -687,7 +705,8 @@ class DataProcessor:
                         if len(extrapolated_series) > 1:
                             extrapolated_series_to_add = extrapolated_series.iloc[1:]
                             raw_data = pd.concat(
-                                [raw_data, extrapolated_series_to_add], ignore_index=True
+                                [raw_data, extrapolated_series_to_add],
+                                ignore_index=True,
                             )
 
                             logging.info(
@@ -696,9 +715,14 @@ class DataProcessor:
                             )
                         else:
                             # Fallback to simple extrapolation if seasonal distribution failed
-                            extrapolated_value = latest_value + total_estimated_consumption
+                            extrapolated_value = (
+                                latest_value + total_estimated_consumption
+                            )
                             end_row = pd.DataFrame(
-                                {"timestamp": [effective_end], "value": [extrapolated_value]}
+                                {
+                                    "timestamp": [effective_end],
+                                    "value": [extrapolated_value],
+                                }
                             )
                             raw_data = pd.concat([raw_data, end_row], ignore_index=True)
                             logging.warning(
@@ -722,7 +746,10 @@ class DataProcessor:
                         extrapolated_value = latest_value + total_estimated_consumption
 
                         end_row = pd.DataFrame(
-                            {"timestamp": [effective_end], "value": [extrapolated_value]}
+                            {
+                                "timestamp": [effective_end],
+                                "value": [extrapolated_value],
+                            }
                         )
                         raw_data = pd.concat([raw_data, end_row], ignore_index=True)
 
@@ -736,7 +763,9 @@ class DataProcessor:
                         {"timestamp": [effective_end], "value": [latest_value]}
                     )
                     raw_data = pd.concat([raw_data, end_row], ignore_index=True)
-                    logging.debug("Zero consumption rate - extending with constant value")
+                    logging.debug(
+                        "Zero consumption rate - extending with constant value"
+                    )
             else:
                 # Only one data point - extend with constant value
                 end_row = pd.DataFrame(
