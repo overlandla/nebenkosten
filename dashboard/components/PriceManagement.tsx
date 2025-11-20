@@ -246,7 +246,7 @@ export default function PriceManagement() {
 
       {/* Create/Edit Form */}
       {(isCreating || editingPrice) && (
-        <div className="bg-blue-50 rounded-lg border-2 border-blue-200 p-6">
+        <div className="bg-muted dark:bg-accent rounded-lg border-2 border-border p-6">
           <h3 className="text-lg font-semibold text-neutral-900 mb-4">
             {isCreating ? 'Create New Price' : 'Edit Price'}
           </h3>
@@ -383,7 +383,7 @@ export default function PriceManagement() {
               return (
                 <div
                   key={price.id}
-                  className={`p-6 ${active ? 'bg-green-50' : 'bg-neutral-50'} hover:bg-neutral-100 transition-colors`}
+                  className={`p-6 ${active ? 'bg-green-100 dark:bg-green-900' : 'bg-muted dark:bg-accent'} hover:bg-accent dark:hover:bg-muted transition-colors`}
                 >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="flex-1">
