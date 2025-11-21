@@ -15,12 +15,15 @@ from .assets import (
     anomaly_detection,
     consumption_data,
     interpolated_meter_series,
+    interpolation_quality_report,
+    interpolation_validation,
     master_meter_series,
     meter_discovery,
     raw_meter_data,
     tibber_consumption_raw,
     virtual_meter_data,
     water_temperature_raw,
+    wipe_processed_data,
     write_processed_data_to_influxdb,
 )
 
@@ -51,12 +54,16 @@ utility_repository = Definitions(
         meter_discovery,
         raw_meter_data,
         interpolated_meter_series,
+        interpolation_validation,
+        interpolation_quality_report,
         master_meter_series,
         consumption_data,
         virtual_meter_data,
         anomaly_detection,
         # Storage
         write_processed_data_to_influxdb,
+        # Maintenance
+        wipe_processed_data,
     ],
     jobs=[tibber_sync_job, water_temp_sync_job, analytics_job],
     schedules=[tibber_sync_schedule, water_temp_sync_schedule, analytics_schedule],

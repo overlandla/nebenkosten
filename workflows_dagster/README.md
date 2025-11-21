@@ -31,8 +31,16 @@ This workflow system:
 │  ┌────────────────────────────────────┐           │
 │  │  Interpolation & Extrapolation     │           │
 │  │  - Linear interpolation             │           │
+│  │  - Seasonal pattern distribution    │           │
 │  │  - Regression-based extrapolation   │           │
 │  │  - Installation/deinstallation dates│           │
+│  └───────────────┬────────────────────┘           │
+│                  │                                 │
+│                  ▼                                 │
+│  ┌────────────────────────────────────┐           │
+│  │  Interpolation Validation          │           │
+│  │  - Verify against raw readings     │           │
+│  │  - Quality metrics & gap analysis  │           │
 │  └───────────────┬────────────────────┘           │
 │                  │                                 │
 │        ┌─────────┴──────────┐                     │
@@ -97,7 +105,8 @@ workflows_dagster/
 │   ├── unit/                  # Unit tests for src modules
 │   │   ├── test_influx_client.py
 │   │   ├── test_data_processor.py
-│   │   └── test_consumption_calculator.py
+│   │   ├── test_consumption_calculator.py
+│   │   └── test_interpolation_validation.py
 │   └── integration/           # Integration tests for assets
 │       └── test_analytics_assets.py
 │
@@ -160,10 +169,14 @@ Navigate to http://localhost:3000 to access the Dagster UI.
 **Problem:** Utility meters are read sporadically (every few weeks or months)
 
 **Solution:** Smart interpolation with:
-- Linear interpolation for gaps < 30 days
-- Regression-based extrapolation for sparse data (uses 4 methods, picks best)
-- Backward extrapolation to installation dates
-- Forward extrapolation to deinstallation dates
+- **Linear interpolation** for short gaps (< 7 days)
+- **Seasonal pattern distribution** for longer gaps (≥ 7 days) using monthly percentages
+- **Regression-based extrapolation** for sparse data (uses 4 methods, picks best)
+- **Backward extrapolation** to installation dates
+- **Forward extrapolation** to today() incorporating seasonal patterns
+- **Installation date validation** - ensures all meters have required dates
+- **Interpolation validation** - verifies interpolated values match raw readings exactly at data points
+- **Quality reporting** - gap analysis, coverage metrics, extrapolation distances
 - High-frequency data reduction (preserves trends)
 
 **Example:**
@@ -174,13 +187,25 @@ Raw readings (every 5 days):
   2024-01-11: 125.0
 
 Interpolated daily series:
-  2024-01-01: 100.0
+  2024-01-01: 100.0  ✓ (matches raw)
   2024-01-02: 102.5
   2024-01-03: 105.0
   2024-01-04: 107.5
   2024-01-05: 110.0
-  2024-01-06: 112.5
+  2024-01-06: 112.5  ✓ (matches raw)
   ...
+```
+
+**Seasonal Patterns:**
+For gaps ≥ 7 days, consumption is distributed using monthly patterns:
+```yaml
+# config/seasonal_patterns.yaml
+seasonal_patterns:
+  default:
+    - 10.5  # January (10.5% of yearly consumption)
+    - 9.8   # February
+    - 8.5   # March
+    ...
 ```
 
 ### 2. Multi-Method Anomaly Detection
@@ -208,7 +233,33 @@ Methods:
 Result: ANOMALY (3/3 methods agree)
 ```
 
-### 3. Master Meters
+### 3. Interpolation Validation & Quality Reporting
+
+**Validation Asset** (`interpolation_validation`):
+- Verifies interpolated values **exactly match** raw readings at all raw timestamps
+- Tolerance: 0.01 units
+- **Fails the pipeline** if mismatches detected (ensures data integrity)
+
+**Quality Report Asset** (`interpolation_quality_report`):
+Generates comprehensive metrics for each meter:
+```
+meter_id: gas_total
+├── Total days: 365
+├── Raw readings: 24
+├── Largest gap: 18 days
+├── Average gap: 15.2 days
+├── Forward extrapolation: 5 days (to today)
+├── Backward extrapolation: 30 days (to installation_date)
+└── Raw data coverage: 94.2%
+```
+
+**Benefits:**
+- Catch data quality issues early
+- Identify meters with sparse data
+- Track extrapolation distances
+- Validate accuracy of interpolation
+
+### 4. Master Meters
 
 Combine multiple physical meters across time periods (e.g., meter replacements):
 
@@ -230,7 +281,7 @@ Combine multiple physical meters across time periods (e.g., meter replacements):
 - Offset validation (warns if >20% of previous value)
 - Unit conversion validation (prevents m³/kWh mixing)
 
-### 4. Virtual Meters
+### 5. Virtual Meters
 
 Calculate derived consumption via subtraction:
 
@@ -245,6 +296,22 @@ Calculate derived consumption via subtraction:
 ```
 
 Result: `strom_allgemein = total - apartment1 - apartment2 - apartment3`
+
+### 6. Data Maintenance
+
+**Wipe Processed Data** (`wipe_processed_data` asset):
+- Safely delete all processed data from InfluxDB
+- **Does NOT affect raw data** - only processed bucket
+- Useful for reprocessing with improved analytics
+- Deletes: `meter_interpolated_daily`, `meter_interpolated_monthly`, `meter_consumption`, `meter_anomaly`
+
+**Usage:**
+```python
+# Materialize the wipe asset in Dagster UI or CLI
+dagster asset materialize -m dagster_project -s wipe_processed_data
+```
+
+⚠️ **Warning:** This is a destructive operation. Ensure you want to start fresh before running.
 
 ## ⚙️ Configuration
 
@@ -321,8 +388,12 @@ pytest -m integration
 ### Test Structure
 
 - **Unit tests:** Test individual functions/classes in isolation
+  - `test_data_processor.py`: Interpolation, seasonal patterns, installation date validation
+  - `test_interpolation_validation.py`: Validation and quality reporting assets
+  - `test_influx_client.py`: InfluxDB client functionality
+  - `test_consumption_calculator.py`: Consumption calculations
 - **Integration tests:** Test complete asset workflows with mocked data
-- **95 total tests** covering all critical paths
+- **106 total tests** covering all critical paths
 
 See [TESTING.md](./TESTING.md) for detailed testing guide.
 
