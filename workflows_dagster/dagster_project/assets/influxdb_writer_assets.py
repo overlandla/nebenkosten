@@ -287,6 +287,8 @@ def wipe_processed_data(
 
     This does NOT affect the raw data bucket - raw meter readings are preserved.
 
+    Strategy: Deletes data in yearly chunks to avoid timeouts.
+
     Args:
         context: Dagster execution context
         influxdb: InfluxDB resource
@@ -297,6 +299,11 @@ def wipe_processed_data(
     Example usage:
         dagster asset materialize -m workflows_dagster -s wipe_processed_data
     """
+    import os
+    from datetime import datetime
+
+    from influxdb_client import InfluxDBClient
+
     logger = context.log
 
     logger.warning("=" * 80)
@@ -312,40 +319,73 @@ def wipe_processed_data(
 
     deleted_measurements = []
 
+    # Get credentials
+    token = os.environ.get("INFLUX_TOKEN")
+    org = os.environ.get("INFLUX_ORG")
+
+    if not token or not org:
+        raise ValueError("INFLUX_TOKEN and INFLUX_ORG environment variables required")
+
+    # Create client with extended timeout for delete operations (5 minutes)
+    delete_timeout = 300000  # 5 minutes in milliseconds
+    client = InfluxDBClient(
+        url=influxdb.url, token=token, org=org, timeout=delete_timeout
+    )
+
     try:
-        with influxdb.get_client() as client:
-            delete_api = client.delete_api()
+        delete_api = client.delete_api()
 
-            # Delete all data from the start of time to now for each measurement
-            start = "1970-01-01T00:00:00Z"
-            stop = "2099-12-31T23:59:59Z"
+        # Define year ranges to delete in chunks (faster than all at once)
+        # Delete from 2020 to current year + 1
+        current_year = datetime.now().year
+        year_ranges = []
+        for year in range(2020, current_year + 2):
+            year_ranges.append((f"{year}-01-01T00:00:00Z", f"{year}-12-31T23:59:59Z"))
 
-            for measurement in measurements_to_delete:
-                try:
-                    logger.info(f"Deleting measurement: {measurement}")
+        for measurement in measurements_to_delete:
+            try:
+                logger.info(f"Deleting measurement: {measurement}")
+                chunks_deleted = 0
 
-                    # Delete using predicate: _measurement="measurement_name"
-                    delete_api.delete(
-                        start=start,
-                        stop=stop,
-                        predicate=f'_measurement="{measurement}"',
-                        bucket=influxdb.bucket_processed,
-                        org=influxdb.org,
-                    )
+                # Delete in yearly chunks
+                for start, stop in year_ranges:
+                    try:
+                        delete_api.delete(
+                            start=start,
+                            stop=stop,
+                            predicate=f'_measurement="{measurement}"',
+                            bucket=influxdb.bucket_processed,
+                            org=org,
+                        )
+                        chunks_deleted += 1
+                        logger.info(f"  ✓ Deleted {measurement} for {start[:4]}")
 
+                    except Exception as chunk_error:
+                        # Log but continue - chunk might be empty
+                        logger.debug(
+                            f"  Chunk {start[:4]} failed (may be empty): {chunk_error}"
+                        )
+                        continue
+
+                if chunks_deleted > 0:
                     deleted_measurements.append(measurement)
-                    logger.info(f"✓ Successfully deleted {measurement}")
+                    logger.info(
+                        f"✓ Successfully deleted {measurement} ({chunks_deleted} chunks)"
+                    )
+                else:
+                    logger.warning(f"  No data found for {measurement}")
 
-                except Exception as e:
-                    logger.error(f"Failed to delete {measurement}: {e}")
-                    # Continue with other measurements even if one fails
-                    continue
+            except Exception as e:
+                logger.error(f"Failed to delete {measurement}: {e}")
+                # Continue with other measurements even if one fails
+                continue
 
         logger.warning("=" * 80)
         logger.warning(
             f"✓ WIPE COMPLETE: Deleted {len(deleted_measurements)} measurements"
         )
-        logger.warning(f"  Deleted: {', '.join(deleted_measurements)}")
+        if deleted_measurements:
+            logger.warning(f"  Deleted: {', '.join(deleted_measurements)}")
         logger.warning(
             "  You can now re-run the analytics pipeline with improved interpolation"
         )
@@ -354,7 +394,9 @@ def wipe_processed_data(
         return MaterializeResult(
             metadata={
                 "measurements_deleted": len(deleted_measurements),
-                "deleted_list": ", ".join(deleted_measurements),
+                "deleted_list": (
+                    ", ".join(deleted_measurements) if deleted_measurements else "none"
+                ),
                 "bucket": influxdb.bucket_processed,
                 "warning": "⚠️ DESTRUCTIVE operation completed",
             }
@@ -363,3 +405,6 @@ def wipe_processed_data(
     except Exception as e:
         logger.error(f"Failed to wipe processed data: {e}")
         raise
+    finally:
+        # Always close the client
+        client.close()
