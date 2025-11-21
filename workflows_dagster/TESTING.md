@@ -22,7 +22,8 @@ tests/
 │   ├── __init__.py
 │   ├── test_influx_client.py      # InfluxClient tests (95% coverage)
 │   ├── test_data_processor.py     # DataProcessor tests (92% coverage)
-│   └── test_consumption_calculator.py  # Calculator tests (98% coverage)
+│   ├── test_consumption_calculator.py  # Calculator tests (98% coverage)
+│   └── test_interpolation_validation.py  # Validation/quality tests
 │
 └── integration/                    # Integration tests for Dagster
     ├── __init__.py
@@ -119,7 +120,7 @@ def test_fetch_all_meter_data_caching(self, mock_client):
     assert mock_client.query_api.query_data_frame.call_count == 1
 ```
 
-#### 2. `test_data_processor.py` (18 tests)
+#### 2. `test_data_processor.py` (22 tests)
 
 Tests for data processing and interpolation:
 
@@ -129,6 +130,10 @@ Tests for data processing and interpolation:
 - High-frequency data reduction (medium/very dense)
 - Frequency aggregation (daily to monthly)
 - Daily series creation (basic, with dates, caching)
+- Installation date validation (raises error if missing)
+- Seasonal pattern loading and normalization
+- Seasonal consumption distribution
+- Forward extrapolation with seasonal patterns
 - Empty DataFrame handling
 ```
 
@@ -175,6 +180,45 @@ def test_calculate_consumption_from_readings_negative_values(self, calculator):
     assert (result['value'] >= 0).all()
     # Day 3 should be 0, not -92.5
     assert result.iloc[2]['value'] == 0.0
+```
+
+#### 4. `test_interpolation_validation.py` (7 tests)
+
+Tests for interpolation validation and quality reporting:
+
+```python
+# What's tested:
+- Validation that interpolated values match raw readings exactly
+- Handling of mismatched data (should raise ValueError)
+- Empty data validation
+- Missing meter detection
+- Quality report generation with gap analysis
+- Multiple meter quality reporting
+```
+
+**Example test:**
+```python
+def test_interpolation_validation_matching_data(self):
+    """Test validation passes when interpolated matches raw readings"""
+    raw_data = {
+        'meter1': pd.DataFrame({
+            'timestamp': pd.date_range('2024-01-01', periods=3, freq='D'),
+            'value': [100.0, 105.0, 110.0]
+        })
+    }
+
+    interpolated_data = {
+        'meter1': pd.DataFrame({
+            'timestamp': pd.date_range('2024-01-01', periods=5, freq='D'),
+            'value': [100.0, 102.5, 105.0, 107.5, 110.0]  # Matches at raw timestamps
+        })
+    }
+
+    # Should pass without errors
+    result = interpolation_validation(build_asset_context(), interpolated_data, raw_data)
+
+    assert result['meter1']['status'] == 'valid'
+    assert result['meter1']['mismatches'] == 0
 ```
 
 ## 🔗 Integration Tests
