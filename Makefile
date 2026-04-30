@@ -43,14 +43,14 @@ install-dashboard:
 	echo ""; \
 	echo "[INFO] PostgreSQL Configuration Database Setup"; \
 	echo "If you installed Dagster using 'make install-dagster', it created a PostgreSQL database with:"; \
-	echo "  - Host: IP address of the Dagster LXC (e.g., 192.168.1.94)"; \
+	echo "  - Host: IP address or DNS name of the Dagster LXC"; \
 	echo "  - Port: 5432"; \
 	echo "  - Database: nebenkosten_config"; \
 	echo "  - Username: dagster"; \
-	echo "  - Password: dagster"; \
+	echo "  - Password: value from the Dagster LXC secret store"; \
 	echo ""; \
-	echo "Connection string format: postgresql://dagster:dagster@DAGSTER_IP:5432/nebenkosten_config"; \
-	echo "Example: postgresql://dagster:dagster@192.168.1.94:5432/nebenkosten_config"; \
+	echo "Connection string format: use PostgreSQL URL syntax with user, password, host, port 5432, and database nebenkosten_config."; \
+	echo "Example values: user=config_user host=dagster-lxc.local database=nebenkosten_config"; \
 	echo ""; \
 	read -p "PostgreSQL Config DB URL: " CONFIG_DATABASE_URL; \
 	printf '%s\n' \
@@ -144,14 +144,14 @@ configure-dashboard:
 	echo ""; \
 	echo "[INFO] PostgreSQL Configuration Database Setup"; \
 	echo "If you installed Dagster using 'make install-dagster', it created a PostgreSQL database with:"; \
-	echo "  - Host: IP address of the Dagster LXC (e.g., 192.168.1.94)"; \
+	echo "  - Host: IP address or DNS name of the Dagster LXC"; \
 	echo "  - Port: 5432"; \
 	echo "  - Database: nebenkosten_config"; \
 	echo "  - Username: dagster"; \
-	echo "  - Password: dagster"; \
+	echo "  - Password: value from the Dagster LXC secret store"; \
 	echo ""; \
-	echo "Connection string format: postgresql://dagster:dagster@DAGSTER_IP:5432/nebenkosten_config"; \
-	echo "Example: postgresql://dagster:dagster@192.168.1.94:5432/nebenkosten_config"; \
+	echo "Connection string format: use PostgreSQL URL syntax with user, password, host, port 5432, and database nebenkosten_config."; \
+	echo "Example values: user=config_user host=dagster-lxc.local database=nebenkosten_config"; \
 	echo ""; \
 	read -p "PostgreSQL Config DB URL: " CONFIG_DATABASE_URL; \
 	printf '%s\n' \

@@ -148,7 +148,7 @@ Add the config database URL (update host if on different LXC):
 
 ```bash
 # If Next.js is on different LXC, use Dagster LXC IP
-CONFIG_DATABASE_URL=postgresql://dagster:dagster@192.168.1.XXX:5432/nebenkosten_config
+CONFIG_DATABASE_URL=<postgresql-url-from-your-secret-store>
 
 # Other existing vars...
 INFLUX_URL=http://192.168.1.75:8086

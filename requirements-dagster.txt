@@ -1,8 +1,8 @@
 # Dagster core - Latest stable versions
-dagster==1.12.2
-dagster-webserver==1.12.2
-dagster-postgres==0.28.2
-dagster-docker==0.28.2
+dagster==1.13.1
+dagster-webserver==1.13.1
+dagster-postgres==0.29.1
+dagster-docker==0.29.1
 
 # Data processing and analysis - Latest stable versions (Python 3.13 compatible)
 influxdb-client==1.48.0
@@ -13,8 +13,8 @@ scikit-learn==1.6.0
 pyyaml==6.0.2
 
 # Utilities - Latest stable versions
-python-dotenv==1.0.1
-requests==2.32.3
+python-dotenv==1.2.2
+requests==2.33.0
 beautifulsoup4==4.12.3
 openpyxl==3.1.5
 plotly==5.24.1

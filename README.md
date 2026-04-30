@@ -137,12 +137,8 @@ make install-dashboard
 
 **Important:** When prompted for the PostgreSQL connection string during installation, use the credentials created by the Dagster installation:
 
-```
-postgresql://dagster:dagster@<DAGSTER_LXC_IP>:5432/nebenkosten_config
-```
-<!-- trufflehog:ignore -->
-
-Replace `<DAGSTER_LXC_IP>` with the IP address of your Dagster LXC (e.g., 192.168.1.94).
+Use PostgreSQL URL syntax with your config DB user, password, Dagster LXC host, port `5432`, and database `nebenkosten_config`.
+Read the password from the Dagster LXC secret store; do not copy credentials into docs or Git.
 
 **Note:** You'll need to configure PostgreSQL on the Dagster LXC to accept remote connections. See `SHARED_CONFIG_SETUP.md#8-network-configuration-for-multi-lxc-setup` for details.
 
