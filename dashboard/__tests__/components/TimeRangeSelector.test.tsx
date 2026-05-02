@@ -36,7 +36,7 @@ describe('TimeRangeSelector', () => {
     render(<TimeRangeSelector onRangeChange={mockOnRangeChange} />);
 
     const button = screen.getByText('Last 3 Months');
-    expect(button).toHaveClass('bg-blue-600');
+    expect(button).toHaveClass('bg-neutral-900');
   });
 
   it('should call onRangeChange when preset is clicked', () => {
@@ -58,8 +58,8 @@ describe('TimeRangeSelector', () => {
     const button = screen.getByText('Last 30 Days');
     fireEvent.click(button);
 
-    expect(button).toHaveClass('bg-blue-600');
-    expect(screen.getByText('Last 3 Months')).not.toHaveClass('bg-blue-600');
+    expect(button).toHaveClass('bg-neutral-900');
+    expect(screen.getByText('Last 3 Months')).not.toHaveClass('bg-neutral-900');
   });
 
   it('should show custom date inputs when Custom Range is clicked', () => {
@@ -151,7 +151,7 @@ describe('TimeRangeSelector', () => {
     // Select a preset first
     const presetButton = screen.getByText('Last 7 Days');
     fireEvent.click(presetButton);
-    expect(presetButton).toHaveClass('bg-blue-600');
+    expect(presetButton).toHaveClass('bg-neutral-900');
 
     // Switch to custom
     const customButton = screen.getByText('Custom Range');
@@ -159,7 +159,7 @@ describe('TimeRangeSelector', () => {
     fireEvent.click(screen.getByText('Apply'));
 
     // Preset should no longer be selected
-    expect(presetButton).not.toHaveClass('bg-blue-600');
+    expect(presetButton).not.toHaveClass('bg-neutral-900');
   });
 
   it('should handle Year to Date preset correctly', () => {

@@ -68,24 +68,20 @@ During installation, you'll be prompted for:
 
 If you installed Dagster using `make install-dagster`, it automatically created a PostgreSQL database with these credentials:
 
-- **Host:** IP address of the Dagster LXC (e.g., `192.168.1.94`)
+- **Host:** IP address or DNS name of the Dagster LXC
 - **Port:** `5432`
 - **Database:** `nebenkosten_config`
 - **Username:** `dagster`
-- **Password:** `dagster`
+- **Password:** value from the Dagster LXC secret store
 
-**Connection string format:**
-```
-postgresql://dagster:dagster@<DAGSTER_LXC_IP>:5432/nebenkosten_config
-```
-<!-- trufflehog:ignore -->
+**Connection string format:** use PostgreSQL URL syntax with your config DB user, password, Dagster LXC host, port `5432`, and database `nebenkosten_config`.
 
-**Example:**
+**Example values:**
 ```
-postgresql://dagster:dagster@192.168.1.94:5432/nebenkosten_config
+user=config_user
+host=dagster-lxc.local
+database=nebenkosten_config
 ```
-<!-- trufflehog:ignore -->
-
 #### Enabling Remote Access (if Dagster is on a different LXC)
 
 If your Dashboard and Dagster are on separate LXCs, you need to enable remote PostgreSQL access on the Dagster LXC:
@@ -95,7 +91,7 @@ If your Dashboard and Dagster are on separate LXCs, you need to enable remote Po
 sudo nano /etc/postgresql/*/main/postgresql.conf
 
 # Add Dagster LXC IP to listen_addresses
-listen_addresses = 'localhost,192.168.1.94'
+listen_addresses = 'localhost,DAGSTER_LXC_HOST'
 
 # Edit pg_hba.conf
 sudo nano /etc/postgresql/*/main/pg_hba.conf
@@ -126,10 +122,8 @@ INFLUX_BUCKET_RAW=lampfi
 INFLUX_BUCKET_PROCESSED=lampfi_processed
 
 # PostgreSQL Configuration Database
-CONFIG_DATABASE_URL=postgresql://dagster:dagster@192.168.1.94:5432/nebenkosten_config
+CONFIG_DATABASE_URL=<postgresql-url-from-your-secret-store>
 ```
-<!-- trufflehog:ignore -->
-
 ### Step 4: Restart Service
 
 ```bash

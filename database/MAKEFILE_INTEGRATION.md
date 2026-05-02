@@ -400,7 +400,7 @@ sudo systemctl restart postgresql
 
 Then on Next.js LXC, set:
 ```bash
-CONFIG_DATABASE_URL=postgresql://dagster:password@192.168.1.XXX:5432/nebenkosten_config
+CONFIG_DATABASE_URL=<postgresql-url-from-your-secret-store>
 ```
 
 ## Summary
