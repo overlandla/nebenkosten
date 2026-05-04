@@ -12,7 +12,7 @@ tibber_sync_job = define_asset_job(
     tags={"type": "ingestion", "source": "tibber"},
 )
 
-# Water temperature sync job - runs every 6 hours
+# Water temperature sync job - runs every 15 minutes
 water_temp_sync_job = define_asset_job(
     name="water_temp_sync",
     description="Fetch and store water temperature data from Bavarian lakes",
