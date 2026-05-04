@@ -27,9 +27,20 @@ class TestTibberSyncE2E:
     @patch(
         "workflows_dagster.dagster_project.assets.tibber_assets._get_last_influxdb_timestamp"
     )
+    @patch(
+        "workflows_dagster.dagster_project.assets.tibber_assets._get_last_cumulative_meter_reading"
+    )
+    @patch(
+        "workflows_dagster.dagster_project.assets.tibber_assets._write_cumulative_meter_readings"
+    )
     @patch("workflows_dagster.dagster_project.assets.tibber_assets._write_to_influxdb")
     def test_complete_tibber_sync_flow(
-        self, mock_write, mock_get_timestamp, mock_requests
+        self,
+        mock_write,
+        mock_write_cumulative,
+        mock_get_cumulative,
+        mock_get_timestamp,
+        mock_requests,
     ):
         """Test complete Tibber sync from API to InfluxDB"""
         # Mock Tibber API response
@@ -42,9 +53,14 @@ class TestTibberSyncE2E:
 
         # No existing data in InfluxDB
         mock_get_timestamp.return_value = None
+        mock_get_cumulative.return_value = {
+            "timestamp": pd.Timestamp("2024-01-01T00:00:00Z").to_pydatetime(),
+            "value": 1000.0,
+        }
 
         # Mock write success
         mock_write.return_value = len(tibber_data)
+        mock_write_cumulative.return_value = len(tibber_data)
 
         # Execute job
         result = tibber_sync_job.execute_in_process()
@@ -54,6 +70,7 @@ class TestTibberSyncE2E:
         mock_requests.assert_called_once()
         # Verify data was written to InfluxDB
         mock_write.assert_called_once()
+        mock_write_cumulative.assert_called_once()
 
 
 class TestAnalyticsE2E:

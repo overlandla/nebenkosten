@@ -15,14 +15,13 @@ tibber_sync_schedule = ScheduleDefinition(
     description="Fetch Tibber consumption data every hour",
 )
 
-# Water temperature sync schedule - runs every 6 hours at :10 minutes
-# Default: 00:10, 06:10, 12:10, 18:10 UTC
+# Water temperature sync schedule - runs every 15 minutes
 water_temp_sync_schedule = ScheduleDefinition(
-    name="water_temp_sync_6hourly",
+    name="water_temp_sync_15min",
     job=water_temp_sync_job,
-    cron_schedule="10 */6 * * *",  # Every 6 hours at :10
+    cron_schedule="*/15 * * * *",
     execution_timezone="UTC",
-    description="Fetch Bavarian lake water temperatures every 6 hours",
+    description="Fetch Bavarian lake water temperatures every 15 minutes",
 )
 
 # Analytics schedule - runs daily at 2:00 AM
